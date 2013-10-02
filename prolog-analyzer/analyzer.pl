@@ -79,11 +79,7 @@ assert_call(Id, Predicate, Layout, dcg) :-
     Arity is WrongArity + 2,
     assert(calling(Id, Module:Name/Arity, StartLine, EndLine)).  
 
-% { ... } prevents DCGs from adding additional arguments
-analyze_body({X},Layout,Clause,_DCG) :- !,
-    analyze_body(X,Layout,Clause,no_dcg).
 
-analyze_body(X,_,_,dcg) :- is_list(X),!.
 
 
 analyze_body(X,Layout, Clause, DCG) :- 
@@ -91,6 +87,12 @@ analyze_body(X,Layout, Clause, DCG) :-
 
 analyze_body(Module:X,Layout, Clause, DCG) :- 
     var(X), !, assert_call(Clause, built_in:call(Module:X), Layout, DCG).
+
+% { ... } prevents DCGs from adding additional arguments
+analyze_body({X},Layout,Clause,_DCG) :- !,
+    analyze_body(X,Layout,Clause,no_dcg).
+
+analyze_body(X,_,_,dcg) :- is_list(X),!.
 
 
 analyze_body(\+(X),Layout, Clause, DCG) :- 
@@ -211,7 +213,7 @@ dependency(Module, Name) :-
 analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     !,
     (Name = Module -> true; mk_problem(wrong_filename(Module,Name,File))),
-    (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2))),
+    (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
     assert(defined_module(Name,File)),
     maplist(add_fact(is_exported, Module),ListOfExported).
 
@@ -318,8 +320,12 @@ update(c(Clause,Name, Arity, Start, End, CallingModule)) :-
     get_module(Name, Arity, CallingModule,Module),
     assert(calling(Clause, Module:Name/Arity, Start, End)).
 
+:- multifile user:term_expansion/6.
+
+
 user:term_expansion(Term, Layout, Tokens, Term, [], [codeq | Tokens]) :-
     prolog_load_context(module, Module),
+    print(module(Module)), nl, 
     prolog_load_context(file, File),
     nonmember(codeq, Tokens), % do not expand if already expanded
     analyze(Term, Layout, Module, File),
