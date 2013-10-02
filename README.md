@@ -1,14 +1,6 @@
 # infolog
 
-A Clojure library designed to ... well, that part is up to you.
+A tool to analyze Prolog sourcecode, in particular the ProB sourcecode.
 
-## Usage
 
-FIXME
-
-## License
-
-Copyright © 2013 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2013 Jens Bendisposto/Sebastian Krings
