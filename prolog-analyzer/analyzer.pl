@@ -76,12 +76,15 @@ assert_call(Id, Predicate, Layout, dcg) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, WrongArity),
-    Arity = WrongArity + 2,
+    Arity is WrongArity + 2,
     assert(calling(Id, Module:Name/Arity, StartLine, EndLine)).  
 
 % { ... } prevents DCGs from adding additional arguments
 analyze_body({X},Layout,Clause,_DCG) :- !,
     analyze_body(X,Layout,Clause,no_dcg).
+
+analyze_body(X,_,_,dcg) :- is_list(X),!.
+
 
 analyze_body(X,Layout, Clause, DCG) :- 
     var(X), !, assert_call(Clause, built_in:call(X), Layout, DCG).
@@ -287,9 +290,42 @@ assert_head(Predicate, Layout, Id) :-
     assert(clause(Predicate, Id, StartLine, EndLine)).
 
 
+get_module(Name, Arity, CallingModule, built_in) :- 
+   functor(Call, Name, Arity),
+   predicate_property(CallingModule:Call,built_in),!.
+
+get_module(Name, Arity, CallingModule, Module) :- 
+   functor(Call, Name, Arity),
+   predicate_property(CallingModule:Call,imported_from(Module)),!.
+
+
+get_module(Name, Arity, CallingModule, CallingModule) :- 
+   functor(Call, Name, Arity),
+   (predicate_property(CallingModule:Call,interpreted); predicate_property(CallingModule:Call,compiled)),!.
+
+get_module(Name, Arity, CallingModule, undefined_module) :- 
+  mk_problem(could_not_infer_module(Name, Arity, CallingModule)).
+
+
+update :- 
+  findall(c(Clause, Name, Arity, Start, End, CallingModule), 
+    (calling(Clause, module_yet_unknown:Name/Arity, Start, End),
+    clause(CallingModule:_/_, Clause, _, _)),L),
+  maplist(update,L).
+
+update(c(Clause,Name, Arity, Start, End, CallingModule)) :- 
+    retract(calling(Clause, module_yet_unknown:Name/Arity, Start, End)),
+    get_module(Name, Arity, CallingModule,Module),
+    assert(calling(Clause, Module:Name/Arity, Start, End)).
+
 user:term_expansion(Term, Layout, Tokens, Term, [], [codeq | Tokens]) :-
-    Module = my_module, 
-    File = my_File,
+    prolog_load_context(module, Module),
+    prolog_load_context(file, File),
     nonmember(codeq, Tokens), % do not expand if already expanded
     analyze(Term, Layout, Module, File),
     !.
+
+load(F) :- 
+  use_module(F),
+  update, 
+  listing.
