@@ -29,9 +29,111 @@
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/1,
-    klaus_count/1.       % problem(details) 
+    klaus_count/1.    % problem(details) 
+
+export :- 
+ clojure_map_wrap(export_all).
+
+export_all :- 
+ write(':predicates'),
+ clojure_list_wrap(export_X1(predicate)),
+ write(':dynamic'),
+ clojure_list_wrap(export_X1(is_dynamic)),
+ write(':volatile'),
+ clojure_list_wrap(export_X1(is_volatile)),
+ write(':exported'),
+ clojure_list_wrap(export_X1(is_exported)),
+ write(':multifile'),
+ clojure_list_wrap(export_X1(is_multifile)),
+ write(':meta'),
+ clojure_list_wrap(export_X2(is_meta)),
+ write(':mode'),
+ clojure_list_wrap(export_X2(declared_mode)),
+ write(':blocking'),
+ clojure_list_wrap(export_X2(is_blocking)),
+ write(':modules'),
+ clojure_list_wrap(export_defined_modules),
+ write(':clauses'),
+ clojure_list_wrap(export_clause),
+ write(':calling'),
+ clojure_list_wrap(export_calling),
+ write(':operators'),
+ clojure_list_wrap(export_operator), 
+ write(':problems'),
+ clojure_list_wrap(export_problems)
+ .
+
+export_defined_modules :- 
+  findall([':m',M,string,':file', File,string], defined_module(M,File),L),
+  maplist(write_clojure,L).
+
+export_problems :- 
+  findall([P], problem(P),L),
+  maplist(format('"~w"'),L).  
+
+export_clause :- 
+  findall( [':m',M,string,
+            ':p', P,string, 
+            ':a', A, number,
+            ':id', Id, number,
+            ':start', Start, number,
+            ':end', End, number], clause(M:P/A,Id, Start, End),L),
+  maplist(write_clojure,L).
 
 
+export_operator :- 
+  findall( [':m',M,string,
+            ':p', P,string, 
+            ':a', A, number,
+            ':prio', Prio, number,
+            ':fix', Fix, string,
+            ':associativity', Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
+  maplist(write_clojure,L).
+
+export_calling :- 
+  findall( [':m',M,string,
+            ':p', P,string, 
+            ':a', A, number,
+            ':id', Id, number,
+            ':start', Start, number,
+            ':end', End, number], calling(Id, M:P/A, Start, End),L),
+  maplist(write_clojure,L).
+
+
+clojure_map_wrap(X) :- 
+ format(' { ',[]),
+ call(X),
+ format('}~n',[]). 
+
+clojure_list_wrap(X) :- 
+ format(' [',[]),
+ call(X),
+ format('] ',[]). 
+
+export_X1(X) :-
+  F =.. [X,M:P/A],
+  findall([':m',M,string,':p', P,string, ':a', A, number], F,L),
+  maplist(write_clojure,L).
+
+export_X2(X) :-
+  F =.. [X,M:P/A,Args],
+  findall([':m',M,string,':p', P,string, ':a', A, number, ':args', Args, string], F,L),
+  maplist(write_clojure,L).
+
+write_clojure(E) :- 
+ clojure_map_wrap(write_clojure2(E)).
+
+write_clojure2([]).
+write_clojure2([Key,Content,Type|T]) :-
+  write_clojure(Key,Content,Type),write_clojure2(T). 
+
+
+write_clojure(Key,Content, number) :- !,
+  format('~a ~d ',[Key,Content]).
+
+%default type is string
+write_clojure(Key,Content, _) :- 
+  format('~a "~w" ',[Key,Content]).
 
 klaus_count(1).
 next_klaus(Y) :- 
@@ -39,7 +141,7 @@ next_klaus(Y) :-
   Y1 is Y+1,
   assert(klaus_count(Y1)).
 
-flatten(List,FlatList) :- flatten1(List,[],FlatList).
+aflatten(List,FlatList) :- flatten1(List,[],FlatList).
 flatten1([],L,L) :- !.
 flatten1([H|T],Tail,List) :- !, flatten1(H,FlatList,List), flatten1(T,Tail,FlatList).
 flatten1(NonList,Tail,[NonList|Tail]).
@@ -60,9 +162,13 @@ layout_sub_term([],_,[]).
 layout_sub_term([H|T],N,Res) :-
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
 
-
 get_position(Layout, StartLine, EndLine) :- 
-    flatten(Layout,[StartLine|FlatLayout]),
+  get_position1(Layout, Start, End),
+  (Start = [] -> StartLine = -1, StartLine = Start),
+  (End = [] -> EndLine = -1, EndLine = End).
+
+get_position1(Layout, StartLine, EndLine) :- 
+    aflatten(Layout,[StartLine|FlatLayout]),
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
      % calling(some_clause_integer_id, module:name/arity, startline, endline)
@@ -78,8 +184,6 @@ assert_call(Id, Predicate, Layout, dcg) :-
     functor(Call, Name, WrongArity),
     Arity is WrongArity + 2,
     assert(calling(Id, Module:Name/Arity, StartLine, EndLine)).  
-
-
 
 
 analyze_body(X,Layout, Clause, DCG) :- 
@@ -331,13 +435,8 @@ update(c(Clause,Name, Arity, Start, End, CallingModule)) :-
 
 user:term_expansion(Term, Layout, Tokens, Term, [], [codeq | Tokens]) :-
     prolog_load_context(module, Module),
-    print(module(Module)), nl, 
+    % print(module(Module)), nl, 
     prolog_load_context(file, File),
     nonmember(codeq, Tokens), % do not expand if already expanded
     analyze(Term, Layout, Module, File),
     !.
-
-load(F) :- 
-  use_module(F),
-  update, 
-  listing.
