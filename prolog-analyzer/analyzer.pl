@@ -182,12 +182,18 @@ mk_problem(P) :- assert(problem(P)).
 
 %% analyzing Prolog Code
 
-add_fact(Fact, Module, Name/Arity) :- !, X =..[Fact, Module:Name/Arity], assert(X).
+add_fact(Fact, Module, Name/Arity) :- !, 
+    Predicate = Module:Name/Arity,
+    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    X =..[Fact, Predicate], 
+    assert(X).
 
 add_fact(Fact, Module, Term ) :- 
     functor(Term,Name,Arity),
     Term =..[_Fun|Arguments],
-    X =..[Fact, Module:Name/Arity, Arguments], assert(X).
+    Predicate = Module:Name/Arity,
+    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    X =..[Fact, Predicate, Arguments], assert(X).
 
 
 pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
