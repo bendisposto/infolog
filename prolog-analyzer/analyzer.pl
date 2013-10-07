@@ -322,7 +322,8 @@ dependency(Module, Name) :-
 
 analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     !,
-    (Name = Module -> true; mk_problem(wrong_filename(Module,Name,File))),
+    unwrap_module(File,UnwrappedName),
+    (Name = UnwrappedName -> true; mk_problem(wrong_filename(Module,Name,File))),
     (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
     assert(defined_module(Name,File)),
     maplist(add_fact(is_exported, Module),ListOfExported).
