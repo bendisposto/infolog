@@ -7,6 +7,7 @@
 :- use_module(library(system)).
 :- use_module(library(file_systems)).
 :- use_module(library(codesio)).
+:- use_module(library(process)).
 
 :- use_module(escaper).
 :- include(prob_search_paths).
@@ -20,126 +21,144 @@
     is_dynamic/1,    % is_dynamic(module:name/arity)
     is_volatile/1,   % is_dynamic(module:name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
-    clause/4,        % clause(module:name/arity, some_clause_integer_id, startline, endline)
-    calling/4,       % calling(some_clause_integer_id, module:name/arity, startline, endline)
+    klaus/3,        % klaus(module:name/arity,  startline, endline)
+    calling/4,       % calling(callingmodule:callingpredicate/callingarity, module:name/arity, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/1,   % is_exported(module:name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
     is_multifile/1,  % is_multifile(module:name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
-    problem/1,
-    klaus_count/1.    % problem(details) 
+    problem/1.       % problem(details) 
 
-export :- 
- clojure_map_wrap(export_all).
+export(Stream) :- 
+ clojure_map_wrap(Stream,export_all(Stream)).
 
-export_all :- 
- write(':predicates'),
- clojure_list_wrap(export_X1(predicate)),
- write(':dynamic'),
- clojure_list_wrap(export_X1(is_dynamic)),
- write(':volatile'),
- clojure_list_wrap(export_X1(is_volatile)),
- write(':exported'),
- clojure_list_wrap(export_X1(is_exported)),
- write(':multifile'),
- clojure_list_wrap(export_X1(is_multifile)),
- write(':meta'),
- clojure_list_wrap(export_X2(is_meta)),
- write(':mode'),
- clojure_list_wrap(export_X2(declared_mode)),
- write(':blocking'),
- clojure_list_wrap(export_X2(is_blocking)),
- write(':modules'),
- clojure_list_wrap(export_defined_modules),
- write(':clauses'),
- clojure_list_wrap(export_clause),
- write(':calling'),
- clojure_list_wrap(export_calling),
- write(':operators'),
- clojure_list_wrap(export_operator), 
- write(':problems'),
- clojure_list_wrap(export_problems)
+
+% read all characters from a stream
+stream2code(S,Atom) :-
+  read_line(S,Text),
+  atom_codes(Atom,Text).
+
+git_revision(Sha) :- 
+   absolute_file_name('$SHELL', Shell),
+   process_create(Shell, ['-c','cd $PROB_HOME && git rev-parse HEAD && cd - >/dev/null'],[stdout(pipe(F)), process(P)]), 
+   process_wait(P,_ExitCode),
+   stream2code(F,Sha).
+
+export_all(S) :- 
+ git_revision(Sha),
+ format(S, ':git "~a" ',[Sha]),
+ write(S,'\n :predicates \n '),
+ clojure_list_wrap(S,export_X1(S,predicate)),
+ write(S,'\n :dynamic \n '),
+ clojure_list_wrap(S,export_X1(S,is_dynamic)),
+ write(S,'\n :volatile \n '),
+ clojure_list_wrap(S,export_X1(S,is_volatile)),
+ write(S,' \n :exported \n '),
+ clojure_list_wrap(S,export_X1(S,is_exported)),
+ write(S,' \n :multifile \n '),
+ clojure_list_wrap(S,export_X1(S,is_multifile)),
+ write(S,' \n :meta \n '),
+ clojure_list_wrap(S,export_X2(S,is_meta)),
+ write(S,' \n :mode \n '),
+ clojure_list_wrap(S,export_X2(S,declared_mode)),
+ write(S,' \n :blocking \n '),
+ clojure_list_wrap(S,export_X2(S,is_blocking)),
+ write(S,' \n :modules \n '),
+ clojure_list_wrap(S,export_defined_modules(S)),
+ write(S,' \n :clauses \n '),
+ clojure_list_wrap(S,export_clause(S)),
+ write(S,' \n :calling \n '),
+ clojure_list_wrap(S,export_calling(S)),
+ write(S,' \n :operators \n '),
+ clojure_list_wrap(S,export_operator(S)), 
+ write(S,' \n :problems \n '),
+ clojure_list_wrap(S,export_problems(S)),
+ write(S,' \n :dependencies \n '),
+ clojure_list_wrap(S,export_dependencies(S))
  .
 
-export_defined_modules :- 
+export_dependencies(S) :- 
+   findall([':local_module',LM,string,':imported_module', IM,string], depends_on(LM,IM),L),
+   maplist(write_clojure(S),L).
+
+export_defined_modules(S) :- 
   findall([':m',M,string,':file', File,string], defined_module(M,File),L),
-  maplist(write_clojure,L).
+  maplist(write_clojure(S),L).
 
-export_problems :- 
+export_problems(S) :- 
   findall([P], problem(P),L),
-  maplist(format('"~w"'),L).  
+  maplist(escaping_format(S,' "~w"  ~n '),L).  
 
-export_clause :- 
+export_clause(S) :- 
   findall( [':m',M,string,
             ':p', P,string, 
             ':a', A, number,
-            ':id', Id, number,
             ':start', Start, number,
-            ':end', End, number], clause(M:P/A,Id, Start, End),L),
-  maplist(write_clojure,L).
+            ':end', End, number], klaus(M:P/A, Start, End),L),
+  maplist(write_clojure(S),L).
+
+dcg_specialcase('=').
+dcg_specialcase('!').
 
 
-export_operator :- 
+export_operator(S) :- 
   findall( [':m',M,string,
             ':p', P,string, 
             ':a', A, number,
             ':prio', Prio, number,
             ':fix', Fix, string,
             ':associativity', Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
-  maplist(write_clojure,L).
+  maplist(write_clojure(S),L).
 
-export_calling :- 
+export_calling(S) :- 
   findall( [':m',M,string,
             ':p', P,string, 
             ':a', A, number,
-            ':id', Id, number,
+            ':cm', CM, string,
+            ':cp', CP, string,
+            ':ca', CA, number,              
             ':start', Start, number,
-            ':end', End, number], calling(Id, M:P/A, Start, End),L),
-  maplist(write_clojure,L).
+            ':end', End, number], calling(M:P/A, CM:CP/CA, Start, End),L),
+  maplist(write_clojure(S),L).
 
 
-clojure_map_wrap(X) :- 
- format(' { ',[]),
+clojure_map_wrap(S,X) :- 
+ format(S,' { ',[]),
  call(X),
- format('}~n',[]). 
+ format(S,'}~n',[]). 
 
-clojure_list_wrap(X) :- 
- format(' [',[]),
+clojure_list_wrap(S,X) :- 
+ format(S,' [',[]),
  call(X),
- format('] ',[]). 
+ format(S,'] ',[]). 
 
-export_X1(X) :-
+export_X1(S, X) :-
   F =.. [X,M:P/A],
   findall([':m',M,string,':p', P,string, ':a', A, number], F,L),
-  maplist(write_clojure,L).
+  maplist(write_clojure(S),L).
 
-export_X2(X) :-
+export_X2(S, X) :-
   F =.. [X,M:P/A,Args],
   findall([':m',M,string,':p', P,string, ':a', A, number, ':args', Args, string], F,L),
-  maplist(write_clojure,L).
+  maplist(write_clojure(S),L).
 
-write_clojure(E) :- 
- clojure_map_wrap(write_clojure2(E)).
+write_clojure(S,E) :- 
+ clojure_map_wrap(S,write_clojure2(S, E)).
 
-write_clojure2([]).
-write_clojure2([Key,Content,Type|T]) :-
-  write_clojure(Key,Content,Type),write_clojure2(T). 
+write_clojure2(_,[]).
+write_clojure2(S,[Key,Content,Type|T]) :-
+  write_clojure(S, Key,Content,Type),write_clojure2(S, T). 
 
 
-write_clojure(Key,Content, number) :- !,
-  format('~a ~d ',[Key,Content]).
+write_clojure(S, Key,Content, number) :- !,
+  format(S, '~a ~d ',[Key,Content]).
 
 %default type is string
-write_clojure(Key,Content, _) :- 
-  format('~a "~w" ',[Key,Content]).
+write_clojure(S, Key,Content, _) :- 
+  escaping_format(S, '~a "~w" ',[Key,Content]).
 
-klaus_count(1).
-next_klaus(Y) :- 
-  retract(klaus_count(Y)),
-  Y1 is Y+1,
-  assert(klaus_count(Y1)).
 
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
 flatten1([],L,L) :- !.
@@ -164,123 +183,142 @@ layout_sub_term([H|T],N,Res) :-
 
 get_position(Layout, StartLine, EndLine) :- 
   get_position1(Layout, Start, End),
-  (Start = [] -> StartLine = -1, StartLine = Start),
-  (End = [] -> EndLine = -1, EndLine = End).
+  (Start = [] -> StartLine = -1; StartLine = Start),
+  (End = [] -> EndLine = -1; EndLine = End).
 
 get_position1(Layout, StartLine, EndLine) :- 
     aflatten(Layout,[StartLine|FlatLayout]),
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
-     % calling(some_clause_integer_id, module:name/arity, startline, endline)
-assert_call(Id, Predicate, Layout,  no_dcg) :- 
+     % calling(cmodule:cname/carity, module:name/arity, startline, endline)
+assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :- 
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
-    assert(calling(Id, Module:Name/Arity, StartLine, EndLine)).
+    assert(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
-assert_call(Id, Predicate, Layout, dcg) :- 
+assert_call(CallingPredicate, Predicate, Layout, dcg) :- 
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, WrongArity),
     Arity is WrongArity + 2,
-    assert(calling(Id, Module:Name/Arity, StartLine, EndLine)).  
+    assert(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).  
 
 
-analyze_body(X,Layout, Clause, DCG) :- 
-    var(X), !, assert_call(Clause, built_in:call(X), Layout, DCG).
+analyze_body(':'(_,_,_,_),Layout, CallingPredicate, dcg) :-
+  trace.
 
-analyze_body(Module:X,Layout, Clause, DCG) :- 
-    var(X), !, assert_call(Clause, built_in:call(Module:X), Layout, DCG).
+analyze_body(X,Layout, CallingPredicate, DCG) :- 
+    var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
+
+analyze_body(Module:X,Layout, CallingPredicate, DCG) :- 
+    var(X), !, assert_call(CallingPredicate, built_in:call(Module:X), Layout, DCG).
+
+analyze_body(X,Layout,CallingPredicate,dcg) :- dcg_specialcase(X), !,
+    assert_call(CallingPredicate, built_in:X/0, Layout, no_dcg).
 
 % { ... } prevents DCGs from adding additional arguments
-analyze_body({X},Layout,Clause,_DCG) :- !,
-    analyze_body(X,Layout,Clause,no_dcg).
+analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
+    analyze_body(X,Layout,CallingPredicate,no_dcg).
+
+analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
+    analyze_body(X,Layout,CallingPredicate,DCG).    
+
+analyze_body(get_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+    CallingPredicate = M:_/_,
+    assert_call(CallingPredicate, M:get_atts/2, Layout, DCG).   
+
+analyze_body(put_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+    CallingPredicate = M:_/_,
+    assert_call(CallingPredicate, M:put_atts/2, Layout, DCG).   
 
 analyze_body(X,_,_,dcg) :- is_list(X),!.
 
 
-analyze_body(\+(X),Layout, Clause, DCG) :- 
+analyze_body(\+(X),Layout, CallingPredicate, DCG) :- 
     !, 
-    assert_call(Clause, built_in:not(X), Layout, DCG),
-    analyze_body(X,Layout,Clause,DCG).
+    assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
+    analyze_body(X,Layout,CallingPredicate,DCG).
 
 
-analyze_body((A -> B ; C),Layout, Clause, DCG) :-
+analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     !, 
-    assert_call(Clause, built_in:'->'(_,_,_), Layout, DCG), 
+    assert_call(CallingPredicate, built_in:'->'(_,_,_), Layout, DCG), 
     layout_sub_term(Layout,2,LayoutAB),
     layout_sub_term(LayoutAB,2,LayoutA),
     layout_sub_term(LayoutAB,3,LayoutB),
     layout_sub_term(Layout,3,LayoutC),
-    analyze_body(A,LayoutA, Clause, DCG),
-    analyze_body(B,LayoutB, Clause, DCG),
-    analyze_body(C,LayoutC, Clause, DCG).
+    analyze_body(A,LayoutA, CallingPredicate, DCG),
+    analyze_body(B,LayoutB, CallingPredicate, DCG),
+    analyze_body(C,LayoutC, CallingPredicate, DCG).
 
-analyze_body((A -> B),Layout, Clause, DCG) :- 
+analyze_body((A -> B),Layout, CallingPredicate, DCG) :- 
     !, 
-    assert_call(Clause, built_in:'->'(_,_), Layout, DCG),
+    assert_call(CallingPredicate, built_in:'->'(_,_), Layout, DCG),
     layout_sub_term(Layout,2,LayoutA),
     layout_sub_term(Layout,3,LayoutB),
-    analyze_body(A,LayoutA,Clause, DCG),
-    analyze_body(B,LayoutB,Clause, DCG).
+    analyze_body(A,LayoutA,CallingPredicate, DCG),
+    analyze_body(B,LayoutB,CallingPredicate, DCG).
 
 
-analyze_body(if(A,B,C),Layout, Clause, DCG) :- 
+analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :- 
     !,
-    assert_call(Clause, built_in:if(A,B,C), Layout, DCG),
+    assert_call(CallingPredicate, built_in:if(A,B,C), Layout, DCG),
     layout_sub_term(Layout,2,LayoutA),
     layout_sub_term(Layout,3,LayoutB),
     layout_sub_term(Layout,4,LayoutC),
-    analyze_body(A,LayoutA, Clause, DCG),
-    analyze_body(B,LayoutB, Clause, DCG),
-    analyze_body(C,LayoutC, Clause, DCG).
+    analyze_body(A,LayoutA, CallingPredicate, DCG),
+    analyze_body(B,LayoutB, CallingPredicate, DCG),
+    analyze_body(C,LayoutC, CallingPredicate, DCG).
 
-analyze_body(when(A,B),Layout, Clause, DCG) :- 
+analyze_body(when(A,B),Layout, CallingPredicate, DCG) :- 
  !,
-  assert_call(Clause, built_in:when(A,B), Layout, DCG), 
+  assert_call(CallingPredicate, built_in:when(A,B), Layout, DCG), 
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, Clause, DCG),
-  analyze_body(B,LayoutB, Clause, DCG).
+  analyze_body(A,LayoutA, CallingPredicate, DCG),
+  analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-analyze_body(assert(A),Layout, Clause, DCG) :- 
+analyze_body(assert(A),Layout, CallingPredicate, DCG) :- 
   !,
-  assert_call(Clause, built_in:assert(A), Layout, DCG), 
+  assert_call(CallingPredicate, built_in:assert(A), Layout, DCG), 
   layout_sub_term(Layout,2,LayoutA),
-  analyze_body(A,LayoutA,Clause,DCG).
+  analyze_body(A,LayoutA,CallingPredicate,DCG).
 
-analyze_body(retract(A),Layout, Clause, DCG) :- 
+analyze_body(retract(A),Layout, CallingPredicate, DCG) :- 
   !,
-  assert_call(Clause, built_in:retract(A), Layout, DCG), 
+  assert_call(CallingPredicate, built_in:retract(A), Layout, DCG), 
   layout_sub_term(Layout,2,LayoutA),
-  analyze_body(A,LayoutA,Clause,DCG).
+  analyze_body(A,LayoutA,CallingPredicate,DCG).
 
 
-analyze_body((A,B),Layout, Clause, DCG) :- 
+analyze_body((A,B),Layout, CallingPredicate, DCG) :- 
  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, Clause, DCG),
-  analyze_body(B,LayoutB, Clause, DCG).
+  analyze_body(A,LayoutA, CallingPredicate, DCG),
+  analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-analyze_body((A;B),Layout, Clause, DCG) :- 
+analyze_body((A;B),Layout, CallingPredicate, DCG) :- 
  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, Clause, DCG),
-  analyze_body(B,LayoutB, Clause, DCG).
+  analyze_body(A,LayoutA, CallingPredicate, DCG),
+  analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-analyze_body(Module:Call,Layout, Clause, DCG) :-
-  clause(Module:N/A, Clause,_,_), 
-  (functor(Call,N,A) -> 
-    assert_call(Clause, Module:recursive_call, Layout, DCG) ; 
-    assert_call(Clause, Module:Call, Layout, DCG)).
 
-analyze_body(Call,Layout, Clause, DCG) :-
-  clause(Module:N/A, Clause,_,_), 
+
+analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
+  CallingPredicate = Module:N/A, 
   (functor(Call,N,A) -> 
-    assert_call(Clause, Module:recursive_call, Layout, DCG) ; 
-    assert_call(Clause, module_yet_unknown:Call, Layout, DCG)).
+    assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ; 
+    assert_call(CallingPredicate, Module:Call, Layout, DCG)).
+
+analyze_body(Call,Layout, CallingPredicate, DCG) :-
+  CallingPredicate = Module:N/A,  
+  (functor(Call,N,A) -> 
+    assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ; 
+    assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
 mk_problem(P) :- assert(problem(P)).
 
@@ -317,6 +355,10 @@ fixity(yfx, infix, left,2).
 
 dependency(Module, Name) :-
   unwrap_module(Name,UnwrappedName), 
+  (defined_module(UnwrappedName,_) -> true; 
+    ( atom_concat('sicstus/', UnwrappedName, _T),
+      atom_concat(_T,'.pl',File),
+      assert(defined_module(UnwrappedName,File)))),
   assert(depends_on(Module,UnwrappedName)).
 
 
@@ -325,8 +367,9 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     unwrap_module(File,UnwrappedName),
     (Name = UnwrappedName -> true; mk_problem(wrong_filename(Module,Name,File))),
     (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
+    retractall(defined_module(Name,_)),
     assert(defined_module(Name,File)),
-    maplist(add_fact(is_exported, Module),ListOfExported).
+    maplist(add_fact(is_exported, Name),ListOfExported).
 
 analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
     !, dependency(Module,Name), Implement_List_Of_Imports=1.
@@ -360,6 +403,7 @@ analyze((:- block(X)), _Layout, Module, _File) :-
 
 analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :- 
  fixity(FixityTerm, Fixity, Associativity, Arity),
+ (predicate(Module:Name/Arity) -> true; assert(predicate(Module:Name/Arity))),
  assert( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
 analyze((:- volatile(X)), _Layout,Module, _File) :-
@@ -378,29 +422,40 @@ analyze((Head :- Body), [LayoutHead | LayoutSub], Module, _File) :-
     !,
     functor(Head,Name,Arity),
     Predicate = Module:Name/Arity, 
-    assert_head(Predicate, LayoutHead,Id),
-    analyze_body(Body,LayoutSub, Id, no_dcg).
+    assert_head(Predicate, LayoutHead),
+    analyze_body(Body,LayoutSub, Predicate, no_dcg).
 
 analyze((Head --> Body), [LayoutHead | LayoutSub], Module, _File) :-
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
     Predicate = Module:Name/Arity, 
-    assert_head(Predicate, LayoutHead, Id),
-    analyze_body(Body,LayoutSub, Id, dcg).
+    assert_head(Predicate, LayoutHead),
+    analyze_body(Body,LayoutSub, Predicate, dcg).
+
+
+analyze(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
+    !,
+    functor(PredSpec,_,Arity),
+    Predicate = Module:Name/Arity, 
+    assert_head(Predicate, Layout).
+
+
+analyze(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
+    analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
+
 
 
 analyze(Fact, Layout, Module, _File) :-
     !,
     functor(Fact,Name,Arity),
     Predicate = Module:Name/Arity, 
-    assert_head(Predicate, Layout, _Id).
+    assert_head(Predicate, Layout).
 
-assert_head(Predicate, Layout, Id) :- 
+assert_head(Predicate, Layout) :- 
     (predicate(Predicate) -> true; assert(predicate(Predicate))),
     get_position(Layout, StartLine, EndLine),
-    next_klaus(Id), 
-    assert(clause(Predicate, Id, StartLine, EndLine)).
+    assert(klaus(Predicate,  StartLine, EndLine)).
 
 
 get_module(Name, Arity, CallingModule, built_in) :- 
@@ -421,23 +476,34 @@ get_module(Name, Arity, CallingModule, undefined_module) :-
 
 
 update :- 
-  findall(c(Clause, Name, Arity, Start, End, CallingModule), 
-    (calling(Clause, module_yet_unknown:Name/Arity, Start, End),
-    clause(CallingModule:_/_, Clause, _, _)),L),
+  findall(c(CallingPredicate, Name, Arity, Start, End), 
+    calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End),L),
   maplist(update,L).
 
-update(c(Clause,Name, Arity, Start, End, CallingModule)) :- 
-    retract(calling(Clause, module_yet_unknown:Name/Arity, Start, End)),
-    get_module(Name, Arity, CallingModule,Module),
-    assert(calling(Clause, Module:Name/Arity, Start, End)).
+update(c(CallingPredicate,Name, Arity, Start, End)) :-
+    retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
+    CallingPredicate = CallingModule:_/_,
+    get_module(Name, Arity, CallingModule, Module),
+    (predicate(Module:Name/Arity) -> true; assert(predicate(Module:Name/Arity))),
+    assert(calling(CallingPredicate, Module:Name/Arity, Start, End)).
 
 :- multifile user:term_expansion/6.
 
+analyze(InputFile,OutputFile) :- 
+  open(OutputFile,write,Stream),
+  print('loading modules'),nl,
+  use_module(InputFile),
+  nl, print('updating calls'), nl,
+  update,
+  nl,
+  export(Stream),
+  flush_output(Stream),
+  close(Stream).
 
-user:term_expansion(Term, Layout, Tokens, Term, [], [codeq | Tokens]) :-
+user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
     prolog_load_context(module, Module),
-    % print(module(Module)), nl, 
     prolog_load_context(file, File),
     nonmember(codeq, Tokens), % do not expand if already expanded
-    analyze(Term, Layout, Module, File),
+  % print(expand(Module,Term)),nl,
+    (analyze(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
