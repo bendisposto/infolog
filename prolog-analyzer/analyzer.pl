@@ -10,7 +10,33 @@
 :- use_module(library(process)).
 
 :- use_module(escaper).
-:- include(prob_search_paths).
+
+
+x_unwrap_module(library(X),Y) :- !, X=Y.
+x_unwrap_module(probsrc(X),Y) :- !, X=Y.
+x_unwrap_module(probcspsrc(X),Y) :- !, X=Y.
+x_unwrap_module(bparser(X),Y) :- !, X=Y.
+x_unwrap_module(plugins(X),Y) :- !, X=Y.
+x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
+x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
+x_unwrap_module(extension(E),Y) :- !,
+    atom_chars(E,ExtensionPath),
+    suffix(ExtensionPath,Module),
+    atom_chars(Y,Module).
+x_unwrap_module(Path,X) :-
+    atom_chars(Path,PathChars),
+    ( append(Base,[.,p,l],PathChars),
+      suffix(Base,XChars)  % module loaded with .pl ending
+    ; suffix(PathChars,XChars)), % or without
+    x_remove_path(XChars,CharsWithoutPath),
+    atom_chars(X,CharsWithoutPath).
+x_unwrap_module(X,X) :- !. % might even be unwrapped
+
+x_remove_path(L,L2) :-
+    reverse(L,LR),
+    nth0(N,LR,'/',_), %key code of /
+    sublist(LR, LR2, 0, N, A),
+    reverse(LR2,L2).
 
 :- op(300, fy, ~~).
 
@@ -205,8 +231,7 @@ assert_call(CallingPredicate, Predicate, Layout, dcg) :-
     assert(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).  
 
 
-analyze_body(':'(_,_,_,_),Layout, CallingPredicate, dcg) :-
-  trace.
+analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
 
 analyze_body(X,Layout, CallingPredicate, DCG) :- 
     var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
@@ -354,7 +379,7 @@ fixity(yfx, infix, left,2).
 
 
 dependency(Module, Name) :-
-  unwrap_module(Name,UnwrappedName), 
+  x_unwrap_module(Name,UnwrappedName), 
   (defined_module(UnwrappedName,_) -> true; 
     ( atom_concat('sicstus/', UnwrappedName, _T),
       atom_concat(_T,'.pl',File),
@@ -364,7 +389,7 @@ dependency(Module, Name) :-
 
 analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     !,
-    unwrap_module(File,UnwrappedName),
+    x_unwrap_module(File,UnwrappedName),
     (Name = UnwrappedName -> true; mk_problem(wrong_filename(Module,Name,File))),
     (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
     retractall(defined_module(Name,_)),
