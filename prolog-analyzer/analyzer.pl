@@ -35,7 +35,7 @@ x_unwrap_module(X,X) :- !. % might even be unwrapped
 x_remove_path(L,L2) :-
     reverse(L,LR),
     nth0(N,LR,'/',_), %key code of /
-    sublist(LR, LR2, 0, N, A),
+    sublist(LR, LR2, 0, N, _),
     reverse(LR2,L2).
 
 :- op(300, fy, ~~).
@@ -125,9 +125,9 @@ export_clause(S) :-
             ':end', End, number], klaus(M:P/A, Start, End),L),
   maplist(write_clojure(S),L).
 
-dcg_specialcase('=').
-dcg_specialcase('!').
-
+dcg_specialcase('=',2).
+dcg_specialcase('!',0).
+dcg_specialcase(':',2).
 
 export_operator(S) :- 
   findall( [':m',M,string,
@@ -239,8 +239,11 @@ analyze_body(X,Layout, CallingPredicate, DCG) :-
 analyze_body(Module:X,Layout, CallingPredicate, DCG) :- 
     var(X), !, assert_call(CallingPredicate, built_in:call(Module:X), Layout, DCG).
 
-analyze_body(X,Layout,CallingPredicate,dcg) :- dcg_specialcase(X), !,
-    assert_call(CallingPredicate, built_in:X/0, Layout, no_dcg).
+analyze_body(X,Layout,CallingPredicate,dcg) :- 
+    functor(X,F,A),
+   % print(sc(X,F,A)),
+    dcg_specialcase(F,A), !,
+    assert_call(CallingPredicate, built_in:F/A, Layout, no_dcg).
 
 % { ... } prevents DCGs from adding additional arguments
 analyze_body({X},Layout,CallingPredicate,_DCG) :- !,

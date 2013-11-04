@@ -1,7 +1,28 @@
 (ns infolog.schema)
 
+(def schema-version    
+    [{:db/id #db/id[:db.part/user]
+    :infolog/schema-version 1}])
+
 (def schema
-  [{:db/id #db/id[:db.part/db]
+  [
+   {:db/id #db/id[:db.part/db]
+    :db/ident :infolog/schema-version
+    :db/valueType :db.type/long
+    :db/cardinality :db.cardinality/one
+    :db/doc "Infolog Schema Version"
+    :db.install/_attribute :db.part/db}
+
+
+   {:db/id #db/id[:db.part/db]
+    :db/ident :analyzer/problem
+    :db/valueType :db.type/string
+    :db/cardinality :db.cardinality/one
+    :db/doc "Problems detected by the Analyzer"
+    :db.install/_attribute :db.part/db}
+
+   
+   {:db/id #db/id[:db.part/db]
     :db/ident :module/name
     :db/fulltext true
     :db/valueType :db.type/string

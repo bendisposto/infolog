@@ -2,7 +2,10 @@
   (:require [datomic.api :as d])
   (:use infolog.schema))
 
-(def schema-query '[:find ?v :where [?v :db/ident :module/name]])
+
+(def conn (atom nil))
+
+(def schema-query '[:find ?v :where [?v :db/ident :infolog/schema-version]])
 
 (def tempid? map?)
 
@@ -11,32 +14,14 @@
         c (d/connect db-uri)
         db (d/db c)
         schema-loaded (ffirst (d/q schema-query db))
-        _ (if schema-loaded db (:db-after @(d/transact c schema)))
+        _ (if schema-loaded db 
+             (:db-after (do @(d/transact c schema)
+                            @(d/transact c schema-version))))
         ]
+        (reset! conn c)
     c))
 
-(defn print-banner [uri prolog-data comments]
-  (println "Populating database @" uri "with:")
-  (println (count (:modules prolog-data)) "Modules")
-  (println (count (:dependencies prolog-data)) "dependencies between modules")
-  (println (count (:clauses prolog-data)) "clauses in")
-  (println (count (:predicates prolog-data)) "predicates of which")
-  (println " - " (count (:exported prolog-data)) "are exported")
-  (println " - " (count (:dynamic prolog-data)) "are dynamic predicates")
-  (println " - " (count (:blocking prolog-data)) "have blocking declarations")
-  (println " - " (count (:multifile prolog-data)) "are declared to be multifile predicates")
-  (println " - " (count (:mode prolog-data)) "have mode declarations")
-  (println " - " (count (:meta prolog-data)) "are meta predicates")
-  (println " - " (count (:volatile prolog-data)) "are volatile predicates")
-  (println (count (:operators prolog-data)) "operators")
-  (println (count (:calling prolog-data)) "calls")
-  (println (count comments) "Prolog-Docs")
-  (println)
-  (let [percent (* 100.0 (/ (count comments) (count (:predicates prolog-data))))]
-    (println (str (format "%.3f" percent) "% of the predicates have documentation")))
-  (println)
-  (println "The analyzer found" (count (into #{}  (:problems prolog-data))) "distinct problems, the first five are:")
-  (doseq [e (take 5 (into #{} (:problems prolog-data)))] (println " -" e)))
+
 
 (defn mkid [] (d/tempid :db.part/user))
 
@@ -52,6 +37,9 @@
                                [?id :predicate/arity ?a]
                                [?mid :module/name ?m]] db m p a))
                 (mkid))] id))
+
+(defn dbf-module [db {:keys [m file]}])
+
 
 (defn tx-problem [& ids]
   (into [] (for [id ids] [:db/add id :prolog/problem true])))
@@ -148,6 +136,11 @@
                           db module end-line)))]
     [:db/add id :predicate/doc text]))  
 
+;(defn schema-version [db] (ffirst (d/q '[:find ?v :where [_ :infolog/schema-version ?v]] db)))
+
+(defn tx-problem-entry [db e]
+  [[:db/add (mkid)
+    :analyzer/problem e]])
 
 
 (defn populate-db! [uri prolog-data comments]
@@ -155,6 +148,7 @@
   (d/delete-database uri)
   (let [conn (init-db uri)
         db (d/db conn)
+        db (:db-after @(d/transact conn (mapcat (partial tx-problem-entry db) (:problems prolog-data))))
         db (:db-after @(d/transact conn (tx-module db {:m "user" :file "sicstus/user.pl"})))
         db (:db-after @(d/transact conn (tx-module db {:m "built_in" :file "sicstus/built_in.pl"})))
         db (:db-after @(d/transact conn (tx-map db tx-module (:modules prolog-data))))
