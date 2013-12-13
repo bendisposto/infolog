@@ -58,8 +58,7 @@ x_remove_path(L,L2) :-
     problem/1.       % problem(details) 
 
 export(Stream) :- 
- clojure_map_wrap(Stream,export_all(Stream)).
-
+ export_all(Stream).
 
 % read all characters from a stream
 stream2code(S,Atom) :-
@@ -72,118 +71,102 @@ git_revision(Sha) :-
    process_wait(P,_ExitCode),
    stream2code(F,Sha).
 
+
 export_all(S) :- 
  git_revision(Sha),
- format(S, ':git "~a" ',[Sha]),
- write(S,'\n :predicates \n '),
- clojure_list_wrap(S,export_X1(S,predicate)),
- write(S,'\n :dynamic \n '),
- clojure_list_wrap(S,export_X1(S,is_dynamic)),
- write(S,'\n :volatile \n '),
- clojure_list_wrap(S,export_X1(S,is_volatile)),
- write(S,' \n :exported \n '),
- clojure_list_wrap(S,export_X1(S,is_exported)),
- write(S,' \n :multifile \n '),
- clojure_list_wrap(S,export_X1(S,is_multifile)),
- write(S,' \n :meta \n '),
- clojure_list_wrap(S,export_X2(S,is_meta)),
- write(S,' \n :mode \n '),
- clojure_list_wrap(S,export_X2(S,declared_mode)),
- write(S,' \n :blocking \n '),
- clojure_list_wrap(S,export_X2(S,is_blocking)),
- write(S,' \n :modules \n '),
- clojure_list_wrap(S,export_defined_modules(S)),
- write(S,' \n :clauses \n '),
- clojure_list_wrap(S,export_clause(S)),
- write(S,' \n :calling \n '),
- clojure_list_wrap(S,export_calling(S)),
- write(S,' \n :operators \n '),
- clojure_list_wrap(S,export_operator(S)), 
- write(S,' \n :problems \n '),
- clojure_list_wrap(S,export_problems(S)),
- write(S,' \n :dependencies \n '),
- clojure_list_wrap(S,export_dependencies(S))
- .
+
+ format(S, '[ ~n',[]),
+ format(S, '[git "~a"]~n',[Sha]),
+ 
+ export_X1(S,predicate),
+ export_X1(S,is_dynamic),
+ export_X1(S,is_volatile),
+ export_X1(S,is_exported),
+ export_X1(S,is_multifile),
+ export_X2(S,is_meta),
+ export_X2(S,declared_mode),
+ export_X2(S,is_blocking),
+
+ export_defined_modules(S),
+ export_clause(S),
+ export_calling(S),
+ export_operator(S), 
+ export_problems(S),
+ export_dependencies(S),
+ format(S, ']~n',[]).
+
 
 export_dependencies(S) :- 
-   findall([':local_module',LM,string,':imported_module', IM,string], depends_on(LM,IM),L),
-   maplist(write_clojure(S),L).
+   findall([LM,string,IM,string], depends_on(LM,IM),L),
+   maplist(write_clojure(S,dependency),L).
 
 export_defined_modules(S) :- 
-  findall([':m',M,string,':file', File,string], defined_module(M,File),L),
-  maplist(write_clojure(S),L).
+  findall([M,string, File,string], defined_module(M,File),L),
+  maplist(write_clojure(S,module),L).
 
 export_problems(S) :- 
   findall([P], problem(P),L),
-  maplist(escaping_format(S,' "~w"  ~n '),L).  
+  maplist(escaping_format(S,'[problem "~w"]~n'),L).  
 
 export_clause(S) :- 
-  findall( [':m',M,string,
-            ':p', P,string, 
-            ':a', A, number,
-            ':start', Start, number,
-            ':end', End, number], klaus(M:P/A, Start, End),L),
-  maplist(write_clojure(S),L).
-
-dcg_specialcase('=',2).
-dcg_specialcase('!',0).
-dcg_specialcase(':',2).
+  findall( [M,string,
+            P,string, 
+            A, number,
+            Start, number,
+            End, number], klaus(M:P/A, Start, End),L),
+  maplist(write_clojure(S,clause),L).
 
 export_operator(S) :- 
-  findall( [':m',M,string,
-            ':p', P,string, 
-            ':a', A, number,
-            ':prio', Prio, number,
-            ':fix', Fix, string,
-            ':associativity', Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
-  maplist(write_clojure(S),L).
+
+  findall( [M,string,
+            P,string, 
+            A, number,
+            Prio, number,
+            Fix, string,
+            Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
+  maplist(write_clojure(S, operator),L).
 
 export_calling(S) :- 
-  findall( [':m',M,string,
-            ':p', P,string, 
-            ':a', A, number,
-            ':cm', CM, string,
-            ':cp', CP, string,
-            ':ca', CA, number,              
-            ':start', Start, number,
-            ':end', End, number], calling(M:P/A, CM:CP/CA, Start, End),L),
-  maplist(write_clojure(S),L).
+  findall( [M,string,
+            P,string, 
+            A, number,
+            CM, string,
+            CP, string,
+            CA, number,              
+            Start, number,
+            End, number], calling(M:P/A, CM:CP/CA, Start, End),L),
+  maplist(write_clojure(S,call),L).
 
+clojure_fact_wrap(S,X,E) :- 
+ format(S,'[ ~a ',[X]),
+ call(E),
+ format(S,']~n',[]). 
 
-clojure_map_wrap(S,X) :- 
- format(S,' { ',[]),
- call(X),
- format(S,'}~n',[]). 
-
-clojure_list_wrap(S,X) :- 
- format(S,' [',[]),
- call(X),
- format(S,'] ',[]). 
 
 export_X1(S, X) :-
   F =.. [X,M:P/A],
-  findall([':m',M,string,':p', P,string, ':a', A, number], F,L),
-  maplist(write_clojure(S),L).
+  findall([M,string, P,string, A, number], F,L),
+  maplist(write_clojure(S,X),L).
 
 export_X2(S, X) :-
   F =.. [X,M:P/A,Args],
-  findall([':m',M,string,':p', P,string, ':a', A, number, ':args', Args, string], F,L),
-  maplist(write_clojure(S),L).
+  findall([M,string, P,string, A, number,  Args, string], F,L),
+  maplist(write_clojure(S,X),L).
 
-write_clojure(S,E) :- 
- clojure_map_wrap(S,write_clojure2(S, E)).
+write_clojure(S,X,E) :- 
+ clojure_fact_wrap(S,X,write_clojure2(S,X,E)).
 
-write_clojure2(_,[]).
-write_clojure2(S,[Key,Content,Type|T]) :-
-  write_clojure(S, Key,Content,Type),write_clojure2(S, T). 
+write_clojure2(_,_,[]).
+write_clojure2(S,X,[Content,Type|T]) :-
+  write_clojure(S,X, Content,Type),write_clojure2(S,X, T). 
 
 
-write_clojure(S, Key,Content, number) :- !,
-  format(S, '~a ~d ',[Key,Content]).
+write_clojure(S,_, Content, number) :- !,
+  format(S, '~d ',[Content]).
 
 %default type is string
-write_clojure(S, Key,Content, _) :- 
-  escaping_format(S, '~a "~w" ',[Key,Content]).
+write_clojure(S,_, Content, _) :- 
+  escaping_format(S, '"~w" ',[Content]).
 
 
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
@@ -191,6 +174,9 @@ flatten1([],L,L) :- !.
 flatten1([H|T],Tail,List) :- !, flatten1(H,FlatList,List), flatten1(T,Tail,FlatList).
 flatten1(NonList,Tail,[NonList|Tail]).
 
+dcg_specialcase('=',2).
+dcg_specialcase('!',0).
+dcg_specialcase(':',2).
 
 bind_args(Args,VC,VCN) :-
     term_variables(Args,Variables),
