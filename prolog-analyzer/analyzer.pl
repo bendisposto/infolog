@@ -38,7 +38,7 @@ x_remove_path(L,L2) :-
     sublist(LR, LR2, 0, N, _),
     reverse(LR2,L2).
 
-:- op(300, fy, ~~).
+% :- op(300, fy, ~~).
 
 
 :-  dynamic 
@@ -235,8 +235,8 @@ analyze_body(X,Layout,CallingPredicate,dcg) :-
 analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
     analyze_body(X,Layout,CallingPredicate,no_dcg).
 
-analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
-    analyze_body(X,Layout,CallingPredicate,DCG).    
+%analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
+%    analyze_body(X,Layout,CallingPredicate,DCG).    
 
 analyze_body(get_atts(_,_),Layout,CallingPredicate,DCG) :- !,
     CallingPredicate = M:_/_,
@@ -517,7 +517,7 @@ analyze(InputFile,OutputFile) :-
 user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
     prolog_load_context(module, Module),
     prolog_load_context(file, File),
-    nonmember(codeq, Tokens), % do not expand if already expanded
+    member(rm_debug_calls,Tokens),nonmember(codeq, Tokens), % do not expand if already expanded
   % print(expand(Module,Term)),nl,
     (analyze(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
