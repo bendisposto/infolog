@@ -1,7 +1,8 @@
 (ns infolog.core
   (:refer-clojure :exclude [==])
   (:require [clojure.edn :as edn]
-            [clojure.java.shell :refer [sh]])
+            [clojure.java.shell :refer [sh]]
+            [clojure.core.logic.fd :as fd])
   (:import infolog.PrologLexer java.io.ByteArrayInputStream)
   (:use clojure.core.logic
         clojure.core.logic.pldb))
@@ -17,7 +18,7 @@
 (db-rel dependency importing-module imported-module)
 (db-rel module module-name file)
 (db-rel problem description)
-(db-rel clause module-name predicate-name arity start end)
+(db-rel clause module-name predicate-name arity ^:index start end)
 (db-rel operator module-name predicate-name arity priority fix associativity)
 (db-rel call caller-module caller-predicate caller-arity callee-module callee-predicate callee-arity start end)
 (db-rel predicate module predicate-name arity)
@@ -28,6 +29,21 @@
 (db-rel is_meta module predicate-name arity args)
 (db-rel declared_mode module predicate-name arity args)
 (db-rel is_blocking module predicate-name arity args)
+(db-rel comment module predicate-name arity text)
+
+(defn predicates-after-line [db m l]
+  (with-db db
+    (run* [q]
+          (fresh [p a s e d]
+                 (clause m p a s e)
+                 (fd/< l s)
+                 (== q [p a s])))))
+
+(defn comment->predicate [db module line]
+  (->> (predicates-after-line db module line)
+       (sort-by last)
+       first
+       butlast))
 
 (defn transform-comments [module token]
   (let [text (.getText token)
@@ -35,9 +51,14 @@
         start-column (-> token .getStartPos .getPos)
         end-line (-> token .getEndPos .getLine)
         end-column (-> token .getEndPos .getPos)]
-    [module text start-line start-column end-line end-column]))
+    [module text start-line end-line]))
 
-(defn extract-comments [{:keys [m file]}]
+(defn assert-comment [db [m text start-line end-line]]
+  (let [[p a] (comment->predicate db m end-line)]
+    (-> db (db-fact comment m p a text)))
+  )
+
+(defn extract-comments [[m file]]
   (when-not (.startsWith file "sicstus/")
     (let [comments (PrologLexer/lexFile file)]
       (map (partial transform-comments m) comments))))
@@ -54,30 +75,18 @@
 (defn get-comments [modules]
   (mapcat extract-comments modules))
 
-
 (defn- load-pl-output [f] (edn/read-string (slurp f)))
 (defn- eval-all [c] (doall (map eval c)))
 (defn- mk-db [facts] (apply db facts))
 
 (defn make-db [input-file output-file]
   (let [facts (->> input-file load-pl-output eval-all mk-db)
-        mods (with-db facts (run* [q] (fresh [x] (module q x))))
+        mods (with-db facts (run* [q] (fresh [m f] (module m f) (== q [m f]))))
         comments (get-comments mods)]
     (spit output-file facts)
-    (spit "comments comments")))
+    (spit "comments.clj" (pr-str  comments))))
 
 (defn load-database [file]
   (-> file
       slurp
       edn/read-string))
-
-(defn refresh-database []
-  (run-prolog-analyzer temp-file)
-  (make-db temp-file db-file)
-  (load-database db-file))
-
-(defn set-db [mode]
-  (let [database (cond
-                  (= mode :rebuild) (refresh-database)
-                  (= mode :load) (load-database db-file))]
-    (reset! facts database)))
