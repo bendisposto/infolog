@@ -12,6 +12,7 @@
 :- use_module(escaper).
 
 
+x_unwrap_module(chrsrc(X),Y) :- !, X=Y.
 x_unwrap_module(library(X),Y) :- !, X=Y.
 x_unwrap_module(probsrc(X),Y) :- !, X=Y.
 x_unwrap_module(probcspsrc(X),Y) :- !, X=Y.
@@ -514,10 +515,15 @@ analyze(InputFile,OutputFile) :-
   flush_output(Stream),
   close(Stream).
 
+:- dynamic seen_token/0.
+
 user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
+    %print(d(Term, Tokens)),nl,
     prolog_load_context(module, Module),
     prolog_load_context(file, File),
-    member(rm_debug_calls,Tokens),nonmember(codeq, Tokens), % do not expand if already expanded
+    (member(rm_debug_calls,Tokens) -> assert(seen_token); true),
+    (seen_token -> member(rm_debug_calls,Tokens);true),
+    nonmember(codeq, Tokens), % do not expand if already expanded
   % print(expand(Module,Term)),nl,
     (analyze(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
