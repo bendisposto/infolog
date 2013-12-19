@@ -55,8 +55,7 @@
 
 (defn assert-comment [db [m text start-line end-line]]
   (let [[p a] (comment->predicate db m end-line)]
-    (-> db (db-fact comment m p a text)))
-  )
+    (-> db (db-fact comment m p a text))))
 
 (defn extract-comments [[m file]]
   (when-not (.startsWith file "sicstus/")
@@ -90,3 +89,17 @@
   (-> file
       slurp
       edn/read-string))
+
+(defn noto [g]
+  (fn [a]
+    (if (nil? (g a))
+      a)))
+
+(comment
+  ;; find modules that are loaded but not using use_module
+  (with-db f (run* [q] (fresh [m f d] (module m f) (noto (dependency d m)) (== q m))))
+
+  ;; print all problems
+  (doseq [x (with-db f (run* [q] (problem q)))] (println x))
+
+  )
