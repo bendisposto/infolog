@@ -29,7 +29,7 @@
 (db-rel is_meta module predicate-name arity args)
 (db-rel declared_mode module predicate-name arity args)
 (db-rel is_blocking module predicate-name arity args)
-(db-rel comment module predicate-name arity text)
+(db-rel documentation module predicate-name arity text)
 
 (defn predicates-after-line [db m l]
   (with-db db
@@ -55,7 +55,7 @@
 
 (defn assert-comment [db [m text start-line end-line]]
   (let [[p a] (comment->predicate db m end-line)]
-    (-> db (db-fact comment m p a text))))
+    (-> db (db-fact documentation m p a text))))
 
 (defn extract-comments [[m file]]
   (when-not (.startsWith file "sicstus/")
