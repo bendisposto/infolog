@@ -105,7 +105,7 @@
   (make-db "raw-data.clj" "database.clj")
 
   ;; load the database for processing
-   (def f (load-database "database.clj"))  
+   (def f (load-database "database.clj"))
 
   ;; find modules that are loaded but not using use_module
   (with-db f (run* [q] (fresh [m f d] (module m f) (noto (dependency d m)) (== q m))))

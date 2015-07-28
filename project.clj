@@ -1,6 +1,6 @@
 (defproject infolog "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "ProB Sourcecode Analysis Tool"
+  :url "https://github.com/bendisposto/infolog"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :repositories [["cobra" "http://cobra.cs.uni-duesseldorf.de/artifactory/repo"]]
@@ -9,5 +9,3 @@
                  [infolog/doc_extractor "0.0.1-20131008.113111-1"]
                  [org.clojure/data.zip "0.1.1"]]
                  :main infolog.core)
-
-
