@@ -2,7 +2,12 @@
   (:refer-clojure :exclude [==])
   (:require [clojure.edn :as edn]
             [clojure.java.shell :refer [sh]]
-            [clojure.core.logic.fd :as fd])
+            [clojure.core.logic.fd :as fd]
+            [compojure.core :refer :all]
+            [compojure.route :as route]
+            [compojure.handler :as handler]
+            [hiccup.middleware :refer (wrap-base-url)]
+            [clojure.data.json :as json])
   (:import infolog.PrologLexer java.io.ByteArrayInputStream)
   (:use clojure.core.logic
         clojure.core.logic.pldb))
@@ -34,10 +39,10 @@
 (defn predicates-after-line [db m l]
   (with-db db
     (run* [q]
-          (fresh [p a s e d]
-                 (clause m p a s e)
-                 (fd/< l s)
-                 (== q [p a s])))))
+      (fresh [p a s e d]
+        (clause m p a s e)
+        (fd/< l s)
+        (== q [p a s])))))
 
 (defn comment->predicate [db module line]
   (->> (predicates-after-line db module line)
@@ -95,6 +100,39 @@
     (if (nil? (g a))
       a)))
 
+(defn modules [f]
+  (with-db f (run* [q] (fresh [f] (module q f)))))
+
+(defn dependencies [f]
+  (with-db f (run* [q] (fresh [m d] (dependency d m) (== q [d m])))))
+
+
+(defn dependency-graph [f]
+  (str "digraph dependencies {\n"
+       (clojure.string/join "," (map (fn [e] (str \" e \")) (take 5 (modules f))))
+       (clojure.string/join
+        "\n"
+        (map (fn [[d m]] (str \" d \" "->" \" m \")) (take 500 (dependencies f)))) "}")) 
+
+(defn fix-module [m]
+  (last (clojure.string/split m #"/")))
+
+(defn mk-dep [f]
+  (let [m-dep (into {} (map (fn [m] [(fix-module m) []]) (modules f)))
+        g-dep (group-by first (dependencies f))
+        t-dep (map (fn [[k v]] [(fix-module k) (mapv (fn [[_ m]] (fix-module m)) v)]) (merge m-dep g-dep))]
+    (map (fn [[k v]] {:name k :size (* 1000 (count v)) :imports v}) t-dep)))
+
+
+(defroutes app-routes
+  (GET "/" [] "Hello World")
+ (GET "/dependencies" [] (json/write-str (mk-dep @facts)))
+  (route/resources "/"))
+
+(def app (do (reset! facts (load-database "database.clj"))
+             (-> (handler/site app-routes)
+                 (wrap-base-url))))
+
 (comment
 
   ;; extracting the information from Prolog
@@ -105,12 +143,13 @@
   (make-db "raw-data.clj" "database.clj")
 
   ;; load the database for processing
-   (def f (load-database "database.clj"))
+  (def f (load-database "database.clj"))
 
   ;; find modules that are loaded but not using use_module
   (with-db f (run* [q] (fresh [m f d] (module m f) (noto (dependency d m)) (== q m))))
 
   ;; print all problems
   (doseq [x (with-db f (run* [q] (problem q)))] (println x))
+
 
   )
