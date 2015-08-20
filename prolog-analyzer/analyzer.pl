@@ -64,7 +64,7 @@ instantiate([A,B|T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]
 % TO DO: probably also analyse :- directives
 
 cycle(Module,ModulePath) :-
-   depends_path(M,M,ModulePath),
+   depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
 
 % ==========================================
@@ -209,6 +209,9 @@ write_clojure(S,_, Content, _) :-
 
 %  TERM EXPANDER PART
 
+:- meta_predicate assert_if_new(0).
+assert_if_new(P) :- (P -> true ; assert(P)).
+
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
 flatten1([],L,L) :- !.
 flatten1([H|T],Tail,List) :- !, flatten1(H,FlatList,List), flatten1(T,Tail,FlatList).
@@ -247,14 +250,14 @@ assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
-    assert(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
+    assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
 assert_call(CallingPredicate, Predicate, Layout, dcg) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, WrongArity),
     Arity is WrongArity + 2,
-    assert(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
+    assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
 
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
@@ -380,7 +383,7 @@ mk_problem(P) :- assert(problem(P)).
 
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
     X =..[Fact, Predicate],
     assert(X).
 
@@ -388,7 +391,7 @@ add_fact(Fact, Module, Term ) :-
     functor(Term,Name,Arity),
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
     X =..[Fact, Predicate, Arguments], assert(X).
 
 
@@ -412,8 +415,8 @@ dependency(Module, Name) :-
   (defined_module(UnwrappedName,_) -> true;
     ( atom_concat('sicstus/', UnwrappedName, _T),
       atom_concat(_T,'.pl',File),
-      assert(defined_module(UnwrappedName,File)))),
-  assert(depends_on(Module,UnwrappedName)).
+      assert_if_new(defined_module(UnwrappedName,File)))),
+  assert_if_new(depends_on(Module,UnwrappedName)).
 
 
 x_unwrap_module(chrsrc(X),Y) :- !, X=Y.
@@ -450,7 +453,7 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     (Name = UnwrappedName -> true; mk_problem(wrong_filename(Module,Name,File))),
     (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
     retractall(defined_module(Name,_)),
-    assert(defined_module(Name,File)),
+    assert_if_new(defined_module(Name,File)),
     maplist(add_fact(is_exported, Name),ListOfExported).
 
 analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
@@ -485,8 +488,8 @@ analyze((:- block(X)), _Layout, Module, _File) :-
 
 analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
  fixity(FixityTerm, Fixity, Associativity, Arity),
- (predicate(Module:Name/Arity) -> true; assert(predicate(Module:Name/Arity))),
- assert( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
+ (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
+ assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
 analyze((:- volatile(X)), _Layout,Module, _File) :-
        !,
@@ -566,8 +569,8 @@ update(c(CallingPredicate,Name, Arity, Start, End)) :-
     retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
     CallingPredicate = CallingModule:_/_,
     get_module(Name, Arity, CallingModule, Module),
-    (predicate(Module:Name/Arity) -> true; assert(predicate(Module:Name/Arity))),
-    assert(calling(CallingPredicate, Module:Name/Arity, Start, End)).
+    (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
+    assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)).
 
 :- multifile user:term_expansion/6.
 
@@ -578,7 +581,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
     prolog_load_context(module, Module),
     prolog_load_context(file, File),
-    ((member(rm_debug_calls,Tokens), \+ seen_token) -> assert(seen_token); true),
+    (member(rm_debug_calls,Tokens) -> assert_if_new(seen_token); true),
     (seen_token -> member(rm_debug_calls,Tokens);true),
     nonmember(codeq, Tokens), % do not expand if already expanded
   % print(expand(Module,Term)),nl,
