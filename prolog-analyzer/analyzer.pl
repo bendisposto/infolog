@@ -12,35 +12,10 @@
 :- use_module(escaper).
 
 
-x_unwrap_module(chrsrc(X),Y) :- !, X=Y.
-x_unwrap_module(library(X),Y) :- !, X=Y.
-x_unwrap_module(probsrc(X),Y) :- !, X=Y.
-x_unwrap_module(probcspsrc(X),Y) :- !, X=Y.
-x_unwrap_module(bparser(X),Y) :- !, X=Y.
-x_unwrap_module(plugins(X),Y) :- !, X=Y.
-x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
-x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
-x_unwrap_module(extension(E),Y) :- !,
-    atom_chars(E,ExtensionPath),
-    suffix(ExtensionPath,Module),
-    atom_chars(Y,Module).
-x_unwrap_module(Path,X) :-
-    atom_chars(Path,PathChars),
-    ( append(Base,[.,p,l],PathChars),
-      suffix(Base,XChars)  % module loaded with .pl ending
-    ; suffix(PathChars,XChars)), % or without
-    x_remove_path(XChars,CharsWithoutPath),
-    atom_chars(X,CharsWithoutPath).
-x_unwrap_module(X,X) :- !. % might even be unwrapped
-
-x_remove_path(L,L2) :-
-    reverse(L,LR),
-    nth0(N,LR,'/',_), %key code of /
-    sublist(LR, LR2, 0, N, _),
-    reverse(LR2,L2).
 
 % :- op(300, fy, ~~).
 
+% THE DYNAMIC PREDICATES WHICH ARE PART OF THE ANALYSIS
 
 :-  dynamic
     defined_module/2,         % module(name,file)
@@ -59,11 +34,46 @@ x_remove_path(L,L2) :-
     problem/1.       % problem(details)
 
 
+% ==========================================
+
+% a few analysis utilities
+
+% compute paths / transitive closure with at most one cycle and at least one step
+:- meta_predicate transitive(0,-).
+transitive(M:Call,[A1,A2|Path]) :- Call =.. [P,A1,AFinal],
+   call(M:P,A1,A2),
+   trans(M:P,A2,AFinal,[A1],Path).
+   
+%trans(P,A1,AFinal,History,Path) :- print(trans(P,A1,AFinal,History,Path)),nl,fail.
+trans(_P,A,A,_,[]).
+trans(P,A1,AFinal,History,[A2|Path]) :-
+    nonmember(A1,History),
+    call(P,A1,A2),
+    trans(P,A2,AFinal,[A1|History],Path).
+
+depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Path).
+
+calling(C1,C2) :- calling(C1,C2,_,_).
+calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
+
+instantiate([_]).
+instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
+    format('Module ~w -> ~w   [call: ~w -> ~w ]~n',[A,B,C1,C2]),
+    instantiate([B|T]).
+instantiate([A,B|T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
+% TO DO: probably also analyse :- directives
+
+cycle(Module,ModulePath) :-
+   depends_path(M,M,ModulePath),
+   instantiate(ModulePath).
+
+% ==========================================
+
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze(InputFile,OutputFile) :-
     analyze(InputFile),
-    export_to_file(OutputFile).
+    export_to_clj_file(OutputFile).
 
 analyze(InputFile) :-
     print('loading modules'),nl,
@@ -72,7 +82,12 @@ analyze(InputFile) :-
     update,
     nl.
 
-export_to_file(OutputFile) :-
+
+% ==========================================
+
+% export analysis results to clojure file:
+
+export_to_clj_file(OutputFile) :-
     open(OutputFile,write,Stream),
     export(Stream),
     flush_output(Stream),
@@ -190,6 +205,9 @@ write_clojure(S,_, Content, number) :- !,
 write_clojure(S,_, Content, _) :-
   escaping_format(S, '"~w" ',[Content]).
 
+% ==========================================
+
+%  TERM EXPANDER PART
 
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
 flatten1([],L,L) :- !.
@@ -398,6 +416,32 @@ dependency(Module, Name) :-
   assert(depends_on(Module,UnwrappedName)).
 
 
+x_unwrap_module(chrsrc(X),Y) :- !, X=Y.
+x_unwrap_module(library(X),Y) :- !, X=Y.
+x_unwrap_module(probsrc(X),Y) :- !, X=Y.
+x_unwrap_module(probcspsrc(X),Y) :- !, X=Y.
+x_unwrap_module(bparser(X),Y) :- !, X=Y.
+x_unwrap_module(plugins(X),Y) :- !, X=Y.
+x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
+x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
+x_unwrap_module(extension(E),Y) :- !,
+    atom_chars(E,ExtensionPath),
+    suffix(ExtensionPath,Module),
+    atom_chars(Y,Module).
+x_unwrap_module(Path,X) :-
+    atom_chars(Path,PathChars),
+    ( append(Base,[.,p,l],PathChars),
+      suffix(Base,XChars)  % module loaded with .pl ending
+    ; suffix(PathChars,XChars)), % or without
+    x_remove_path(XChars,CharsWithoutPath),
+    atom_chars(X,CharsWithoutPath).
+x_unwrap_module(X,X) :- !. % might even be unwrapped
+
+x_remove_path(L,L2) :-
+    reverse(L,LR),
+    nth0(N,LR,'/',_), %key code of /
+    sublist(LR, LR2, 0, N, _),
+    reverse(LR2,L2).
 
 
 analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
