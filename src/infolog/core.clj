@@ -7,6 +7,7 @@
             [compojure.route :as route]
             [compojure.handler :as handler]
             [hiccup.middleware :refer (wrap-base-url)]
+            [hiccup.core :as h]
             [clojure.data.json :as json])
   (:import infolog.PrologLexer java.io.ByteArrayInputStream)
   (:use clojure.core.logic
@@ -100,6 +101,11 @@
     (if (nil? (g a))
       a)))
 
+(def sicstus-module #{"lists" "avl" "file_systems" "codesio" "ordsets" "timeout"
+                      "chr" "clpfd" "system" "between" "samsort" "random" "atts"
+                      "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
+                      "aggregate" "tcltk" "heaps" })
+
 (defn modules [f]
   (with-db f (run* [q] (fresh [f] (module q f)))))
 
@@ -112,26 +118,39 @@
        (clojure.string/join "," (map (fn [e] (str \" e \")) (take 5 (modules f))))
        (clojure.string/join
         "\n"
-        (map (fn [[d m]] (str \" d \" "->" \" m \")) (take 500 (dependencies f)))) "}")) 
+        (map (fn [[d m]] (str \" d \" "->" \" m \")) (take 500 (dependencies f)))) "}"))
 
 (defn fix-module [m]
-  (last (clojure.string/split m #"/")))
+  (clojure.string/join "_" (clojure.string/split m #"/")))
 
 (defn mk-dep [f]
-  (let [m-dep (into {} (map (fn [m] [(fix-module m) []]) (modules f)))
+  (let [m-dep (into {} (remove sicstus-module (map (fn [m] [(fix-module m) []]) (modules f))))
         g-dep (group-by first (dependencies f))
-        t-dep (map (fn [[k v]] [(fix-module k) (mapv (fn [[_ m]] (fix-module m)) v)]) (merge m-dep g-dep))]
+        t-dep (remove nil? (map (fn [[k v]] (when (not (sicstus-module k)) [(fix-module k) (remove nil? (mapv (fn [[_ m]] (when (not (sicstus-module m)) (fix-module m))) v))])) (merge m-dep g-dep)))]
     (map (fn [[k v]] {:name k :size (* 1000 (count v)) :imports v}) t-dep)))
 
+(defn details [f m]
+  (let [imports (with-db f (run* [q] (fresh [d] (dependency  m d) (== q d))))
+        imported-by (with-db f (run* [q] (fresh [d] (dependency  d m) (== q d))))]
+    {:name m :imports imports :imported_by imported-by}))
+
+(defn patho [n m]
+  (fresh [x] (dependency n x) (patho x m)))
+
+(defn cyclic-dependencies [f]
+  (with-db f (run* [q] (fresh [m f] (module m f) (patho m m) (== q m)))))
 
 (defroutes app-routes
-  (GET "/" [] "Hello World")
- (GET "/dependencies" [] (json/write-str (mk-dep @facts)))
+  (GET "/" [] (h/html [:h1 "Infolog"] [:a {:href "dependencies.html"} "Module Dependency Visualization"]))
+  (GET "/dependencies" [] (json/write-str (mk-dep @facts)))
+  (GET "/cycles" [] (json/write-str (cyclic-dependencies @facts)))
+  (GET "/dependency-details/:module" [module] (json/write-str (details @facts module)))
   (route/resources "/"))
 
 (def app (do (reset! facts (load-database "database.clj"))
              (-> (handler/site app-routes)
                  (wrap-base-url))))
+
 
 (comment
 
