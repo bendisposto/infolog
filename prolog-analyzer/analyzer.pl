@@ -62,12 +62,18 @@ x_remove_path(L,L2) :-
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze(InputFile,OutputFile) :-
-    open(OutputFile,write,Stream),
+    analyze(InputFile),
+    export_to_file(OutputFile).
+
+analyze(InputFile) :-
     print('loading modules'),nl,
     use_module(InputFile),
     nl, print('updating calls'), nl,
     update,
-    nl,
+    nl.
+
+export_to_file(OutputFile) :-
+    open(OutputFile,write,Stream),
     export(Stream),
     flush_output(Stream),
     close(Stream).
@@ -528,7 +534,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
     prolog_load_context(module, Module),
     prolog_load_context(file, File),
-    (member(rm_debug_calls,Tokens) -> assert(seen_token); true),
+    ((member(rm_debug_calls,Tokens), \+ seen_token) -> assert(seen_token); true),
     (seen_token -> member(rm_debug_calls,Tokens);true),
     nonmember(codeq, Tokens), % do not expand if already expanded
   % print(expand(Module,Term)),nl,
