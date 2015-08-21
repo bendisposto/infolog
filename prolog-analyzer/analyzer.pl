@@ -85,7 +85,7 @@ print_calls(_,_) :- format('===================~n',[]).
 % try and find uncovered call
 uncovered_call(FromModule,ToModule,Call) :- calling(FromModule:Q,ToModule:Call,L1,L2),
     \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
-    \+ defined(Call), \+ is_dynamic(M:Call),
+    \+ defined(Call), \+ is_dynamic(ToModule:Call),
    format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
 
 % always defined
@@ -493,8 +493,8 @@ x_unwrap_module(bparser(X),Y) :- !, X=Y.
 x_unwrap_module(plugins(X),Y) :- !, X=Y.
 x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
 x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
-x_unwarp_module(smt_solvers_interface(X),Y) :- !, X=Y.
-x_unwarp_module(probporsrc(X),Y) :- !, X=Y.
+x_unwrap_module(smt_solvers_interface(X),Y) :- !, X=Y.
+x_unwrap_module(probporsrc(X),Y) :- !, X=Y.
 x_unwrap_module(extension(E),Y) :- !,
     atom_chars(E,ExtensionPath),
     suffix(ExtensionPath,Module),
@@ -567,7 +567,7 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
 
-analyse(':-'(Body), Layout, Module, File) :-
+analyze(':-'(Body), Layout, Module, _File) :-
     !, layout_sub_term(Layout,1,LayoutSub),
     analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg).
 
@@ -591,20 +591,23 @@ analyze((Head --> Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, dcg).
 
-analyze(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
-    !,
-    functor(PredSpec,_,Arity),
-    Predicate = Module:Name/Arity,
-    assert_head(Predicate, Layout).
-
-analyze(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
-    analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
-
 analyze(Fact, Layout, Module, _File) :-
     !,
     functor(Fact,Name,Arity),
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
+
+
+% analyzef/5
+analyzef(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
+    !,
+    functor(PredSpec,_,Arity),
+    Predicate = Module:Name/Arity,
+    assert_head(Predicate, Layout).
+
+analyzef(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
+    analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
+
 
 assert_head(Predicate, Layout) :-
     decompose_call(Predicate,M,P),
@@ -657,5 +660,5 @@ user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
     (seen_token -> member(rm_debug_calls,Tokens);true),
     nonmember(codeq, Tokens), % do not expand if already expanded
   % print(expand(Module,Term)),nl,
-    (analyze(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
+    (analyzef(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
