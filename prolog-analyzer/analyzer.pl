@@ -636,16 +636,13 @@ get_module(Name, Arity, CallingModule, undefined_module) :-
 
 
 update :-
-  findall(c(CallingPredicate, Name, Arity, Start, End),
-    calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End),L),
-  maplist(update,L).
-
-update(c(CallingPredicate,Name, Arity, Start, End)) :-
     retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
-    CallingPredicate = CallingModule:_/_,
+    CallingPredicate = CallingModule:_,
     get_module(Name, Arity, CallingModule, Module),
     assert_if_new(predicate(Module,Name/Arity)),
-    assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)).
+    assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)),
+    fail.
+update.
 
 :- multifile user:term_expansion/6.
 
