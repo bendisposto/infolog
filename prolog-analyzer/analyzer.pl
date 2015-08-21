@@ -263,7 +263,7 @@ get_position1(Layout, StartLine, EndLine) :-
      % calling(cmodule:cname/carity, module:name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :-
     get_position(Layout, StartLine, EndLine),
-    ((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
+    %((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
@@ -295,7 +295,8 @@ analyze_body(X,Layout,CallingPredicate,dcg) :-
 
 % { ... } prevents DCGs from adding additional arguments
 analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
-    analyze_body(X,Layout,CallingPredicate,no_dcg).
+    layout_sub_term(Layout,2,LayoutX),
+    analyze_body(X,LayoutX,CallingPredicate,no_dcg).
 
 %analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
 %    analyze_body(X,Layout,CallingPredicate,DCG).
