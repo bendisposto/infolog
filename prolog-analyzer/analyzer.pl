@@ -238,8 +238,8 @@ layout_sub_term([H|T],N,Res) :-
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
-  (Start = [] -> StartLine = -1; StartLine = Start),
-  (End = [] -> EndLine = -1; EndLine = End).
+  (Start = [] -> StartLine = -1 ; StartLine = Start),
+  (End = [] -> EndLine = -1 ; EndLine = End).
 
 get_position1(Layout, StartLine, EndLine) :-
     aflatten(Layout,[StartLine|FlatLayout]),
@@ -248,6 +248,7 @@ get_position1(Layout, StartLine, EndLine) :-
      % calling(cmodule:cname/carity, module:name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :-
     get_position(Layout, StartLine, EndLine),
+    ((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
@@ -258,7 +259,6 @@ assert_call(CallingPredicate, Predicate, Layout, dcg) :-
     functor(Call, Name, WrongArity),
     Arity is WrongArity + 2,
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
-
 
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
 
@@ -291,12 +291,10 @@ analyze_body(put_atts(_,_),Layout,CallingPredicate,DCG) :- !,
 
 analyze_body(X,_,_,dcg) :- is_list(X),!.
 
-
 analyze_body(\+(X),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
     analyze_body(X,Layout,CallingPredicate,DCG).
-
 
 analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     !,
@@ -317,7 +315,6 @@ analyze_body((A -> B),Layout, CallingPredicate, DCG) :-
     analyze_body(A,LayoutA,CallingPredicate, DCG),
     analyze_body(B,LayoutB,CallingPredicate, DCG).
 
-
 analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:if(A,B,C), Layout, DCG),
@@ -329,7 +326,7 @@ analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     analyze_body(C,LayoutC, CallingPredicate, DCG).
 
 analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   assert_call(CallingPredicate, built_in:when(A,B), Layout, DCG),
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
@@ -348,24 +345,22 @@ analyze_body(retract(A),Layout, CallingPredicate, DCG) :-
   layout_sub_term(Layout,2,LayoutA),
   analyze_body(A,LayoutA,CallingPredicate,DCG).
 
-
 analyze_body((A,B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
   analyze_body(A,LayoutA, CallingPredicate, DCG),
   analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body((A;B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
   analyze_body(A,LayoutA, CallingPredicate, DCG),
   analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-
-
 analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
+  !,
   CallingPredicate = Module:N/A,
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
@@ -376,6 +371,7 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
+
 
 mk_problem(P) :- assert(problem(P)).
 
