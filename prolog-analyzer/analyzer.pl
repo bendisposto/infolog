@@ -19,7 +19,7 @@
 
 :-  dynamic
     defined_module/2,% module(name,file)
-    predicate/1,     % predicate(module:name/arity)
+    predicate/2,     % predicate(module,name/arity)
     is_dynamic/1,    % is_dynamic(module:name/arity)
     is_volatile/1,   % is_volatile(module:name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
@@ -125,12 +125,28 @@ analyze(InputFile,OutputFile) :-
 
 analyze(InputFile) :-
     print('loading modules'),nl,
+    start_analysis_timer(T1),
     use_module(InputFile),
+    nl,
+    stop_analysis_timer(T1),
     nl, print('updating calls'), nl,
+    start_analysis_timer(T2),
     update,
+    stop_analysis_timer(T2),
     nl.
 
+start_analysis_timer(timer(R,T,W)) :- statistics(runtime,[R,_]),
+   statistics(total_runtime,[T,_]),
+   statistics(walltime,[W,_]).
+stop_analysis_timer(T) :- stop_analysis_timer(T,[runtime/RT,total_runtime/RTT,walltime/WT]),
+   format('% Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
+stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!,
+   statistics(runtime,[RE,_]),
+   statistics(total_runtime,[TE,_]),
+   statistics(walltime,[WE,_]),
+   RT is RE-R, RTT is TE-T, WT is WE-W.
 
+  
 % ==========================================
 
 % export analysis results to clojure file:
@@ -433,7 +449,7 @@ mk_problem(P) :- assert(problem(P)).
 
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
-    assert_if_new(predicate(Predicate)),
+    assert_if_new(predicate(Module,Name/Arity)),
     X =..[Fact, Predicate],
     assert(X).
 
@@ -441,7 +457,7 @@ add_fact(Fact, Module, Term ) :-
     functor(Term,Name,Arity),
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
-    assert_if_new(predicate(Predicate)),
+    assert_if_new(predicate(Module,Name/Arity)),
     X =..[Fact, Predicate, Arguments], assert(X).
 
 
@@ -538,7 +554,7 @@ analyze((:- block(X)), _Layout, Module, _File) :-
 
 analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
   fixity(FixityTerm, Fixity, Associativity, Arity),
-  assert_if_new(predicate(Module:Name/Arity)),
+  assert_if_new(predicate(Module,Name/Arity)),
   assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
 analyze((:- volatile(X)), _Layout,Module, _File) :-
@@ -591,12 +607,13 @@ analyze(Fact, Layout, Module, _File) :-
     assert_head(Predicate, Layout).
 
 assert_head(Predicate, Layout) :-
-    assert_if_new(predicate(Predicate)),
+    decompose_call(Predicate,M,P),
+    assert_if_new(predicate(M,P)),
     get_position(Layout, StartLine, EndLine),
-    (Predicate = M:P ->  assert(klaus(M,P,  StartLine, EndLine))
-       ;  format('*** Unknown Module for ~w~n',[Predicate]),
-          assert(klaus(module_yet_unknown,Predicate,  StartLine, EndLine))).
+    assert(klaus(M,P,  StartLine, EndLine)).
 
+decompose_call(M:P,MR,PR) :- !, M=MR, P=PR.
+decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
 
 get_module(Name, Arity, CallingModule, built_in) :-
    functor(Call, Name, Arity),
@@ -624,7 +641,7 @@ update(c(CallingPredicate,Name, Arity, Start, End)) :-
     retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
     CallingPredicate = CallingModule:_/_,
     get_module(Name, Arity, CallingModule, Module),
-    assert_if_new(predicate(Module:Name/Arity)),
+    assert_if_new(predicate(Module,Name/Arity)),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)).
 
 :- multifile user:term_expansion/6.
