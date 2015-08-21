@@ -18,12 +18,12 @@
 % THE DYNAMIC PREDICATES WHICH ARE PART OF THE ANALYSIS
 
 :-  dynamic
-    defined_module/2,         % module(name,file)
-    predicate/1,     % predicate(module:name/arity)
+    defined_module/2,% module(name,file)
+    predicate/2,     % predicate(module,name/arity)
     is_dynamic/1,    % is_dynamic(module:name/arity)
     is_volatile/1,   % is_volatile(module:name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
-    klaus/3,        % klaus(module:name/arity,  startline, endline)
+    klaus/4,        % klaus(module,name/arity,  startline, endline)
     calling/4,       % calling(callingmodule:callingpredicate/callingarity, module:name/arity, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/1,   % is_exported(module:name/arity)
@@ -43,7 +43,7 @@
 transitive(M:Call,[A1,A2|Path]) :- Call =.. [P,A1,AFinal],
    call(M:P,A1,A2),
    trans(M:P,A2,AFinal,[A1],Path).
-   
+
 %trans(P,A1,AFinal,History,Path) :- print(trans(P,A1,AFinal,History,Path)),nl,fail.
 trans(_P,A,A,_,[]).
 trans(P,A1,AFinal,History,[A2|Path]) :-
@@ -56,16 +56,64 @@ depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Pat
 calling(C1,C2) :- calling(C1,C2,_,_).
 calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
 
+% instantiate module dependency path with call witnesses
 instantiate([_]).
 instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
     format('Module ~w -> ~w   [call: ~w -> ~w ]~n',[A,B,C1,C2]),
     instantiate([B|T]).
-instantiate([A,B|T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
+instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
+% is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
+
+% is there a calling cycle which leaves a module and enters it again ?
+cross_module_cycle(Module,Call,[Module:Call|Path]) :-
+    calling(Module:Call,TargetModule:TargetCall,_L1,_L2),
+    TargetModule \= Module,
+    calls_path(TargetModule:TargetCall,Module:Call,Path),
+    instantiate(Path).
+
+print_calls(FromModule,ToModule) :- format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
+   calling(FromModule:C1,ToModule:C2,L1,L2),
+   format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
+   fail.
+print_calls(_,_) :- format('===================~n',[]).
+
+% try and find uncovered call
+uncovered_call(FromModule,ToModule,Call) :- calling(FromModule:Q,ToModule:Call,L1,L2),
+    \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
+    \+ defined(Call), \+ is_dynamic(M:Call),
+   format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
+
+% always defined
+defined(recursive_call/0).
+defined(putt_atts/2).
+defined(get_atts/2).
+
+% to do: more precise analysis of which predicates are actually exported
+standard_module(built_in).
+standard_module(lists).
+standard_module(codesio).
+standard_module(random).
+standard_module(tcltk).
+standard_module(system).
+standard_module(file_systems).
+standard_module(process).
+standard_module(terms).
+standard_module(timeout).
+standard_module(avl).
+standard_module(clpfd).
+
+body_call(V,Call) :- var(V),!, Call=V.
+body_call((A,B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call((A -> B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call((A ; B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call(\+(A),Call) :- body_call(A,Call).
+body_call(if(A,B,C),Call) :- body_call(A,Call) ; body_call(B,Call) ; body_call(C,Call).
+body_call(when(_,A),Call) :- body_call(A,Call).
 
 % ==========================================
 
@@ -77,12 +125,28 @@ analyze(InputFile,OutputFile) :-
 
 analyze(InputFile) :-
     print('loading modules'),nl,
+    start_analysis_timer(T1),
     use_module(InputFile),
+    nl,
+    stop_analysis_timer(T1),
     nl, print('updating calls'), nl,
+    start_analysis_timer(T2),
     update,
+    stop_analysis_timer(T2),
     nl.
 
+start_analysis_timer(timer(R,T,W)) :- statistics(runtime,[R,_]),
+   statistics(total_runtime,[T,_]),
+   statistics(walltime,[W,_]).
+stop_analysis_timer(T) :- stop_analysis_timer(T,[runtime/RT,total_runtime/RTT,walltime/WT]),
+   format('% Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
+stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!,
+   statistics(runtime,[RE,_]),
+   statistics(total_runtime,[TE,_]),
+   statistics(walltime,[WE,_]),
+   RT is RE-R, RTT is TE-T, WT is WE-W.
 
+  
 % ==========================================
 
 % export analysis results to clojure file:
@@ -150,7 +214,7 @@ export_clause(S) :-
             P,string,
             A, number,
             Start, number,
-            End, number], klaus(M:P/A, Start, End),L),
+            End, number], klaus(M,P/A, Start, End),L),
   maplist(write_clojure(S,clause),L).
 
 export_operator(S) :-
@@ -232,14 +296,14 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
-layout_sub_term([],_,[]).
+layout_sub_term([],N,[]) :- format('~n*** Could not obtain layout information (~w)~n',[N]).
 layout_sub_term([H|T],N,Res) :-
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
-  (Start = [] -> StartLine = -1; StartLine = Start),
-  (End = [] -> EndLine = -1; EndLine = End).
+  (Start = [] -> StartLine = -1 ; StartLine = Start),
+  (End = [] -> EndLine = -1 ; EndLine = End).
 
 get_position1(Layout, StartLine, EndLine) :-
     aflatten(Layout,[StartLine|FlatLayout]),
@@ -248,6 +312,7 @@ get_position1(Layout, StartLine, EndLine) :-
      % calling(cmodule:cname/carity, module:name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :-
     get_position(Layout, StartLine, EndLine),
+    %((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
@@ -260,9 +325,12 @@ assert_call(CallingPredicate, Predicate, Layout, dcg) :-
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
 
+
+% analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
 
 analyze_body(X,Layout, CallingPredicate, DCG) :-
+    %%print(analyze_body(X,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
     var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
 
 analyze_body(Module:X,Layout, CallingPredicate, DCG) :-
@@ -276,27 +344,27 @@ analyze_body(X,Layout,CallingPredicate,dcg) :-
 
 % { ... } prevents DCGs from adding additional arguments
 analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
-    analyze_body(X,Layout,CallingPredicate,no_dcg).
+    layout_sub_term(Layout,2,LayoutX),
+    analyze_body(X,LayoutX,CallingPredicate,no_dcg).
 
 %analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
 %    analyze_body(X,Layout,CallingPredicate,DCG).
 
-analyze_body(get_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+analyze_body(get_atts(A,B),Layout,CallingPredicate,DCG) :- !,
     CallingPredicate = M:_/_,
-    assert_call(CallingPredicate, M:get_atts/2, Layout, DCG).
+    assert_call(CallingPredicate, M:get_atts(A,B), Layout, DCG).
 
-analyze_body(put_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+analyze_body(put_atts(A,B),Layout,CallingPredicate,DCG) :- !,
     CallingPredicate = M:_/_,
-    assert_call(CallingPredicate, M:put_atts/2, Layout, DCG).
+    assert_call(CallingPredicate, M:put_atts(A,B), Layout, DCG).
 
 analyze_body(X,_,_,dcg) :- is_list(X),!.
-
 
 analyze_body(\+(X),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
-    analyze_body(X,Layout,CallingPredicate,DCG).
-
+    layout_sub_term(Layout,2,LayoutX),
+    analyze_body(X,LayoutX,CallingPredicate,DCG).
 
 analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     !,
@@ -317,7 +385,6 @@ analyze_body((A -> B),Layout, CallingPredicate, DCG) :-
     analyze_body(A,LayoutA,CallingPredicate, DCG),
     analyze_body(B,LayoutB,CallingPredicate, DCG).
 
-
 analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:if(A,B,C), Layout, DCG),
@@ -329,7 +396,7 @@ analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     analyze_body(C,LayoutC, CallingPredicate, DCG).
 
 analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   assert_call(CallingPredicate, built_in:when(A,B), Layout, DCG),
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
@@ -348,24 +415,22 @@ analyze_body(retract(A),Layout, CallingPredicate, DCG) :-
   layout_sub_term(Layout,2,LayoutA),
   analyze_body(A,LayoutA,CallingPredicate,DCG).
 
-
 analyze_body((A,B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
   analyze_body(A,LayoutA, CallingPredicate, DCG),
   analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body((A;B),Layout, CallingPredicate, DCG) :-
- !,
+  !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
   analyze_body(A,LayoutA, CallingPredicate, DCG),
   analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-
-
 analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
+  !,
   CallingPredicate = Module:N/A,
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
@@ -377,13 +442,14 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
+
 mk_problem(P) :- assert(problem(P)).
 
 %% analyzing Prolog Code
 
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
+    assert_if_new(predicate(Module,Name/Arity)),
     X =..[Fact, Predicate],
     assert(X).
 
@@ -391,7 +457,7 @@ add_fact(Fact, Module, Term ) :-
     functor(Term,Name,Arity),
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
+    assert_if_new(predicate(Module,Name/Arity)),
     X =..[Fact, Predicate, Arguments], assert(X).
 
 
@@ -427,6 +493,8 @@ x_unwrap_module(bparser(X),Y) :- !, X=Y.
 x_unwrap_module(plugins(X),Y) :- !, X=Y.
 x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
 x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
+x_unwarp_module(smt_solvers_interface(X),Y) :- !, X=Y.
+x_unwarp_module(probporsrc(X),Y) :- !, X=Y.
 x_unwrap_module(extension(E),Y) :- !,
     atom_chars(E,ExtensionPath),
     suffix(ExtensionPath,Module),
@@ -467,7 +535,6 @@ analyze((:- dynamic(X)), _Layout,Module,_File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_dynamic, Module),L).
 
-
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
     pairs_to_list(X,L),
@@ -480,44 +547,49 @@ analyze((:- mode(X)), _Layout, Module, _File) :-
     pairs_to_list(X,L),
     maplist(add_fact(declared_mode, Module), L).
 
-
 analyze((:- block(X)), _Layout, Module, _File) :-
     !,
     pairs_to_list(X,L),
     maplist(add_fact(is_blocking, Module), L).
 
 analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
- fixity(FixityTerm, Fixity, Associativity, Arity),
- (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
- assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
+  fixity(FixityTerm, Fixity, Associativity, Arity),
+  assert_if_new(predicate(Module,Name/Arity)),
+  assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
 analyze((:- volatile(X)), _Layout,Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact(is_volatile, Module),L).
 
-
 analyze((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
 
+analyse(':-'(Body), Layout, Module, File) :-
+    !, layout_sub_term(Layout,1,LayoutSub),
+    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg).
 
-analyze((Head :- Body), [LayoutHead | LayoutSub], Module, _File) :-
+analyze((Head :- Body), Layout, Module, _File) :-
     !,
     functor(Head,Name,Arity),
     Predicate = Module:Name/Arity,
+    layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    %nl,nl,print(layout_clause(_FirstToken,Head, LayoutHead, LayoutSub)),nl,
+    layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, no_dcg).
 
-analyze((Head --> Body), [LayoutHead | LayoutSub], Module, _File) :-
+analyze((Head --> Body), Layout, Module, _File) :-
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
     Predicate = Module:Name/Arity,
+    layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, dcg).
-
 
 analyze(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
     !,
@@ -525,11 +597,8 @@ analyze(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
 
-
 analyze(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
     analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
-
-
 
 analyze(Fact, Layout, Module, _File) :-
     !,
@@ -538,10 +607,13 @@ analyze(Fact, Layout, Module, _File) :-
     assert_head(Predicate, Layout).
 
 assert_head(Predicate, Layout) :-
-    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    decompose_call(Predicate,M,P),
+    assert_if_new(predicate(M,P)),
     get_position(Layout, StartLine, EndLine),
-    assert(klaus(Predicate,  StartLine, EndLine)).
+    assert(klaus(M,P,  StartLine, EndLine)).
 
+decompose_call(M:P,MR,PR) :- !, M=MR, P=PR.
+decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
 
 get_module(Name, Arity, CallingModule, built_in) :-
    functor(Call, Name, Arity),
@@ -569,7 +641,7 @@ update(c(CallingPredicate,Name, Arity, Start, End)) :-
     retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
     CallingPredicate = CallingModule:_/_,
     get_module(Name, Arity, CallingModule, Module),
-    (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
+    assert_if_new(predicate(Module,Name/Arity)),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)).
 
 :- multifile user:term_expansion/6.
