@@ -179,7 +179,7 @@ export_all(S) :-
  format(S, '[ ~n',[]),
  format(S, '[git "~a"]~n',[Sha]),
 
- export_X1(S,predicate),
+ export_X2(S,predicate),
  export_X1(S,is_dynamic),
  export_X1(S,is_volatile),
  export_X1(S,is_exported),
