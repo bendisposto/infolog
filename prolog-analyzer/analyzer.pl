@@ -85,9 +85,15 @@ print_calls(_,_) :- format('===================~n',[]).
 % try and find uncovered call
 uncovered_call(FromModule,ToModule,Call) :- calling(FromModule:Q,ToModule:Call,L1,L2),
     \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
-    \+(Call=recursive_call/0), \+ is_dynamic(M:Call),
-   format('Uncovered Call in module ~w: ~w [~w -~w]~n',[FromModule,Call,L1,L2]).
+    \+ defined(Call), \+ is_dynamic(M:Call),
+   format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
 
+% always defined
+defined(recursive_call/0).
+defined(putt_atts/2).
+defined(get_atts/2).
+
+% to do: more precise analysis of which predicates are actually exported
 standard_module(built_in).
 standard_module(lists).
 standard_module(codesio).
@@ -427,7 +433,7 @@ mk_problem(P) :- assert(problem(P)).
 
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
+    assert_if_new(predicate(Predicate)),
     X =..[Fact, Predicate],
     assert(X).
 
@@ -435,7 +441,7 @@ add_fact(Fact, Module, Term ) :-
     functor(Term,Name,Arity),
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
-    (predicate(Predicate) -> true; assert_if_new(predicate(Predicate))),
+    assert_if_new(predicate(Predicate)),
     X =..[Fact, Predicate, Arguments], assert(X).
 
 
@@ -531,9 +537,9 @@ analyze((:- block(X)), _Layout, Module, _File) :-
     maplist(add_fact(is_blocking, Module), L).
 
 analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
- fixity(FixityTerm, Fixity, Associativity, Arity),
- (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
- assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
+  fixity(FixityTerm, Fixity, Associativity, Arity),
+  assert_if_new(predicate(Module:Name/Arity)),
+  assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
 analyze((:- volatile(X)), _Layout,Module, _File) :-
        !,
@@ -545,7 +551,7 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
 
-analyse(:- Body, Layout, Module, File) :-
+analyse(':-'(Body), Layout, Module, File) :-
     !, layout_sub_term(Layout,1,LayoutSub),
     analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg).
 
@@ -585,7 +591,7 @@ analyze(Fact, Layout, Module, _File) :-
     assert_head(Predicate, Layout).
 
 assert_head(Predicate, Layout) :-
-    (predicate(Predicate) -> true; assert(predicate(Predicate))),
+    assert_if_new(predicate(Predicate)),
     get_position(Layout, StartLine, EndLine),
     (Predicate = M:P ->  assert(klaus(M,P,  StartLine, EndLine))
        ;  format('*** Unknown Module for ~w~n',[Predicate]),
@@ -618,7 +624,7 @@ update(c(CallingPredicate,Name, Arity, Start, End)) :-
     retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
     CallingPredicate = CallingModule:_/_,
     get_module(Name, Arity, CallingModule, Module),
-    (predicate(Module:Name/Arity) -> true; assert_if_new(predicate(Module:Name/Arity))),
+    assert_if_new(predicate(Module:Name/Arity)),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)).
 
 :- multifile user:term_expansion/6.
