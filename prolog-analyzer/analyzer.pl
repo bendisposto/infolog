@@ -24,7 +24,7 @@
     is_volatile/1,   % is_volatile(module:name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
     klaus/4,        % klaus(module,name/arity,  startline, endline)
-    calling/4,       % calling(callingmodule:callingpredicate/callingarity, module:name/arity, startline, endline)
+    calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/1,   % is_exported(module:name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
@@ -53,7 +53,7 @@ trans(P,A1,AFinal,History,[A2|Path]) :-
 
 depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Path).
 
-calling(C1,C2) :- calling(C1,C2,_,_).
+calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
 calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
 
 % instantiate module dependency path with call witnesses
@@ -66,7 +66,7 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 
 
 lint :- print('Start checking'),nl,
-        vacuous_module_dependency(M1,M2),fail.
+        vacuous_module_dependency(_M1,_M2),fail.
 lint :- print('Done checking'),nl.
 
 % check if there is a dependency without a call that requires it:
@@ -81,7 +81,7 @@ cycle(Module,ModulePath) :-
 
 % is there a calling cycle which leaves a module and enters it again ?
 cross_module_cycle(Module,Call,[Module:Call|Path]) :-
-    calling(Module:Call,TargetModule:TargetCall,_L1,_L2),
+    calling(Module,Call,TargetModule,TargetCall,_L1,_L2),
     TargetModule \= Module,
     calls_path(TargetModule:TargetCall,Module:Call,Path),
     instantiate(Path).
@@ -89,13 +89,13 @@ cross_module_cycle(Module,Call,[Module:Call|Path]) :-
 print_calls(FromModule,ToModule) :-
    defined_module(FromModule,_),
    format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
-   calling(FromModule:C1,ToModule:C2,L1,L2),
+   calling(FromModule,C1,ToModule,C2,L1,L2),
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
 
 % try and find uncovered call
-uncovered_call(FromModule,ToModule,Call) :- calling(FromModule:Q,ToModule:Call,L1,L2),
+uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
     \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
     \+ defined(Call), \+ is_dynamic(ToModule:Call),
    format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
@@ -247,7 +247,7 @@ export_calling(S) :-
             CP, string,
             CA, number,
             Start, number,
-            End, number], calling(M:P/A, CM:CP/CA, Start, End),L),
+            End, number], calling(M,P/A, CM,CP/CA, Start, End),L),
   maplist(write_clojure(S,call),L).
 
 clojure_fact_wrap(S,X,E) :-
@@ -321,23 +321,17 @@ get_position1(Layout, StartLine, EndLine) :-
     aflatten(Layout,[StartLine|FlatLayout]),
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
-     % calling(cmodule:cname/carity, module:name/arity, startline, endline)
+     % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
     (assert_call2(DCG,CallingPredicate, Predicate, Layout) -> true
       ; format('*** assert_call failed ~w~n',[assert_call(CallingPredicate, Predicate, Layout, DCG)])).
-assert_call2(no_dcg,CallingPredicate, Predicate, Layout) :-
-    get_position(Layout, StartLine, EndLine),
-    %((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
-    (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
-    functor(Call, Name, Arity),
-    assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
-
-assert_call2(dcg,CallingPredicate, Predicate, Layout) :-
+assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
-    functor(Call, Name, WrongArity),
-    Arity is WrongArity + 2,
-    assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
+    functor(Call, Name, SourceArity),
+    (DCG = dcg -> Arity is SourceArity + 2 ; Arity=SourceArity),
+    decompose_call(CallingPredicate,CM,CP),
+    assert_if_new(calling(CM,CP, Module,Name/Arity, StartLine, EndLine)).
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG) :-
    (analyze_body(X,Layout, CallingPredicate, DCG) -> true
@@ -514,6 +508,7 @@ x_unwrap_module(smt_solvers_interface(X),Y) :- !, X=Y.
 x_unwrap_module(probporsrc(X),Y) :- !, X=Y.
 x_unwrap_module(prozsrc(X),Y) :- !, X=Y.
 x_unwrap_module(probltlsrc(X),Y) :- !, X=Y.
+x_unwrap_module(probpgesrc(X),Y) :- !, X=Y.
 x_unwrap_module(extension(E),Y) :- !,
     atom_chars(E,ExtensionPath),
     suffix(ExtensionPath,Module),
@@ -655,11 +650,10 @@ get_module(Name, Arity, CallingModule, undefined_module) :-
 
 
 update :-
-    retract(calling(CallingPredicate, module_yet_unknown:Name/Arity, Start, End)),
-    CallingPredicate = CallingModule:_,
+    retract(calling(CallingModule,CallingPred, module_yet_unknown,Name/Arity, Start, End)),
     get_module(Name, Arity, CallingModule, Module),
     assert_if_new(predicate(Module,Name/Arity)),
-    assert_if_new(calling(CallingPredicate, Module:Name/Arity, Start, End)),
+    assert_if_new(calling(CallingModule,CallingPred, Module,Name/Arity, Start, End)),
     fail.
 update.
 
