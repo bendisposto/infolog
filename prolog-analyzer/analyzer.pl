@@ -64,6 +64,16 @@ instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
 instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
+
+lint :- print('Start checking'),nl,
+        vacuous_module_dependency(M1,M2),fail.
+lint :- print('Done checking'),nl.
+
+% check if there is a dependency without a call that requires it:
+vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
+   \+ calling(M1:_,M2:_),
+   format('*** Vacuous Module Dependency: ~w -> ~w~n',[M1,M2]).
+
 % is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
@@ -76,7 +86,9 @@ cross_module_cycle(Module,Call,[Module:Call|Path]) :-
     calls_path(TargetModule:TargetCall,Module:Call,Path),
     instantiate(Path).
 
-print_calls(FromModule,ToModule) :- format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
+print_calls(FromModule,ToModule) :-
+   defined_module(FromModule,_),
+   format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
    calling(FromModule:C1,ToModule:C2,L1,L2),
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
