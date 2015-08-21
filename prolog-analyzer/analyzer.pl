@@ -60,7 +60,7 @@ instantiate([_]).
 instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
     format('Module ~w -> ~w   [call: ~w -> ~w ]~n',[A,B,C1,C2]),
     instantiate([B|T]).
-instantiate([A,B|T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
+instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
 cycle(Module,ModulePath) :-
@@ -499,19 +499,24 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
        maplist(add_fact(is_multifile, Module),L).
 
 
-analyze((Head :- Body), [LayoutHead | LayoutSub], Module, _File) :-
+analyze((Head :- Body), Layout, Module, _File) :-
     !,
     functor(Head,Name,Arity),
     Predicate = Module:Name/Arity,
+    layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    %nl,nl,print(layout_clause(_FirstToken,Head, LayoutHead, LayoutSub)),nl,
+    layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, no_dcg).
 
-analyze((Head --> Body), [LayoutHead | LayoutSub], Module, _File) :-
+analyze((Head --> Body), Layout, Module, _File) :-
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
     Predicate = Module:Name/Arity,
+    layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, dcg).
 
 
