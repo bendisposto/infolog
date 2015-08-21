@@ -7,9 +7,10 @@ To run the system you need Leiningen. The simplest way is to download [this scri
 
 Running the analyzer to produce a "database" can be done from the Clojure REPL
 
+     $> touch database.clj
      $> lein repl
 
-     infolog.core=> (run-prolog-analyzer "raw-data.clj") ;; run analyzer
+     infolog.core=> (run-prolog-analyzer "path/to/prob" "raw-data.clj") ;; run analyzer
      nil
      infolog.core=> (make-db "raw-data.clj" "database.clj") ;; indexing
      nil  
@@ -18,4 +19,4 @@ As a result you will get a file "database.clj", that can be used for the visuali
 
 The database can be used to visualize the module dependencies. We assume that the file "database.clj" is present.
 
-    $> lein ring server 
+    $> lein ring server

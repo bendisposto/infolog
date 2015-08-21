@@ -13,9 +13,7 @@
   (:use clojure.core.logic
         clojure.core.logic.pldb))
 
-(def prob-home (System/getenv "PROB_HOME"))
 (def entry-point "/src/prob_tcltk.pl")
-(def temp-file "prob-data_full.clj")
 (def db-file "database.clj")
 
 (def facts (atom {}))
@@ -68,13 +66,13 @@
     (let [comments (PrologLexer/lexFile file)]
       (map (partial transform-comments m) comments))))
 
-(defn sicstus-call [output-file]
+(defn sicstus-call [prob-home output-file]
   ["sicstus" "-l" "./prolog-analyzer/analyzer.pl"
    "--goal"
    (str "analyze('" prob-home entry-point "','" output-file "').")])
 
-(defn run-prolog-analyzer [filename]
-  (apply sh (sicstus-call filename))
+(defn run-prolog-analyzer [prob-home filename]
+  (apply sh (sicstus-call prob-home filename))
   filename)
 
 (defn get-comments [modules]
@@ -156,7 +154,7 @@
 
   ;; extracting the information from Prolog
   ;; make sure that the PROB_HOME env variable is set
-  (run-prolog-analyzer "raw-data.clj")
+  (run-prolog-analyzer (System/getenv "PROB_HOME") "raw-data.clj")
 
   ;; Create a database from the extracted information
   (make-db "raw-data.clj" "database.clj")
