@@ -18,7 +18,7 @@
 % THE DYNAMIC PREDICATES WHICH ARE PART OF THE ANALYSIS
 
 :-  dynamic
-    defined_module/2,         % module(name,file)
+    defined_module/2,% module(name,file)
     predicate/1,     % predicate(module:name/arity)
     is_dynamic/1,    % is_dynamic(module:name/arity)
     is_volatile/1,   % is_volatile(module:name/arity)
@@ -43,7 +43,7 @@
 transitive(M:Call,[A1,A2|Path]) :- Call =.. [P,A1,AFinal],
    call(M:P,A1,A2),
    trans(M:P,A2,AFinal,[A1],Path).
-   
+
 %trans(P,A1,AFinal,History,Path) :- print(trans(P,A1,AFinal,History,Path)),nl,fail.
 trans(_P,A,A,_,[]).
 trans(P,A1,AFinal,History,[A2|Path]) :-
@@ -100,7 +100,7 @@ standard_module(terms).
 standard_module(timeout).
 standard_module(avl).
 standard_module(clpfd).
-   
+
 body_call(V,Call) :- var(V),!, Call=V.
 body_call((A,B),Call) :- body_call(A,Call) ; body_call(B,Call).
 body_call((A -> B),Call) :- body_call(A,Call) ; body_call(B,Call).
@@ -471,6 +471,8 @@ x_unwrap_module(bparser(X),Y) :- !, X=Y.
 x_unwrap_module(plugins(X),Y) :- !, X=Y.
 x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
 x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
+x_unwarp_module(smt_solvers_interface(X),Y) :- !, X=Y.
+x_unwarp_module(probporsrc(X),Y) :- !, X=Y.
 x_unwrap_module(extension(E),Y) :- !,
     atom_chars(E,ExtensionPath),
     suffix(ExtensionPath,Module),
@@ -542,6 +544,10 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
+
+analyse(:- Body, Layout, Module, File) :-
+    !, layout_sub_term(Layout,1,LayoutSub),
+    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg).
 
 analyze((Head :- Body), Layout, Module, _File) :-
     !,
