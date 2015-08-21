@@ -56,6 +56,7 @@ depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Pat
 calling(C1,C2) :- calling(C1,C2,_,_).
 calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
 
+% instantiate module dependency path with call witnesses
 instantiate([_]).
 instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
     format('Module ~w -> ~w   [call: ~w -> ~w ]~n',[A,B,C1,C2]),
@@ -63,9 +64,23 @@ instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
 instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
+% is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
+
+% is there a calling cycle which leaves a module and enters it again ?
+cross_module_cycle(Module,Call,[Module:Call|Path]) :-
+    calling(Module:Call,TargetModule:TargetCall,_L1,_L2),
+    TargetModule \= Module,
+    calls_path(TargetModule:TargetCall,Module:Call,Path),
+    instantiate(Path).
+
+print_calls(FromModule,ToModule) :- format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
+   calling(FromModule:C1,ToModule:C2,L1,L2),
+   format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
+   fail.
+print_calls(_,_) :- format('===================~n',[]).
 
 % ==========================================
 
@@ -232,7 +247,7 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
-layout_sub_term([],_,[]).
+layout_sub_term([],N,[]) :- format('~n*** Could not obtain layout information (~w)~n',[N]).
 layout_sub_term([H|T],N,Res) :-
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
 
@@ -260,9 +275,13 @@ assert_call(CallingPredicate, Predicate, Layout, dcg) :-
     Arity is WrongArity + 2,
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
+
+
+% analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
 
 analyze_body(X,Layout, CallingPredicate, DCG) :-
+    %%print(analyze_body(X,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
     var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
 
 analyze_body(Module:X,Layout, CallingPredicate, DCG) :-
@@ -464,7 +483,6 @@ analyze((:- dynamic(X)), _Layout,Module,_File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_dynamic, Module),L).
 
-
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
     pairs_to_list(X,L),
@@ -476,7 +494,6 @@ analyze((:- mode(X)), _Layout, Module, _File) :-
     !,
     pairs_to_list(X,L),
     maplist(add_fact(declared_mode, Module), L).
-
 
 analyze((:- block(X)), _Layout, Module, _File) :-
     !,
@@ -493,12 +510,10 @@ analyze((:- volatile(X)), _Layout,Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_volatile, Module),L).
 
-
 analyze((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
-
 
 analyze((Head :- Body), Layout, Module, _File) :-
     !,
@@ -520,18 +535,14 @@ analyze((Head --> Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     analyze_body(Body,LayoutSub, Predicate, dcg).
 
-
 analyze(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
     !,
     functor(PredSpec,_,Arity),
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
 
-
 analyze(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
     analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
-
-
 
 analyze(Fact, Layout, Module, _File) :-
     !,
