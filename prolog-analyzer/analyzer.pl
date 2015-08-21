@@ -294,7 +294,8 @@ analyze_body(X,_,_,dcg) :- is_list(X),!.
 analyze_body(\+(X),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
-    analyze_body(X,Layout,CallingPredicate,DCG).
+    layout_sub_term(Layout,2,LayoutX),
+    analyze_body(X,LayoutX,CallingPredicate,DCG).
 
 analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     !,
