@@ -512,6 +512,8 @@ x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
 x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
 x_unwrap_module(smt_solvers_interface(X),Y) :- !, X=Y.
 x_unwrap_module(probporsrc(X),Y) :- !, X=Y.
+x_unwrap_module(prozsrc(X),Y) :- !, X=Y.
+x_unwrap_module(probltlsrc(X),Y) :- !, X=Y.
 x_unwrap_module(extension(E),Y) :- !,
     atom_chars(E,ExtensionPath),
     suffix(ExtensionPath,Module),
@@ -623,7 +625,7 @@ analyzef(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity)
     assert_head(Predicate, Layout).
 
 analyzef(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
-    analyze(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
+    analyzef(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
 
 
 assert_head(Predicate, Layout) :-
