@@ -126,6 +126,7 @@ body_call((A ; B),Call) :- body_call(A,Call) ; body_call(B,Call).
 body_call(\+(A),Call) :- body_call(A,Call).
 body_call(if(A,B,C),Call) :- body_call(A,Call) ; body_call(B,Call) ; body_call(C,Call).
 body_call(when(_,A),Call) :- body_call(A,Call).
+body_call(findall(_,A,_),Call) :- body_call(A,Call).
 
 % ==========================================
 
@@ -412,6 +413,18 @@ analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+
+% TO DO: support setof/3, bagof/3
+analyze_body(findall(A,B,C),Layout, CallingPredicate, DCG) :-
+  !,
+  assert_call(CallingPredicate, built_in:findall(A,B,C), Layout, DCG),
+  layout_sub_term(Layout,3,LayoutB),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+analyze_body(findall(A,B,C,D),Layout, CallingPredicate, DCG) :-
+  !,
+  assert_call(CallingPredicate, built_in:findall(A,B,C,D), Layout, DCG),
+  layout_sub_term(Layout,3,LayoutB),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body(assert(A),Layout, CallingPredicate, DCG) :-
