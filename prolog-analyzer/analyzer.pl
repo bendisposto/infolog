@@ -23,7 +23,7 @@
     is_dynamic/1,    % is_dynamic(module:name/arity)
     is_volatile/1,   % is_volatile(module:name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
-    klaus/3,        % klaus(module:name/arity,  startline, endline)
+    klaus/4,        % klaus(module,name/arity,  startline, endline)
     calling/4,       % calling(callingmodule:callingpredicate/callingarity, module:name/arity, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/1,   % is_exported(module:name/arity)
@@ -81,6 +81,33 @@ print_calls(FromModule,ToModule) :- format('Calls from ~w to ~w~n===============
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
+
+% try and find uncovered call
+uncovered_call(FromModule,ToModule,Call) :- calling(FromModule:Q,ToModule:Call,L1,L2),
+    \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
+    \+(Call=recursive_call/0), \+ is_dynamic(M:Call),
+   format('Uncovered Call in module ~w: ~w [~w -~w]~n',[FromModule,Call,L1,L2]).
+
+standard_module(built_in).
+standard_module(lists).
+standard_module(codesio).
+standard_module(random).
+standard_module(tcltk).
+standard_module(system).
+standard_module(file_systems).
+standard_module(process).
+standard_module(terms).
+standard_module(timeout).
+standard_module(avl).
+standard_module(clpfd).
+   
+body_call(V,Call) :- var(V),!, Call=V.
+body_call((A,B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call((A -> B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call((A ; B),Call) :- body_call(A,Call) ; body_call(B,Call).
+body_call(\+(A),Call) :- body_call(A,Call).
+body_call(if(A,B,C),Call) :- body_call(A,Call) ; body_call(B,Call) ; body_call(C,Call).
+body_call(when(_,A),Call) :- body_call(A,Call).
 
 % ==========================================
 
@@ -165,7 +192,7 @@ export_clause(S) :-
             P,string,
             A, number,
             Start, number,
-            End, number], klaus(M:P/A, Start, End),L),
+            End, number], klaus(M,P/A, Start, End),L),
   maplist(write_clojure(S,clause),L).
 
 export_operator(S) :-
@@ -301,13 +328,13 @@ analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
 %analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
 %    analyze_body(X,Layout,CallingPredicate,DCG).
 
-analyze_body(get_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+analyze_body(get_atts(A,B),Layout,CallingPredicate,DCG) :- !,
     CallingPredicate = M:_/_,
-    assert_call(CallingPredicate, M:get_atts/2, Layout, DCG).
+    assert_call(CallingPredicate, M:get_atts(A,B), Layout, DCG).
 
-analyze_body(put_atts(_,_),Layout,CallingPredicate,DCG) :- !,
+analyze_body(put_atts(A,B),Layout,CallingPredicate,DCG) :- !,
     CallingPredicate = M:_/_,
-    assert_call(CallingPredicate, M:put_atts/2, Layout, DCG).
+    assert_call(CallingPredicate, M:put_atts(A,B), Layout, DCG).
 
 analyze_body(X,_,_,dcg) :- is_list(X),!.
 
@@ -554,7 +581,9 @@ analyze(Fact, Layout, Module, _File) :-
 assert_head(Predicate, Layout) :-
     (predicate(Predicate) -> true; assert(predicate(Predicate))),
     get_position(Layout, StartLine, EndLine),
-    assert(klaus(Predicate,  StartLine, EndLine)).
+    (Predicate = M:P ->  assert(klaus(M,P,  StartLine, EndLine))
+       ;  format('*** Unknown Module for ~w~n',[Predicate]),
+          assert(klaus(module_yet_unknown,Predicate,  StartLine, EndLine))).
 
 
 get_module(Name, Arity, CallingModule, built_in) :-
