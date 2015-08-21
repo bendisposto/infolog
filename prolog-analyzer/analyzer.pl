@@ -322,27 +322,32 @@ get_position1(Layout, StartLine, EndLine) :-
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
      % calling(cmodule:cname/carity, module:name/arity, startline, endline)
-assert_call(CallingPredicate, Predicate, Layout,  no_dcg) :-
+assert_call(CallingPredicate, Predicate, Layout, DCG) :-
+    (assert_call2(DCG,CallingPredicate, Predicate, Layout) -> true
+      ; format('*** assert_call failed ~w~n',[assert_call(CallingPredicate, Predicate, Layout, DCG)])).
+assert_call2(no_dcg,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     %((StartLine= -1,EndLine= -1) -> nl,print(layoutm1(Layout,Predicate)),nl,nl,trace ; true),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, Arity),
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
-assert_call(CallingPredicate, Predicate, Layout, dcg) :-
+assert_call2(dcg,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, WrongArity),
     Arity is WrongArity + 2,
     assert_if_new(calling(CallingPredicate, Module:Name/Arity, StartLine, EndLine)).
 
-
+safe_analyze_body(X,Layout, CallingPredicate, DCG) :-
+   (analyze_body(X,Layout, CallingPredicate, DCG) -> true
+     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])).
 
 % analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
 
 analyze_body(X,Layout, CallingPredicate, DCG) :-
-    %%print(analyze_body(X,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
+    % print(analyze_body(X,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
     var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
 
 analyze_body(Module:X,Layout, CallingPredicate, DCG) :-
@@ -376,7 +381,7 @@ analyze_body(\+(X),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
     layout_sub_term(Layout,2,LayoutX),
-    analyze_body(X,LayoutX,CallingPredicate,DCG).
+    safe_analyze_body(X,LayoutX,CallingPredicate,DCG).
 
 analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     !,
@@ -385,17 +390,17 @@ analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     layout_sub_term(LayoutAB,2,LayoutA),
     layout_sub_term(LayoutAB,3,LayoutB),
     layout_sub_term(Layout,3,LayoutC),
-    analyze_body(A,LayoutA, CallingPredicate, DCG),
-    analyze_body(B,LayoutB, CallingPredicate, DCG),
-    analyze_body(C,LayoutC, CallingPredicate, DCG).
+    safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+    safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
+    safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
 
 analyze_body((A -> B),Layout, CallingPredicate, DCG) :-
     !,
     assert_call(CallingPredicate, built_in:'->'(_,_), Layout, DCG),
     layout_sub_term(Layout,2,LayoutA),
     layout_sub_term(Layout,3,LayoutB),
-    analyze_body(A,LayoutA,CallingPredicate, DCG),
-    analyze_body(B,LayoutB,CallingPredicate, DCG).
+    safe_analyze_body(A,LayoutA,CallingPredicate, DCG),
+    safe_analyze_body(B,LayoutB,CallingPredicate, DCG).
 
 analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     !,
@@ -403,23 +408,23 @@ analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
     layout_sub_term(Layout,2,LayoutA),
     layout_sub_term(Layout,3,LayoutB),
     layout_sub_term(Layout,4,LayoutC),
-    analyze_body(A,LayoutA, CallingPredicate, DCG),
-    analyze_body(B,LayoutB, CallingPredicate, DCG),
-    analyze_body(C,LayoutC, CallingPredicate, DCG).
+    safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+    safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
+    safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
 
 analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
   !,
   assert_call(CallingPredicate, built_in:when(A,B), Layout, DCG),
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, CallingPredicate, DCG),
-  analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body(assert(A),Layout, CallingPredicate, DCG) :-
   !,
-  assert_call(CallingPredicate, built_in:assert(A), Layout, DCG),
+  assert_call(CallingPredicate, built_in:assert(A), Layout, DCG), % TO DO: keep more info about which predicate asserted
   layout_sub_term(Layout,2,LayoutA),
-  analyze_body(A,LayoutA,CallingPredicate,DCG).
+  safe_analyze_body(A,LayoutA,CallingPredicate,DCG).
 
 analyze_body(retract(A),Layout, CallingPredicate, DCG) :-
   !,
@@ -431,20 +436,20 @@ analyze_body((A,B),Layout, CallingPredicate, DCG) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, CallingPredicate, DCG),
-  analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body((A;B),Layout, CallingPredicate, DCG) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  analyze_body(A,LayoutA, CallingPredicate, DCG),
-  analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
   !,
-  CallingPredicate = Module:N/A,
-  (functor(Call,N,A) ->
+  CallingPredicate = CModule:N/A,
+  ((CModule=Module,functor(Call,N,A)) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, Module:Call, Layout, DCG)).
 
