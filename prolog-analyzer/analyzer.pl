@@ -1,6 +1,7 @@
 :- prolog_flag(compiling,_,debugcode).
 :- prolog_flag(source_info,_,on).
 :- prolog_flag(profiling,_,on).
+portray_message(informational, _).
 
 :- use_module(library(lists)).
 :- use_module(library(terms)).
@@ -336,7 +337,7 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
 
 adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
 adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
-adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
+%adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
 adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG) :-
@@ -420,6 +421,15 @@ analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
+analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg, meta
+   meta_pred(META,MODULE,List),
+   % TO DO: check that MODULE is also imported !
+   !,
+   %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
+   assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
+   maplist(analyze_sub_arg(META, Layout, CallingPredicate),List).
+
+
 % TO DO: support setof/3, bagof/3
 analyze_body(findall(A,B,C),Layout, CallingPredicate, DCG) :-
   !,
@@ -470,6 +480,38 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
+
+
+% a list of predefined meta_predicates:
+% meta_pred(CallSkeleton, DefiningModule, ListOfMetaArgs)
+meta_pred(maplist(_,_),lists,[1/meta(1)]).
+meta_pred(maplist(_,_,_),lists,[1/meta(2)]).
+meta_pred(maplist(_,_,_,_),lists,[1/meta(3)]).
+meta_pred(exclude(_,_,_),lists,[1/meta(1)]).
+meta_pred(exclude(_,_,_,_),lists,[1/meta(2)]).
+meta_pred(exclude(_,_,_,_,_),lists,[1/meta(3)]).
+meta_pred(include(_,_,_),lists,[1/meta(1)]).
+meta_pred(include(_,_,_,_),lists,[1/meta(2)]).
+meta_pred(include(_,_,_,_,_),lists,[1/meta(3)]).
+meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
+% add cumlist, scanlist,... + user-defined meta_predicate s
+
+analyze_sub_arg(META, Layout, CallingPredicate, Nr / meta(ADD) ) :- Nr1 is Nr+1,
+  layout_sub_term(Layout,Nr1,LayoutA),
+  arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
+  add_args(SubArg,ADD,SubArgADD),
+  %format(' Analyze Sub ~w -> ~w  [ ~w ] (from ~w)~n',[Nr,ADD,SubArgADD,CallingPredicate]),
+  safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg).
+   
+add_args(Call,0,Res) :- !, Res=Call.
+add_args(M:Call,N,Res) :- !, Res = M:CR, add_args(Call,N,CR).
+add_args(Call,N,Res) :- %print(add(Call,N)),nl,
+  Call =.. FA,
+  length(Xtra,N), append(FA,Xtra,NFA),
+   Res =.. NFA.
+
+
+
 
 
 mk_problem(P) :- assert(problem(P)).
