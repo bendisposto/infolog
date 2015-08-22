@@ -475,12 +475,19 @@ meta_pred(somechk(_,_,_,_),lists,[meta_arg(1,3)]).
 meta_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
 meta_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]).
-meta_pred(findall(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-meta_pred(findall(_,_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0),meta_arg(4,0)]).
+meta_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
+meta_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
 % TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
 % TO DO: check that meta_pred(findall(_,_,_),built_in,[1/meta(0)]) works.
 % TO DO: support setof/3, bagof/3
+% We could add ;/2, \+/1, ...
+
+% Note: extra argument is only added at top-level for meta_pred (different behaviour to DCG expansion):
+%| ?- maplist((q;r),[a,b],R).
+%! Existence error in user:(;)/4
+%! procedure user:(;)/4 does not exist
+%! goal:  user:;(q,r,a,_23255)
 
 analyze_sub_arg(META, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
