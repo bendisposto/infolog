@@ -128,14 +128,16 @@ standard_module(samsort).
 standard_module(fastrw).
 standard_module(aggregate).
 
+% utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
-body_call((A,B),Call) :- body_call(A,Call) ; body_call(B,Call).
-body_call((A -> B),Call) :- body_call(A,Call) ; body_call(B,Call).
-body_call((A ; B),Call) :- body_call(A,Call) ; body_call(B,Call).
-body_call(\+(A),Call) :- body_call(A,Call).
-body_call(if(A,B,C),Call) :- body_call(A,Call) ; body_call(B,Call) ; body_call(C,Call).
-body_call(when(_,A),Call) :- body_call(A,Call).
-body_call(findall(_,A,_),Call) :- body_call(A,Call).
+body_call((A,B),Call) :- !, body_call(A,Call) ; body_call(B,Call).
+body_call((A ; B),Call) :- !, body_call(A,Call) ; body_call(B,Call).
+body_call(\+(A),Call) :- !, body_call(A,Call).
+body_call(when(_,A),Call) :- !, body_call(A,Call).
+body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),List), 
+   arg(Nr,Body,SubArg),
+   body_call(SubArg,InnerCall),
+   add_args(InnerCal,Add,Call).
 
 % ==========================================
 
@@ -479,7 +481,6 @@ meta_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
 meta_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
 % TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
-% TO DO: check that meta_pred(findall(_,_,_),built_in,[1/meta(0)]) works.
 % TO DO: support setof/3, bagof/3
 % We could add ;/2, \+/1, ...
 
