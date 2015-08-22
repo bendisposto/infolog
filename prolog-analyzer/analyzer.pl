@@ -330,9 +330,14 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
     functor(Call, Name, SourceArity),
-    (DCG = dcg -> Arity is SourceArity + 2 ; Arity=SourceArity),
+    adapt_arity(DCG,SourceArity,Arity),
     decompose_call(CallingPredicate,CM,CP),
     assert_if_new(calling(CM,CP, Module,Name/Arity, StartLine, EndLine)).
+
+adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
+adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
+adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
+adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG) :-
    (analyze_body(X,Layout, CallingPredicate, DCG) -> true
