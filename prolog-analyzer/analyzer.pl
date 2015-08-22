@@ -66,9 +66,12 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 
-lint :- print('Start checking'),nl,
+lint :- print('Start checking'),nl,lint(_).
+lint(vacuous_modules) :-
         vacuous_module_dependency(_M1,_M2),fail.
-lint :- print('Done checking'),nl.
+lint(uncovered_calls) :-
+        uncovered_call(_,_,_),fail.
+lint(_) :- print('Done checking'),nl.
 
 % check if there is a dependency without a call that requires it:
 vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
@@ -119,6 +122,11 @@ standard_module(terms).
 standard_module(timeout).
 standard_module(avl).
 standard_module(clpfd).
+standard_module(ordsets).
+standard_module(sets).
+standard_module(samsort).
+standard_module(fastrw).
+standard_module(aggregate).
 
 body_call(V,Call) :- var(V),!, Call=V.
 body_call((A,B),Call) :- body_call(A,Call) ; body_call(B,Call).
@@ -395,32 +403,6 @@ analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
     safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
 
-analyze_body((A -> B),Layout, CallingPredicate, DCG) :-
-    !,
-    assert_call(CallingPredicate, built_in:'->'(_,_), Layout, DCG),
-    layout_sub_term(Layout,2,LayoutA),
-    layout_sub_term(Layout,3,LayoutB),
-    safe_analyze_body(A,LayoutA,CallingPredicate, DCG),
-    safe_analyze_body(B,LayoutB,CallingPredicate, DCG).
-
-analyze_body(if(A,B,C),Layout, CallingPredicate, DCG) :-
-    !,
-    assert_call(CallingPredicate, built_in:if(A,B,C), Layout, DCG),
-    layout_sub_term(Layout,2,LayoutA),
-    layout_sub_term(Layout,3,LayoutB),
-    layout_sub_term(Layout,4,LayoutC),
-    safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-    safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
-    safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
-
-analyze_body(when(A,B),Layout, CallingPredicate, DCG) :-
-  !,
-  assert_call(CallingPredicate, built_in:when(A,B), Layout, DCG),
-  layout_sub_term(Layout,2,LayoutA),
-  layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
-
 analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg, meta
    meta_pred(META,MODULE,List),
    % TO DO: check that MODULE is also imported !
@@ -428,19 +410,6 @@ analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
    maplist(analyze_sub_arg(META, Layout, CallingPredicate),List).
-
-
-% TO DO: support setof/3, bagof/3
-analyze_body(findall(A,B,C),Layout, CallingPredicate, DCG) :-
-  !,
-  assert_call(CallingPredicate, built_in:findall(A,B,C), Layout, DCG),
-  layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
-analyze_body(findall(A,B,C,D),Layout, CallingPredicate, DCG) :-
-  !,
-  assert_call(CallingPredicate, built_in:findall(A,B,C,D), Layout, DCG),
-  layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
 analyze_body(assert(A),Layout, CallingPredicate, DCG) :-
   !,
@@ -503,9 +472,15 @@ meta_pred(some(_,_,_,_),lists,[meta_arg(1,3)]).
 meta_pred(somechk(_,_),lists,[meta_arg(1,1)]).
 meta_pred(somechk(_,_,_),lists,[meta_arg(1,2)]).
 meta_pred(somechk(_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
+meta_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
+meta_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]).
+meta_pred(findall(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
+meta_pred(findall(_,_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0),meta_arg(4,0)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
 % TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
 % TO DO: check that meta_pred(findall(_,_,_),built_in,[1/meta(0)]) works.
+% TO DO: support setof/3, bagof/3
 
 analyze_sub_arg(META, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
@@ -659,12 +634,12 @@ analyze(':-'(Body), Layout, Module, _File) :-
 analyze((Head :- Body), Layout, Module, _File) :-
     !,
     functor(Head,Name,Arity),
+    % nl,nl,print(layout_clause(Name/Arity,Head,Body)),nl,
     Predicate = Module:Name/Arity,
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
-    %nl,nl,print(layout_clause(_FirstToken,Head, LayoutHead, LayoutSub)),nl,
     layout_sub_term(Layout,3,LayoutSub),
-    analyze_body(Body,LayoutSub, Predicate, no_dcg).
+    safe_analyze_body(Body,LayoutSub, Predicate, no_dcg).
 
 analyze((Head --> Body), Layout, Module, _File) :-
     !,
@@ -678,6 +653,7 @@ analyze((Head --> Body), Layout, Module, _File) :-
 
 analyze(Fact, Layout, Module, _File) :-
     !,
+    %nl,print(fact(Fact)),nl,
     functor(Fact,Name,Arity),
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
