@@ -494,7 +494,8 @@ meta_pred(include(_,_,_),lists,[1/meta(1)]).
 meta_pred(include(_,_,_,_),lists,[1/meta(2)]).
 meta_pred(include(_,_,_,_,_),lists,[1/meta(3)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
-% add cumlist, scanlist,... + user-defined meta_predicate s
+% TO DO: add cumlist, scanlist,... + user-defined meta_predicate s
+% TO DO: check that meta_pred(findall(_,_,_),built_in,[1/meta(0)]) works.
 
 analyze_sub_arg(META, Layout, CallingPredicate, Nr / meta(ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
