@@ -484,20 +484,30 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
 
 % a list of predefined meta_predicates:
 % meta_pred(CallSkeleton, DefiningModule, ListOfMetaArgs)
-meta_pred(maplist(_,_),lists,[1/meta(1)]).
-meta_pred(maplist(_,_,_),lists,[1/meta(2)]).
-meta_pred(maplist(_,_,_,_),lists,[1/meta(3)]).
-meta_pred(exclude(_,_,_),lists,[1/meta(1)]).
-meta_pred(exclude(_,_,_,_),lists,[1/meta(2)]).
-meta_pred(exclude(_,_,_,_,_),lists,[1/meta(3)]).
-meta_pred(include(_,_,_),lists,[1/meta(1)]).
-meta_pred(include(_,_,_,_),lists,[1/meta(2)]).
-meta_pred(include(_,_,_,_,_),lists,[1/meta(3)]).
+meta_pred(maplist(_,_),lists,[meta_arg(1,1)]).
+meta_pred(maplist(_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(maplist(_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(exclude(_,_,_),lists,[meta_arg(1,1)]).
+meta_pred(exclude(_,_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(exclude(_,_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(include(_,_,_),lists,[meta_arg(1,1)]).
+meta_pred(include(_,_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(include(_,_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(convlist(_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(scanlist(_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(scanlist(_,_,_,_,_),lists,[meta_arg(1,4)]).
+meta_pred(scanlist(_,_,_,_,_,_),lists,[meta_arg(1,5)]).
+meta_pred(some(_,_),lists,[meta_arg(1,1)]).
+meta_pred(some(_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(some(_,_,_,_),lists,[meta_arg(1,3)]).
+meta_pred(somechk(_,_),lists,[meta_arg(1,1)]).
+meta_pred(somechk(_,_,_),lists,[meta_arg(1,2)]).
+meta_pred(somechk(_,_,_,_),lists,[meta_arg(1,3)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
-% TO DO: add cumlist, scanlist,... + user-defined meta_predicate s
+% TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
 % TO DO: check that meta_pred(findall(_,_,_),built_in,[1/meta(0)]) works.
 
-analyze_sub_arg(META, Layout, CallingPredicate, Nr / meta(ADD) ) :- Nr1 is Nr+1,
+analyze_sub_arg(META, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
   arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
   add_args(SubArg,ADD,SubArgADD),
