@@ -733,13 +733,14 @@ update.
 
 :- dynamic seen_token/0.
 
-user:term_expansion(Term, Layout, Tokens, TermOut, [], [codeq | Tokens]) :-
+user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
+    %(Term = (atomic_eq_check(_,_,_) :- B) -> trace ; true),
+    nonmember(codeq, Tokens), % do not expand if already expanded
     prolog_load_context(module, Module),
     prolog_load_context(file, File),
     (member(rm_debug_calls,Tokens) -> assert_if_new(seen_token); true),
-    (seen_token -> member(rm_debug_calls,Tokens);true),
-    nonmember(codeq, Tokens), % do not expand if already expanded
+    %(seen_token -> member(rm_debug_calls,Tokens) ; true), % I am not sure what the purpose of this is ? It certainly removes certain clauses from the analysis
   % print(expand(Module,Term)),nl,
     (analyzef(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
