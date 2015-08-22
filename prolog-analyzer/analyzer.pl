@@ -106,8 +106,9 @@ uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L
 
 % always defined
 defined(recursive_call/0).
-defined(putt_atts/2).
+defined(put_atts/2).
 defined(get_atts/2).
+defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
 % to do: more precise analysis of which predicates are actually exported
 standard_module(built_in).
@@ -132,12 +133,13 @@ standard_module(aggregate).
 body_call(V,Call) :- var(V),!, Call=V.
 body_call((A,B),Call) :- !, body_call(A,Call) ; body_call(B,Call).
 body_call((A ; B),Call) :- !, body_call(A,Call) ; body_call(B,Call).
+body_call((A -> B),Call) :- !, body_call(A,Call) ; body_call(B,Call).
 body_call(\+(A),Call) :- !, body_call(A,Call).
 body_call(when(_,A),Call) :- !, body_call(A,Call).
 body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),List), 
    arg(Nr,Body,SubArg),
    body_call(SubArg,InnerCall),
-   add_args(InnerCal,Add,Call).
+   add_args(InnerCall,Add,Call).
 
 % ==========================================
 
@@ -405,26 +407,6 @@ analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
     safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
     safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
 
-analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg, meta
-   meta_pred(META,MODULE,List),
-   % TO DO: check that MODULE is also imported !
-   !,
-   %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
-   assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
-   maplist(analyze_sub_arg(META, Layout, CallingPredicate),List).
-
-analyze_body(assert(A),Layout, CallingPredicate, DCG) :-
-  !,
-  assert_call(CallingPredicate, built_in:assert(A), Layout, DCG), % TO DO: keep more info about which predicate asserted
-  layout_sub_term(Layout,2,LayoutA),
-  safe_analyze_body(A,LayoutA,CallingPredicate,DCG).
-
-analyze_body(retract(A),Layout, CallingPredicate, DCG) :-
-  !,
-  assert_call(CallingPredicate, built_in:retract(A), Layout, DCG),
-  layout_sub_term(Layout,2,LayoutA),
-  analyze_body(A,LayoutA,CallingPredicate,DCG).
-
 analyze_body((A,B),Layout, CallingPredicate, DCG) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
@@ -438,6 +420,21 @@ analyze_body((A;B),Layout, CallingPredicate, DCG) :-
   layout_sub_term(Layout,3,LayoutB),
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+
+analyze_body((A->B),Layout, CallingPredicate, DCG) :-
+  !,
+  layout_sub_term(Layout,2,LayoutA),
+  layout_sub_term(Layout,3,LayoutB),
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+
+analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg, meta
+   meta_pred(META,MODULE,List),
+   % TO DO: check that MODULE is also imported !
+   !,
+   %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
+   assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
+   maplist(analyze_sub_arg(META, Layout, CallingPredicate),List).
 
 analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
   !,
@@ -476,9 +473,14 @@ meta_pred(somechk(_,_,_),lists,[meta_arg(1,2)]).
 meta_pred(somechk(_,_,_,_),lists,[meta_arg(1,3)]).
 meta_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-meta_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]).
+%meta_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
 meta_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
 meta_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
+meta_pred(assert(_),built_in,[meta_arg(1,0)]). % TO DO: keep more info about which predicate asserted
+meta_pred(asserta(_),built_in,[meta_arg(1,0)]).
+meta_pred(assertz(_),built_in,[meta_arg(1,0)]).
+meta_pred(retract(_),built_in,[meta_arg(1,0)]).
+meta_pred(retractall(_),built_in,[meta_arg(1,0)]).
 meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
 % TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
 % TO DO: support setof/3, bagof/3
