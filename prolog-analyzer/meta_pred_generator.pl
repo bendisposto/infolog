@@ -1,4 +1,4 @@
-:- module(meta_pred_generator,[gen/0]).
+:- module(meta_pred_generator,[gen/0, translate_meta_predicate_pattern/3]).
 
 
 % generate facts of the form:
@@ -11,14 +11,17 @@ gen :- % tell(meta_preds.pl),
    meta_predicate(Module,List),
    format('~n% module ~w~n~n',[Module]),
    member(Pattern,List),
-   functor(Pattern,Predicate,N),
-   Pattern =.. [_|Args],
-   gen_meta_arg_list(Args,1,MetaArgList),
-   functor(Copy,Predicate,N),
-   portray_clause( meta_library_pred(Copy,Module,MetaArgList)),
+   translate_meta_predicate_pattern(Pattern, Head,MetaArgList),
+   portray_clause( meta_library_pred(Head,Module,MetaArgList)),
    fail.
 gen :-nl.
 
+translate_meta_predicate_pattern(Pattern, Head, MetaArgList) :-
+   functor(Pattern,Predicate,N),
+   Pattern =.. [_|Args],
+   gen_meta_arg_list(Args,1,MetaArgList),
+   functor(Head,Predicate,N). % create copy of Pattern with vars as args
+    
 gen_meta_arg_list([],_,[]).
 gen_meta_arg_list([N|T],Pos,[meta_arg(Pos,N)|MT]) :- number(N),!,
     P1 is Pos+1,

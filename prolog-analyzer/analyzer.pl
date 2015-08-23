@@ -457,9 +457,18 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
 :- use_module(meta_preds,[meta_library_pred/3]).
 % a list of predefined meta_predicates:
 % meta_pred(CallSkeleton, DefiningModule, ListOfMetaArgs)
+meta_pred(Var,_Module,_MetaList) :- var(Var),!,fail.
 meta_pred(Module:Call,Module,MetaList) :- !, meta_pred(Call,Module,MetaList).
 meta_pred(Call,Module,MetaList) :- meta_built_in_pred(Call,Module,MetaList),!.
-meta_pred(Call,Module,MetaList) :- meta_library_pred(Call,Module,MetaList).
+meta_pred(Call,Module,MetaList) :- meta_library_pred(Call,Module,MetaList),!.
+meta_pred(Call,Module,MetaList) :- meta_user_pred(Call,Module,MetaList).
+
+:- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
+:- dynamic meta_user_pred/3.
+add_meta_predicate(Module,Pattern) :-
+   translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
+   format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
+   assert(meta_user_pred(Head,Module,MetaArgList)).
 
 % built ins which are *not* dealt with specially by DCG rules
 meta_built_in_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
@@ -597,7 +606,8 @@ analyze((:- dynamic(X)), _Layout,Module,_File) :-
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
     pairs_to_list(X,L),
-    maplist(add_fact(is_meta, Module), L).
+    maplist(add_fact(is_meta, Module), L),
+    maplist(add_meta_predicate(Module), L).
 
 %blocking, operator declarations, volatile, multifile, 	mode
 
