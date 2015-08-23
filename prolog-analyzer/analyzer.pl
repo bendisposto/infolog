@@ -341,7 +341,7 @@ assert_call(CallingPredicate, Predicate, Layout, DCG) :-
       ; format('*** assert_call failed ~w~n',[assert_call(CallingPredicate, Predicate, Layout, DCG)])).
 assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
-    (Predicate = Module:Call -> true; Call=Predicate, Module=module_yet_unknown),
+    decompose_call(Predicate,Module,Call),
     functor(Call, Name, SourceArity),
     adapt_arity(DCG,SourceArity,Arity),
     decompose_call(CallingPredicate,CM,CP),
@@ -428,9 +428,14 @@ analyze_body((A->B),Layout, CallingPredicate, DCG) :-
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
 
-analyze_body(META, Layout, CallingPredicate, no_dcg) :- % TO DO: support for dcg, meta
+analyze_body(OrigMETA, Layout, CallingPredicate, DCG) :-
+   (DCG=no_dcg -> META = OrigMETA
+     ; add_args(OrigMETA,2,META)
+   ),
    meta_pred(META,MODULE,List),
-   % TO DO: check that MODULE is also imported !
+   % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
+   ((MODULE=built_in ; decompose_call(CallingPredicate,CallingModule,_), depends_on(CallingModule,MODULE))
+     -> true ; format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),fail),
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
