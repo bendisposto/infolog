@@ -454,40 +454,24 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
-
+:- use_module(meta_preds,[meta_library_pred/3]).
 % a list of predefined meta_predicates:
 % meta_pred(CallSkeleton, DefiningModule, ListOfMetaArgs)
-meta_pred(maplist(_,_),lists,[meta_arg(1,1)]).
-meta_pred(maplist(_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(maplist(_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(exclude(_,_,_),lists,[meta_arg(1,1)]).
-meta_pred(exclude(_,_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(exclude(_,_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(include(_,_,_),lists,[meta_arg(1,1)]).
-meta_pred(include(_,_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(include(_,_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(convlist(_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(scanlist(_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(scanlist(_,_,_,_,_),lists,[meta_arg(1,4)]).
-meta_pred(scanlist(_,_,_,_,_,_),lists,[meta_arg(1,5)]).
-meta_pred(some(_,_),lists,[meta_arg(1,1)]).
-meta_pred(some(_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(some(_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(somechk(_,_),lists,[meta_arg(1,1)]).
-meta_pred(somechk(_,_,_),lists,[meta_arg(1,2)]).
-meta_pred(somechk(_,_,_,_),lists,[meta_arg(1,3)]).
-meta_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
-meta_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-%meta_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
-meta_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
-meta_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
-meta_pred(assert(_),built_in,[meta_arg(1,0)]). % TO DO: keep more info about which predicate asserted
-meta_pred(asserta(_),built_in,[meta_arg(1,0)]).
-meta_pred(assertz(_),built_in,[meta_arg(1,0)]).
-meta_pred(retract(_),built_in,[meta_arg(1,0)]).
-meta_pred(retractall(_),built_in,[meta_arg(1,0)]).
-meta_pred(Module:Call,Module,MetaList) :- meta_pred(Call,Module,MetaList).
-% TO DO: add cumlist, group, partition, map_product,... + user-defined meta_predicate s
+meta_pred(Module:Call,Module,MetaList) :- !, meta_pred(Call,Module,MetaList).
+meta_pred(Call,Module,MetaList) :- meta_built_in_pred(Call,Module,MetaList),!.
+meta_pred(Call,Module,MetaList) :- meta_library_pred(Call,Module,MetaList).
+
+% built ins which are *not* dealt with specially by DCG rules
+meta_built_in_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
+meta_built_in_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
+%meta_built_in_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
+meta_built_in_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
+meta_built_in_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
+meta_built_in_pred(assert(_),built_in,[meta_arg(1,0)]). % TO DO: keep more info about which predicate asserted
+meta_built_in_pred(asserta(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(assertz(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
 % TO DO: support setof/3, bagof/3
 % We could add ;/2, \+/1, ...
 
