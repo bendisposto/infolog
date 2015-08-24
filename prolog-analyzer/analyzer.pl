@@ -29,6 +29,7 @@ portray_message(informational, _).
     meta_call/7,     % meta_call(callingmodule,callingpredicate/callingarity, VAR, ExtraArgs, ClauseHead, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/2,   % is_exported(module,name/arity)
+    is_imported/3,   % is_imported(from_module,imported_module,imported_name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
     is_multifile/1,  % is_multifile(module:name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
@@ -110,16 +111,30 @@ print_meta_calls(_) :- format('===================~n',[]).
 
 % try and find uncovered call
 uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
-    \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
-    \+ is_exported(ToModule,Call), % TO DO : check if also imported !!
-    \+ defined(Call), \+ is_dynamic(ToModule:Call),
+    \+ klaus(ToModule,Call,_,_),
+    \+ always_defined(Call),
+    \+ is_dynamic(ToModule:Call),
+    \+ check_imported(ToModule,Call,FromModule),
    format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
 
+check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
+check_imported(Module,Call,_,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
+   !,
+   (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
+     ; is_exported(Module,Call) -> true
+     ; format('Importing call which is not exported: ~w:~w~n',[Module,Call]),fail
+    ).
+check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % imported, but not selectively imported
+   (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
+     ; is_exported(Module,Call)
+    ).
+   
+
 % always defined
-defined(recursive_call/0).
-defined(put_atts/2).
-defined(get_atts/2).
-defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
+always_defined(recursive_call/0).
+always_defined(put_atts/2).
+always_defined(get_atts/2).
+always_defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
 % to do: more precise analysis of which predicates are actually exported
 standard_module(built_in).
@@ -580,6 +595,9 @@ add_fact2(Fact, Module, Name/Arity) :-
     assert_if_new(predicate(Module,Name/Arity)),
     X =..[Fact, Module, Name/Arity],
     assert(X).
+add_fact3(Fact, Arg1, Arg2, Name/Arity) :-
+    X =..[Fact, Arg1, Arg2, Name/Arity],
+    assert(X).
 
 % TO DO: remove add_fact and replace by add_fact2 for performance and indexing
 add_fact(Fact, Module, Name/Arity) :- !,
@@ -663,7 +681,9 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     maplist(add_fact2(is_exported, Name),ListOfExported).
 
 analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
-    !, dependency(Module,Name), Implement_List_Of_Imports=1.
+    !, dependency(Module,Name),
+    x_unwrap_module(Module,UnwrappedName),
+    maplist(add_fact3(is_imported,UnwrappedName,Name),ListOfImported).
 
 analyze((:- use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
