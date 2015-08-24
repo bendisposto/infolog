@@ -72,7 +72,13 @@ lint :- print('Start checking'),nl,lint(_).
 lint(vacuous_modules) :-
         vacuous_module_dependency(_M1,_M2),fail.
 lint(uncovered_calls) :-
-        uncovered_call(_,_,_),fail.
+        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2),
+        format('*** Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,FromQ]),
+        fail.
+lint(missing_meta_predicates) :-
+        uncovered_meta_call(FromModule,Pred,L1,L2,Msg),
+        format('*** Missing meta_predicate annotation (~w) for ~w:~w [lines ~w-~w]~n',[Msg,FromModule,Pred,L1,L2]),
+        fail.
 lint(_) :- print('Done checking'),nl.
 
 % check if there is a dependency without a call that requires it:
@@ -100,6 +106,17 @@ print_calls(FromModule,ToModule) :-
    fail.
 print_calls(_,_) :- format('===================~n',[]).
 
+% try and find calls where the predicate is not annotated with a meta_predicate
+uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
+   meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
+   (meta_pred_functor(Pred,FromModule,MetaList)
+     -> Head =.. [_|Args], XX='$CALL',
+        nth1(Nr,Args,Arg), Arg==XX,
+        nonmember(meta_arg(Nr,NrAddedArgs),MetaList),
+        Msg = arg(Nr)
+        , print(missing_arg(Nr,MetaList,Pred,Head)),nl
+     ;  Msg = no_annotation).
+   
 print_meta_calls(FromModule) :-
    defined_module(FromModule,_),
    format('Unresolved Meta Calls from ~w~n===================~n',[FromModule]),
@@ -110,15 +127,14 @@ print_meta_calls(FromModule) :-
 print_meta_calls(_) :- format('===================~n',[]).
 
 % try and find uncovered call
-uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
+uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ,ToModule,Call,L1,L2),
     \+ klaus(ToModule,Call,_,_),
     \+ always_defined(Call),
     \+ is_dynamic(ToModule:Call),
-    \+ check_imported(ToModule,Call,FromModule),
-   format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
+    \+ check_imported(ToModule,Call,FromModule).
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
-check_imported(Module,Call,_,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
+check_imported(Module,Call,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
    !,
    (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
      ; is_exported(Module,Call) -> true
@@ -354,9 +370,10 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
-layout_sub_term([],N,[]) :- format('~n*** Could not obtain layout information (~w)~n',[N]).
-layout_sub_term([H|T],N,Res) :-
+layout_sub_term([],N,[]) :- !, format('~n*** Could not obtain layout information (~w)~n',[N]).
+layout_sub_term([H|T],N,Res) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
+%layout_sub_term(Term,N,Res) :- format('~n*** Illegal layout: ~w~n',[layout_sub_term(Term,N,Res)]), Res=[],trace.
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
@@ -372,6 +389,8 @@ is_meta_call_n(call(C,_),1,C).
 is_meta_call_n(call(C,_,_),2,C).
 is_meta_call_n(call(C,_,_,_),3,C).
 is_meta_call_n(call(C,_,_,_,_),4,C).
+is_meta_call_n(call(C,_,_,_,_,_),5,C).
+is_meta_call_n(call(C,_,_,_,_,_,_),6,C).
 
 % assert that a meta-call occured and could not be resolved statically
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
@@ -403,7 +422,9 @@ adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
    (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
-     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])).
+     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])
+     ,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
+    ).
 
 % analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg, _Info).
@@ -491,8 +512,9 @@ analyze_body(OrigMETA, Layout, CallingPredicate, DCG, Info) :-
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
    ((MODULE=built_in ; decompose_call(CallingPredicate,CallingModule,_), depends_on(CallingModule,MODULE))
      -> true
-      ; format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),
-      fail),
+      ; %format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),
+        true
+    ),
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
@@ -527,6 +549,8 @@ add_meta_predicate(Module,Pattern) :-
 gen_user :- % tell meta_user_pred_cache.pl
      meta_user_pred(H,M,L), portray_clause(meta_user_pred(H,M,L)),nl,fail.
 gen_user.
+
+meta_pred_functor(F/N,Module,MetaList) :- functor(Skel,F,N), meta_pred(Skel,Module,MetaList).
 
 :- use_module(meta_preds,[meta_library_pred/3]).
 % a list of predefined meta_predicates:
@@ -583,7 +607,7 @@ analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- N
   safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg, Info).
    
 add_args(Call,0,Res) :- !, Res=Call.
-add_args(Var,N,Res) :- var(Var),!, print(cannot_add_args(Var,N,Res)),nl.
+add_args(Var,_N,Res) :- var(Var),!, true.% causes problems with layout info: is_meta_call_n(Res,N,Var).
 add_args(M:Call,N,Res) :- !, Res = M:CR, add_args(Call,N,CR).
 add_args(Call,N,Res) :- %print(add(Call,N)),nl,
   Call =.. FA,
