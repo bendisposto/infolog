@@ -7,7 +7,10 @@ escaping_format(S, FormatString,Arguments) :-
     maplist(escape_argument,Arguments,EscapedArguments),
     format(S, FormatString,EscapedArguments).
 
-
+escape_argument(Arg,EscArg) :- atomic(Arg),!,
+    atom_codes(Arg,Codes),
+    escape_codes_list(Codes,EscCodes),
+    atom_codes(EscArg,EscCodes).
 escape_argument(Arg,EscArg) :-
     format_to_codes('~w', [Arg], Codes),
     escape_codes_list(Codes,EscCodes),
