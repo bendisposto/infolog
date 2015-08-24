@@ -169,6 +169,14 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
 
 % ==========================================
 
+repl :-
+  read(Term),
+  Term =.. [_|Args],
+  exclude(ground,Args,VarArgs),
+  (call(Term) ->
+    (nl,write(result(VarArgs)),nl,write(cljdone),nl);
+    (nl,write(result(no)),nl,write(cljdone),nl)),
+  repl.
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze(InputFile,OutputFile) :-
