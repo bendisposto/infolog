@@ -458,12 +458,15 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
 
 :- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
 :- dynamic meta_user_pred/3.
-:- include(meta_user_pred_cache).
+:- include(meta_user_pred_cache). % cached version from previous run
 add_meta_predicate(Module,Pattern) :-
    translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
-   format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
-   assert_if_new(meta_user_pred(Head,Module,MetaArgList)).
+   (meta_user_pred(Head,Module,MetaArgList) -> true
+     ; format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
+       assert(meta_user_pred(Head,Module,MetaArgList))
+    ).
 
+% write meta_user_pred facts
 gen_user :- % tell meta_user_pred_cache.pl
      meta_user_pred(H,M,L), portray_clause(meta_user_pred(H,M,L)),nl,fail.
 gen_user.
