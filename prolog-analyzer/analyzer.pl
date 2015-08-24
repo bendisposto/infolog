@@ -154,6 +154,7 @@ standard_module(sets).
 standard_module(samsort).
 standard_module(fastrw).
 standard_module(aggregate).
+standard_module(between).
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
@@ -680,10 +681,11 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     assert_if_new(defined_module(Name,File)),
     maplist(add_fact2(is_exported, Name),ListOfExported).
 
-analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
-    !, dependency(Module,Name),
+analyze((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
+    !, dependency(Module,UsedModule),
+    x_unwrap_module(UsedModule,UnwrappedUsedName),
     x_unwrap_module(Module,UnwrappedName),
-    maplist(add_fact3(is_imported,UnwrappedName,Name),ListOfImported).
+    maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported).
 
 analyze((:- use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
