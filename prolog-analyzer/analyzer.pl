@@ -478,7 +478,13 @@ meta_pred(Var,_Module,_MetaList) :- var(Var),!,fail.
 meta_pred(Module:Call,Module,MetaList) :- !, meta_pred(Call,Module,MetaList).
 meta_pred(Call,Module,MetaList) :- meta_built_in_pred(Call,Module,MetaList),!.
 meta_pred(Call,Module,MetaList) :- meta_library_pred(Call,Module,MetaList),!.
-meta_pred(Call,Module,MetaList) :- meta_user_pred(Call,Module,MetaList).
+meta_pred(Call,Module,MetaList) :- meta_user_pred(Call,Module,MetaList), \+ ignore_meta_user_pred(Call,Module).
+
+% the following meta_predicate annotations are just used for convenience to add module prefixes automatically
+% they do not call the argument
+ignore_meta_user_pred(add_failed_call_error(_),error_manager).
+ignore_meta_user_pred(add_internal_error(_,_),error_manager).
+ignore_meta_user_pred(module_info(_,_),module_information).
 
 % built ins which are *not* dealt with specially by DCG rules
 % Note: extra argument is only added at top-level for meta_pred (different behaviour to DCG expansion):
