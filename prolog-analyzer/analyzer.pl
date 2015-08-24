@@ -696,8 +696,12 @@ assert_head(Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     assert(klaus(M,P,  StartLine, EndLine)).
 
-decompose_call(M:P,MR,PR) :- !, M=MR, P=PR.
+decompose_call(M:P,MR,PR) :- !,decompose_call2(P,M,MR,PR). % peel off all : module constructors
 decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
+
+decompose_call2(P,OuterModule,MR,PR) :- var(P),!, (MR,PR)=(OuterModule:P).
+decompose_call2(M:P,_OuterModule,MR,PR) :- !, decompose_call2(P,M,MR,PR).
+decompose_call2(P,OuterModule,OuterModule,P).
 
 get_module(Name, Arity, CallingModule, built_in) :-
    functor(Call, Name, Arity),
