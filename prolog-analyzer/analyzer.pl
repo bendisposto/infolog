@@ -439,7 +439,7 @@ analyze_body(OrigMETA, Layout, CallingPredicate, DCG) :-
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
-   maplist(analyze_sub_arg(META, Layout, CallingPredicate),List).
+   maplist(analyze_sub_arg(META, MODULE, Layout, CallingPredicate),List).
 
 analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
   !,
@@ -501,7 +501,13 @@ meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
 % We could add ;/2, \+/1, ...
 
 
-analyze_sub_arg(META, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
+analyze_sub_arg(DModule:META,MODULE, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- !,
+  (DModule=MODULE -> true /* user provided additional module prefix; peel it off */
+    ; format('*** Module prefix mismatch: ~w:~w (expected ~w)~n',[DModule,META,MODULE])),
+   % we need to peel off layout to get to META:
+  layout_sub_term(Layout,3,LayoutM),
+   analyze_sub_arg(META, MODULE, LayoutM, CallingPredicate, meta_arg(Nr,ADD) ).
+analyze_sub_arg(META, _, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
   arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
   add_args(SubArg,ADD,SubArgADD),
@@ -659,6 +665,7 @@ analyze((Head :- Body), Layout, Module, _File) :-
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
+    % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg).
 
 analyze((Head --> Body), Layout, Module, _File) :-
