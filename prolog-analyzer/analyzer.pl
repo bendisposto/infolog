@@ -373,7 +373,7 @@ bind_args2([V|Vs],VC,VCN) :-
 layout_sub_term([],N,[]) :- !, format('~n*** Could not obtain layout information (~w)~n',[N]).
 layout_sub_term([H|T],N,Res) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
-%layout_sub_term(Term,N,Res) :- format('~n*** Illegal layout: ~w~n',[layout_sub_term(Term,N,Res)]), Res=[],trace.
+layout_sub_term(Term,N,Res) :- format('~n*** Illegal layout: ~w~n',[layout_sub_term(Term,N,Res)]), Res=[].
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
@@ -607,7 +607,7 @@ analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- N
   safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg, Info).
    
 add_args(Call,0,Res) :- !, Res=Call.
-add_args(Var,_N,Res) :- var(Var),!, true.% causes problems with layout info: is_meta_call_n(Res,N,Var).
+add_args(Var,_N,Res) :- var(Var),!, Res=_.% causes problems with layout info: is_meta_call_n(Res,N,Var).
 add_args(M:Call,N,Res) :- !, Res = M:CR, add_args(Call,N,CR).
 add_args(Call,N,Res) :- %print(add(Call,N)),nl,
   Call =.. FA,
@@ -759,12 +759,13 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact(is_multifile, Module),L).
 
-analyze(':-'(Body), Layout, Module, _File) :-
-    !, layout_sub_term(Layout,1,LayoutSub),
-    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
+analyze(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
+    !,
+    layout_sub_term(Layout,2,LayoutSub),
+    safe_analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
 
 analyze((Head :- Body), Layout, Module, _File) :-
-    !,
+    !, %portray_clause((Head :- Body)),
     functor(Head,Name,Arity),
     % nl,nl,print(layout_clause(Name/Arity,Head,Body)),nl,
     Predicate = Module:Name/Arity,
@@ -774,7 +775,7 @@ analyze((Head :- Body), Layout, Module, _File) :-
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]).
 
-analyze((Head --> Body), Layout, Module, _File) :-
+analyze((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
@@ -784,7 +785,7 @@ analyze((Head --> Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
 
-analyze(Fact, Layout, Module, _File) :-
+analyze(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     !,
     %nl,print(fact(Fact)),nl,
     functor(Fact,Name,Arity),
