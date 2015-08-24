@@ -134,27 +134,32 @@ check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % impor
 always_defined(recursive_call/0).
 always_defined(put_atts/2).
 always_defined(get_atts/2).
+always_defined('~~'/1).  % ProB specific term expander; TO DO: get rid of this
 always_defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
 % to do: more precise analysis of which predicates are actually exported
+standard_module(aggregate).
+standard_module(assoc).
+standard_module(avl).
+standard_module(between).
 standard_module(built_in).
-standard_module(lists).
+standard_module(clpfd).
 standard_module(codesio).
-standard_module(random).
-standard_module(tcltk).
-standard_module(system).
+standard_module(fastrw).
 standard_module(file_systems).
+standard_module(heaps).
+standard_module(lists).
+standard_module(ordsets).
 standard_module(process).
+standard_module(random).
+standard_module(samsort).
+standard_module(sets).
+standard_module(system).
+standard_module(tcltk).
 standard_module(terms).
 standard_module(timeout).
-standard_module(avl).
-standard_module(clpfd).
-standard_module(ordsets).
-standard_module(sets).
-standard_module(samsort).
-standard_module(fastrw).
-standard_module(aggregate).
-standard_module(between).
+standard_module(xml).
+
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
