@@ -454,6 +454,20 @@ analyze_body(Call,Layout, CallingPredicate, DCG) :-
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
+
+
+:- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
+:- dynamic meta_user_pred/3.
+:- include(meta_user_pred_cache).
+add_meta_predicate(Module,Pattern) :-
+   translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
+   format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
+   assert_if_new(meta_user_pred(Head,Module,MetaArgList)).
+
+gen_user :- % tell meta_user_pred_cache.pl
+     meta_user_pred(H,M,L), portray_clause(meta_user_pred(H,M,L)),nl,fail.
+gen_user.
+
 :- use_module(meta_preds,[meta_library_pred/3]).
 % a list of predefined meta_predicates:
 % meta_pred(CallSkeleton, DefiningModule, ListOfMetaArgs)
@@ -463,14 +477,13 @@ meta_pred(Call,Module,MetaList) :- meta_built_in_pred(Call,Module,MetaList),!.
 meta_pred(Call,Module,MetaList) :- meta_library_pred(Call,Module,MetaList),!.
 meta_pred(Call,Module,MetaList) :- meta_user_pred(Call,Module,MetaList).
 
-:- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
-:- dynamic meta_user_pred/3.
-add_meta_predicate(Module,Pattern) :-
-   translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
-   format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
-   assert(meta_user_pred(Head,Module,MetaArgList)).
-
 % built ins which are *not* dealt with specially by DCG rules
+% Note: extra argument is only added at top-level for meta_pred (different behaviour to DCG expansion):
+%| ?- maplist((q;r),[a,b],R).
+%! Existence error in user:(;)/4
+%! procedure user:(;)/4 does not exist
+%! goal:  user:;(q,r,a,_23255)
+
 meta_built_in_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
 %meta_built_in_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
@@ -484,11 +497,6 @@ meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
 % TO DO: support setof/3, bagof/3
 % We could add ;/2, \+/1, ...
 
-% Note: extra argument is only added at top-level for meta_pred (different behaviour to DCG expansion):
-%| ?- maplist((q;r),[a,b],R).
-%! Existence error in user:(;)/4
-%! procedure user:(;)/4 does not exist
-%! goal:  user:;(q,r,a,_23255)
 
 analyze_sub_arg(META, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
