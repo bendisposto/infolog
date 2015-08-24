@@ -179,7 +179,10 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
 
 analyze(InputFile,OutputFile) :-
     analyze(InputFile),
-    export_to_clj_file(OutputFile).
+    print(exporting(OutputFile)),nl,
+    start_analysis_timer(T3),
+    export_to_clj_file(OutputFile),
+    stop_analysis_timer(T3).
 
 analyze(InputFile) :-
     print('loading modules'),nl,
@@ -256,75 +259,64 @@ export_all(S) :-
 
 
 export_dependencies(S) :-
-   findall([LM,string,IM,string], depends_on(LM,IM),L),
-   maplist(write_clojure(S,dependency),L).
+   (depends_on(LM,IM),
+    write_clojure(S,dependency,[LM,string,IM,string]),fail
+    ; true).
 
 export_defined_modules(S) :-
-  findall([M,string, File,string], defined_module(M,File),L),
-  maplist(write_clojure(S,module),L).
+  (defined_module(M,File), write_clojure(S,module,[M,string, File,string]),fail
+   ; true).
 
 export_problems(S) :-
   findall([P], problem(P),L),
   maplist(escaping_format(S,'[problem "~w"]~n'),L).
 
 export_clause(S) :-
-  findall( [M,string,
-            P,string,
-            A, number,
-            Start, number,
-            End, number], klaus(M,P/A, Start, End),L),
-  maplist(write_clojure(S,clause),L).
+   (klaus(M,P/A, Start, End),
+    write_clojure(S,clause,[M,string, P,string, A, number, Start, number, End, number]), fail
+    ; true).
 
 export_operator(S) :-
-
-  findall( [M,string,
-            P,string,
-            A, number,
-            Prio, number,
-            Fix, string,
-            Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
-  maplist(write_clojure(S, operator),L).
+  (operator(M:P/A,Prio, Fix, Assoc),
+   write_clojure(S, operator,[M,string,  P,string,  A, number,
+            Prio, number,  Fix, string,  Assoc, string]),fail
+    ; true).
 
 export_calling(S) :-
-  findall( [M,string,
-            P,string,
-            A, number,
-            CM, string,
-            CP, string,
-            CA, number,
-            Start, number,
-            End, number], calling(M,P/A, CM,CP/CA, Start, End),L),
-  maplist(write_clojure(S,call),L).
+  (calling(M,P/A, CM,CP/CA, Start, End), 
+   write_clojure(S,call,[M,string, P,string, A, number,
+            CM, string, CP, string, CA, number, Start, number, End, number]), fail
+    ; true).
 
-clojure_fact_wrap(S,X,E) :-
- format(S,'[ ~a ',[X]),
- call(E),
- format(S,']~n',[]).
+
+%clojure_fact_wrap(S,X,E) :-
+% format(S,'[ ~a ',[X]),
+% call(E),
+% format(S,']~n',[]).
 
 
 export_X1(S, X) :-
-  F =.. [X,M:P/A],
-  findall([M,string, P,string, A, number], F,L),
-  maplist(write_clojure(S,X),L).
+  (call(X,M:P/A),write_clojure(S,X,[M,string, P,string, A, number]),fail ; true),!.
 
 export_X2(S, X) :-
-  F =.. [X,M:P/A,Args],
-  findall([M,string, P,string, A, number,  Args, string], F,L),
-  maplist(write_clojure(S,X),L).
+   (call(X,M:P/A,Args),
+    write_clojure(S,X,[M,string, P,string, A, number,  Args, string]),fail ; true).
 
 write_clojure(S,X,E) :-
- clojure_fact_wrap(S,X,write_clojure2(S,X,E)).
+ format(S,'[ ~a ',[X]),
+ %clojure_fact_wrap(S,X,write_clojure2(S,X,E)),
+ write_clojure2(E,S,X),
+ format(S,']~n',[]).
 
-write_clojure2(_,_,[]).
-write_clojure2(S,X,[Content,Type|T]) :-
-  write_clojure(S,X, Content,Type),write_clojure2(S,X, T).
+write_clojure2([],_,_).
+write_clojure2([Content,Type|T],S,X) :-
+  write_clojure_type(Type, S,X, Content),
+  write_clojure2(T,S,X).
 
-
-write_clojure(S,_, Content, number) :- !,
+write_clojure_type(number, S,_, Content) :- !,
   format(S, '~d ',[Content]).
-
 %default type is string
-write_clojure(S,_, Content, _) :-
+write_clojure_type(_, S,_, Content) :-
   escaping_format(S, '"~w" ',[Content]).
 
 % ==========================================
@@ -490,7 +482,9 @@ analyze_body(OrigMETA, Layout, CallingPredicate, DCG, Info) :-
    meta_pred(META,MODULE,List),
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
    ((MODULE=built_in ; decompose_call(CallingPredicate,CallingModule,_), depends_on(CallingModule,MODULE))
-     -> true ; format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),fail),
+     -> true
+      ; format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),
+      fail),
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
