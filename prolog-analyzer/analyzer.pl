@@ -26,6 +26,7 @@ portray_message(informational, _).
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
     klaus/4,        % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
+    meta_call/7,     % meta_call(callingmodule,callingpredicate/callingarity, VAR, ExtraArgs, ClauseHead, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/2,   % is_exported(module,name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
@@ -97,6 +98,15 @@ print_calls(FromModule,ToModule) :-
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
+
+print_meta_calls(FromModule) :-
+   defined_module(FromModule,_),
+   format('Unresolved Meta Calls from ~w~n===================~n',[FromModule]),
+   meta_call(FromModule,_,XX,NrAddedArgs,HEAD,L1,L2),
+   (var(XX) -> XX = 'CALL' ; (XX=_:VV, var(VV)) -> VV='CALL' ; true),
+   format('Call+~w:  ~w  ->  ~w   [lines: ~w - ~w of ~w]~n',[NrAddedArgs,HEAD,XX,L1,L2,FromModule]),
+   fail.
+print_meta_calls(_) :- format('===================~n',[]).
 
 % try and find uncovered call
 uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
@@ -336,6 +346,23 @@ get_position1(Layout, StartLine, EndLine) :-
     aflatten(Layout,[StartLine|FlatLayout]),
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
+is_meta_call_n(call(C),0,C).
+is_meta_call_n(call(C,_),1,C).
+is_meta_call_n(call(C,_,_),2,C).
+is_meta_call_n(call(C,_,_,_),3,C).
+is_meta_call_n(call(C,_,_,_,_),4,C).
+
+% assert that a meta-call occured and could not be resolved statically
+assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
+    decompose_call(CallingPredicate,CM,CP),
+    member(head/ClauseHead,Info),
+    get_position(Layout, StartLine, EndLine),
+    !,
+    (DCG = dcg -> ExtraArgs2 is ExtraArgs+2 ; ExtraArgs2=ExtraArgs),
+    assert_if_new(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
+assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
+    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]).
+
      % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
     (assert_call2(DCG,CallingPredicate, Predicate, Layout) -> true
@@ -353,83 +380,89 @@ adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
 %adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
 adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
 
-safe_analyze_body(X,Layout, CallingPredicate, DCG) :-
-   (analyze_body(X,Layout, CallingPredicate, DCG) -> true
+safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
+   (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
      ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])).
 
 % analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
-analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg).
+analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg, _Info).
 
-analyze_body(X,Layout, CallingPredicate, DCG) :-
-    % print(analyze_body(X,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
-    var(X), !, assert_call(CallingPredicate, built_in:call(X), Layout, DCG).
+analyze_body(VAR,Layout, CallingPredicate, DCG, Info) :-
+    % print(analyze_body(VAR,'   ',layout(Layout), calling(CallingPredicate),dcg(DCG))),nl,
+    (var(VAR) ; VAR=_Module:VV, var(VV)), !,
+    assert_unresolved_meta_call(VAR,0,Layout, CallingPredicate, DCG, Info),
+    assert_call(CallingPredicate, built_in:call(VAR), Layout, DCG). % DO we need this ?
 
-analyze_body(Module:X,Layout, CallingPredicate, DCG) :-
-    var(X), !, assert_call(CallingPredicate, built_in:call(Module:X), Layout, DCG).
+analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
+    is_meta_call_n(X,N,VAR),
+    (var(VAR) ; VAR=_Module:VV, var(VV)),
+    !,
+    assert_unresolved_meta_call(VAR,N,Layout, CallingPredicate, DCG, Info).
 
-analyze_body(X,Layout,CallingPredicate,dcg) :-
+
+analyze_body(X,Layout,CallingPredicate,dcg,_) :-
     functor(X,F,A),
    % print(sc(X,F,A)),
     dcg_specialcase(F,A), !,
     assert_call(CallingPredicate, built_in:F/A, Layout, no_dcg).
 
 % { ... } prevents DCGs from adding additional arguments
-analyze_body({X},Layout,CallingPredicate,_DCG) :- !,
+analyze_body({X},Layout,CallingPredicate,_DCG, Info) :- !,
     layout_sub_term(Layout,2,LayoutX),
-    analyze_body(X,LayoutX,CallingPredicate,no_dcg).
+    analyze_body(X,LayoutX,CallingPredicate,no_dcg, Info).
 
 %analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
 %    analyze_body(X,Layout,CallingPredicate,DCG).
 
-analyze_body(get_atts(A,B),Layout,CallingPredicate,DCG) :- !,
+analyze_body(get_atts(A,B),Layout,CallingPredicate,DCG, _Info) :- !,
     CallingPredicate = M:_/_,
     assert_call(CallingPredicate, M:get_atts(A,B), Layout, DCG).
 
-analyze_body(put_atts(A,B),Layout,CallingPredicate,DCG) :- !,
+analyze_body(put_atts(A,B),Layout,CallingPredicate,DCG, _Info) :- !,
     CallingPredicate = M:_/_,
     assert_call(CallingPredicate, M:put_atts(A,B), Layout, DCG).
 
-analyze_body(X,_,_,dcg) :- is_list(X),!.
+analyze_body(X,_,_,dcg, _Info) :- is_list(X),!.
 
-analyze_body(\+(X),Layout, CallingPredicate, DCG) :-
+analyze_body(\+(X),Layout, CallingPredicate, DCG, Info) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
     layout_sub_term(Layout,2,LayoutX),
-    safe_analyze_body(X,LayoutX,CallingPredicate,DCG).
+    safe_analyze_body(X,LayoutX,CallingPredicate,DCG, Info).
 
-analyze_body((A -> B ; C),Layout, CallingPredicate, DCG) :-
+analyze_body((A -> B ; C),Layout, CallingPredicate, DCG, Info) :-
     !,
     assert_call(CallingPredicate, built_in:'->'(_,_,_), Layout, DCG),
     layout_sub_term(Layout,2,LayoutAB),
     layout_sub_term(LayoutAB,2,LayoutA),
     layout_sub_term(LayoutAB,3,LayoutB),
     layout_sub_term(Layout,3,LayoutC),
-    safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-    safe_analyze_body(B,LayoutB, CallingPredicate, DCG),
-    safe_analyze_body(C,LayoutC, CallingPredicate, DCG).
+    safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
+    safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info),
+    safe_analyze_body(C,LayoutC, CallingPredicate, DCG, Info).
 
-analyze_body((A,B),Layout, CallingPredicate, DCG) :-
+analyze_body((A,B),Layout, CallingPredicate, DCG, Info) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
-analyze_body((A;B),Layout, CallingPredicate, DCG) :-
+analyze_body((A;B),Layout, CallingPredicate, DCG, Info) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
-analyze_body((A->B),Layout, CallingPredicate, DCG) :-
+analyze_body((A->B),Layout, CallingPredicate, DCG, Info) :-
   !,
   layout_sub_term(Layout,2,LayoutA),
   layout_sub_term(Layout,3,LayoutB),
-  safe_analyze_body(A,LayoutA, CallingPredicate, DCG),
-  safe_analyze_body(B,LayoutB, CallingPredicate, DCG).
+  safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
+  safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
-analyze_body(OrigMETA, Layout, CallingPredicate, DCG) :-
+analyze_body(OrigMETA, Layout, CallingPredicate, DCG, Info) :-
    (DCG=no_dcg -> META = OrigMETA
      ; add_args(OrigMETA,2,META)
    ),
@@ -440,16 +473,16 @@ analyze_body(OrigMETA, Layout, CallingPredicate, DCG) :-
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
-   maplist(analyze_sub_arg(META, MODULE, Layout, CallingPredicate),List).
+   maplist(analyze_sub_arg(META, MODULE, Layout, CallingPredicate, Info),List).
 
-analyze_body(Module:Call,Layout, CallingPredicate, DCG) :-
+analyze_body(Module:Call,Layout, CallingPredicate, DCG, _Info) :-
   !,
   CallingPredicate = CModule:N/A,
   ((CModule=Module,functor(Call,N,A)) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, Module:Call, Layout, DCG)).
 
-analyze_body(Call,Layout, CallingPredicate, DCG) :-
+analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
   CallingPredicate = Module:N/A,
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
@@ -504,24 +537,30 @@ meta_built_in_pred(asserta(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(assertz(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call(_,_),built_in,[meta_arg(1,1)]).
+meta_built_in_pred(call(_,_,_),built_in,[meta_arg(1,2)]).
+meta_built_in_pred(call(_,_,_,_),built_in,[meta_arg(1,3)]).
+meta_built_in_pred(call(_,_,_,_,_),built_in,[meta_arg(1,4)]).
 % TO DO: support setof/3, bagof/3
 % We could add ;/2, \+/1, ...
 
 
-analyze_sub_arg(DModule:META,MODULE, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- !,
+analyze_sub_arg(DModule:META,MODULE, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- !,
   (DModule=MODULE -> true /* user provided additional module prefix; peel it off */
     ; format('*** Module prefix mismatch: ~w:~w (expected ~w)~n',[DModule,META,MODULE])),
    % we need to peel off layout to get to META:
-  layout_sub_term(Layout,3,LayoutM),
-   analyze_sub_arg(META, MODULE, LayoutM, CallingPredicate, meta_arg(Nr,ADD) ).
-analyze_sub_arg(META, _, Layout, CallingPredicate, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
+   layout_sub_term(Layout,3,LayoutM),
+   analyze_sub_arg(META, MODULE, LayoutM, CallingPredicate, Info, meta_arg(Nr,ADD) ).
+analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
   layout_sub_term(Layout,Nr1,LayoutA),
   arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
   add_args(SubArg,ADD,SubArgADD),
   %format(' Analyze Sub ~w -> ~w  [ ~w ] (from ~w)~n',[Nr,ADD,SubArgADD,CallingPredicate]),
-  safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg).
+  safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg, Info).
    
 add_args(Call,0,Res) :- !, Res=Call.
+add_args(Var,N,Res) :- var(Var),!, print(cannot_add_args(Var,N,Res)),nl.
 add_args(M:Call,N,Res) :- !, Res = M:CR, add_args(Call,N,CR).
 add_args(Call,N,Res) :- %print(add(Call,N)),nl,
   Call =.. FA,
@@ -669,7 +708,7 @@ analyze((:- multifile(X)), _Layout, Module, _File) :-
 
 analyze(':-'(Body), Layout, Module, _File) :-
     !, layout_sub_term(Layout,1,LayoutSub),
-    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg).
+    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
 
 analyze((Head :- Body), Layout, Module, _File) :-
     !,
@@ -680,7 +719,7 @@ analyze((Head :- Body), Layout, Module, _File) :-
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
     % (Name=force_non_empty -> trace ; true),
-    safe_analyze_body(Body,LayoutSub, Predicate, no_dcg).
+    safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]).
 
 analyze((Head --> Body), Layout, Module, _File) :-
     !,
@@ -690,7 +729,7 @@ analyze((Head --> Body), Layout, Module, _File) :-
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
-    analyze_body(Body,LayoutSub, Predicate, dcg).
+    safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
 
 analyze(Fact, Layout, Module, _File) :-
     !,
