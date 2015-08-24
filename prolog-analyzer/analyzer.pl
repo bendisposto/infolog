@@ -27,7 +27,7 @@ portray_message(informational, _).
     klaus/4,        % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
-    is_exported/1,   % is_exported(module:name/arity)
+    is_exported/2,   % is_exported(module,name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
     is_multifile/1,  % is_multifile(module:name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
@@ -101,6 +101,7 @@ print_calls(_,_) :- format('===================~n',[]).
 % try and find uncovered call
 uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
     \+ standard_module(ToModule), \+ klaus(ToModule,Call,_,_),
+    \+ is_exported(ToModule,Call), % TO DO : check if also imported !!
     \+ defined(Call), \+ is_dynamic(ToModule:Call),
    format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
 
@@ -208,7 +209,7 @@ export_all(S) :-
  export_X2(S,predicate),
  export_X1(S,is_dynamic),
  export_X1(S,is_volatile),
- export_X1(S,is_exported),
+ export_X2(S,is_exported),
  export_X1(S,is_multifile),
  export_X2(S,is_meta),
  export_X2(S,declared_mode),
@@ -535,6 +536,13 @@ mk_problem(P) :- assert(problem(P)).
 
 %% analyzing Prolog Code
 
+% exporting as binary fact
+add_fact2(Fact, Module, Name/Arity) :-
+    assert_if_new(predicate(Module,Name/Arity)),
+    X =..[Fact, Module, Name/Arity],
+    assert(X).
+
+% TO DO: remove add_fact and replace by add_fact2 for performance and indexing
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
     assert_if_new(predicate(Module,Name/Arity)),
@@ -613,7 +621,7 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     (defined_module(Name2,File) -> mk_problem(multiple_modules_in_file(File, Name, Name2)); true),
     retractall(defined_module(Name,_)),
     assert_if_new(defined_module(Name,File)),
-    maplist(add_fact(is_exported, Name),ListOfExported).
+    maplist(add_fact2(is_exported, Name),ListOfExported).
 
 analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
     !, dependency(Module,Name), Implement_List_Of_Imports=1.
