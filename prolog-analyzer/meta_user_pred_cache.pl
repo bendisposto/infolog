@@ -213,3 +213,73 @@ meta_user_pred(reduce_over_bexpr(_,_,_,_), bsyntaxtree, [meta_arg(1,3)]).
 meta_user_pred(transform_bexpr(_,_,_), bsyntaxtree, [meta_arg(1,2)]).
 
 meta_user_pred(transform_bexpr_with_acc(_,_,_,_,_), bsyntaxtree, [meta_arg(1,4)]).
+
+meta_user_pred(user_interruptable_call_det(_,_), user_signal, [meta_arg(1,0)]).
+
+meta_user_pred(protect_from_user_interrupt_det(_), user_signal, [meta_arg(1,0)]).
+
+meta_user_pred(ignore_user_interrupt_det(_), user_signal, [meta_arg(1,0)]).
+
+meta_user_pred(catch_interrupt_exception(_,_), user_signal, [meta_arg(1,0)]).
+
+meta_user_pred(c_ltl_modelcheck(_,_,_,_), ltlc, [meta_arg(4,5)]).
+
+meta_user_pred(evaluate_ltl_formula(_,_,_,_,_,_), ltl_verification, [meta_arg(4,2),meta_arg(5,3)]).
+
+meta_user_pred(evaluate_ltl_fairness(_,_,_,_,_), ltl_verification, [meta_arg(4,3)]).
+
+meta_user_pred(bv_time_out_call(_,_,_,_), bvisual2, [meta_arg(1,0)]).
+
+meta_user_pred(call_with_temp_preference(_,_,_), bvisual2, [meta_arg(3,0)]).
+
+meta_user_pred(probcli_clpfd_overflow_mnf_call1(_), eval_strings, [meta_arg(1,0)]).
+
+meta_user_pred(probcli_clpfd_overflow_call1(_), eval_strings, [meta_arg(1,0)]).
+
+meta_user_pred(maxsolver(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(maxsolver(_,_,_,_), maxsolver, [meta_arg(2,1)]).
+
+meta_user_pred(maxsolver_by_longest_prefix(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_append_and_eval(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_prepend_and_eval(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(longest_satisfiable_prefix(_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_longest_satisfiable_prefix(_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(satisfiable_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(longest_satisfiable_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(maxsolver_by_longest_segment(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_maxsolver_by_longest_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(maxsolver_exact_with_marker(_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_precalc(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(visit_tree(_,_,_,_,_), bvisual, [meta_arg(1,3),meta_arg(2,2)]).
+
+meta_user_pred(reduce_state_space(_,_), state_space_reduction, [meta_arg(1,3),meta_arg(2,5)]).
+
+meta_user_pred(catch_and_ignore_well_definedness_error(_), static_analysis, [meta_arg(1,0)]).
+
+meta_user_pred(printtime(_), ctl, [meta_arg(1,0)]).
+
+meta_user_pred(map_over_history(_,_), user, [meta_arg(1,0)]).
+
+meta_user_pred(register_conjunct_error_hook(_), predicate_evaluator, [meta_arg(1,5)]).
+
+meta_user_pred(analyse_quick_time_out(_), predicate_evaluator, [meta_arg(1,0)]).
+
+meta_user_pred(time_out_and_catch_errors(_,_,_), predicate_evaluator, [meta_arg(1,0)]).
+
+meta_user_pred(catch_interrupt_assertion_call(_), user_interrupts, [meta_arg(1,0)]).
+
+meta_user_pred(interruptable_call(_), user_interrupts, [meta_arg(1,0)]).
+
+meta_user_pred(interruptable_call(_,_), user_interrupts, [meta_arg(1,0)]).
