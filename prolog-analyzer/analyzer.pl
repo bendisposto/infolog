@@ -113,8 +113,8 @@ uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
      -> Head =.. [_|Args], XX='$CALL',
         nth1(Nr,Args,Arg), Arg==XX,
         nonmember(meta_arg(Nr,NrAddedArgs),MetaList),
-        Msg = arg(Nr)
-        , print(missing_arg(Nr,MetaList,Pred,Head)),nl
+        Msg = arg(Nr,NrAddedArgs)
+        , print(missing_arg(Nr,NrAddedArgs,MetaList,Pred,Head)),nl
      ;  Msg = no_annotation).
    
 print_meta_calls(FromModule) :-
