@@ -206,7 +206,7 @@ meta_user_pred(map_over_typed_bexpr(_,_), bsyntaxtree, [meta_arg(1,1)]).
 
 meta_user_pred(map_over_typed_bexpr(_,_,_), bsyntaxtree, [meta_arg(1,2)]).
 
-meta_user_pred(map_over_bexpr_top_down_acc(_,_,_), bsyntaxtree, [meta_arg(1,2)]).
+meta_user_pred(map_over_bexpr_top_down_acc(_,_,_), bsyntaxtree, [meta_arg(1,3)]).
 
 meta_user_pred(reduce_over_bexpr(_,_,_,_), bsyntaxtree, [meta_arg(1,3)]).
 
@@ -283,3 +283,13 @@ meta_user_pred(catch_interrupt_assertion_call(_), user_interrupts, [meta_arg(1,0
 meta_user_pred(interruptable_call(_), user_interrupts, [meta_arg(1,0)]).
 
 meta_user_pred(interruptable_call(_,_), user_interrupts, [meta_arg(1,0)]).
+
+meta_user_pred(l_transform_bexpr(_,_,_), bsyntaxtree, [meta_arg(2,2)]).
+
+meta_user_pred(l_transform_bexpr_with_acc(_,_,_,_,_), bsyntaxtree, [meta_arg(2,4)]).
+
+meta_user_pred(foldl2(_,_,_,_), tools, [meta_arg(2,3)]).
+
+meta_user_pred(foldl2(_,_,_,_,_), tools, [meta_arg(2,4)]).
+
+meta_user_pred(foldl2(_,_,_,_,_,_), tools, [meta_arg(2,5)]).
