@@ -293,3 +293,14 @@ meta_user_pred(foldl2(_,_,_,_), tools, [meta_arg(2,3)]).
 meta_user_pred(foldl2(_,_,_,_,_), tools, [meta_arg(2,4)]).
 
 meta_user_pred(foldl2(_,_,_,_,_,_), tools, [meta_arg(2,5)]).
+
+meta_user_pred(x_false_subset(_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_satisfiable_subset_of_length(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_false_subset_til_true(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_existis_satisfiable_subset_of_length(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+
+meta_user_pred(x_maxsolver_exact_with_marker(_,_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
+

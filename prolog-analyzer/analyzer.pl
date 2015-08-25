@@ -110,12 +110,17 @@ print_calls(_,_) :- format('===================~n',[]).
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
    meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
    (meta_pred_functor(Pred,FromModule,MetaList)
-     -> Head =.. [_|Args], XX='$CALL',
-        nth1(Nr,Args,Arg), Arg==XX,
-        nonmember(meta_arg(Nr,NrAddedArgs),MetaList),
-        Msg = arg(Nr,NrAddedArgs)
-        , print(missing_arg(Nr,NrAddedArgs,MetaList,Pred,Head)),nl
+     -> get_required_meta_position(Head,XX,ArgNr),
+        nonmember(meta_arg(ArgNr,NrAddedArgs),MetaList),
+        Msg = arg(ArgNr,NrAddedArgs)
+        ,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
+     ;  get_required_meta_position(Head,XX,ArgNr) -> Msg = no_annotation(ArgNr,NrAddedArgs)
      ;  Msg = no_annotation).
+
+get_required_meta_position(Head,XX,ArgNr) :-
+     Head =.. [_|Args],
+     nth1(ArgNr,Args,Arg),
+     Arg==XX.
    
 print_meta_calls(FromModule) :-
    defined_module(FromModule,_),
@@ -373,7 +378,9 @@ bind_args2([V|Vs],VC,VCN) :-
 layout_sub_term([],N,[]) :- !, format('~n*** Could not obtain layout information (~w)~n',[N]).
 layout_sub_term([H|T],N,Res) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
-layout_sub_term(Term,N,Res) :- format('~n*** Illegal layout: ~w~n',[layout_sub_term(Term,N,Res)]), Res=[].
+layout_sub_term(Term,N,Res) :-
+    format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res)]), % can happen when add_args adds new positions which did not exist
+    Res=Term.
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
