@@ -451,12 +451,12 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
 adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
 adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
 %adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
-adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
+adapt_arity(DCG,Arity,R) :- add_infolog_error(informat('unknown DCG type: ~w~n',[DCG])), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
    (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
-     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])
-     ,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
+     ; add_infolog_error(informat('analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)]))
+       %,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
     ).
 
 % analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)

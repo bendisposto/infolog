@@ -11,14 +11,18 @@ print_location(module_lines(Module,From,To)) :- !, format(' in ~w [~w - ~w] ',[M
 print_location(module_pred_lines(Module,Predicate,From,To)) :- !, format(' in ~w [~w - ~w defining ~w] ',[Module,From,To,Predicate]).
 print_location(module_loc(Module)) :- !, format(' in module ~w ',[Module]).
 print_location(unknown) :- !.
-print_location(E) :- add_infolog_error(illegal_location(E)).
+print_location(E) :- add_infolog_error(informat('Illegal location: ~w',E)).
 
 % print an (error) information term
-print_information(informat(Msg,Args)) :- !, format(Msg,Args).
-print_information(E) :- add_infolog_error(illegal_information(E)).
+print_information(Info) :- print_information(Info,user_output).
+print_information(informat(Msg,Args),Stream) :- !, format(Stream,Msg,Args).
+print_information(string(Msg),Stream) :- !, format(Stream,'~w',[Msg]).  % we could also simply use informat(Msg,[]) instead
+print_information(E,_Stream) :- add_infolog_error(informat('Illegal information: ~w',E)).
 
 % register an internal error
-add_infolog_error(T) :- format(user_error,'~n*** INTERNAL ERROR: ~w~n',[T]).
+add_infolog_error(T) :- format(user_error,'~n*** INTERNAL ERROR: ',[]),
+   print_information(T,user_error),
+   format(user_error,'~n',[]).
 
 
 
