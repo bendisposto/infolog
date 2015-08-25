@@ -134,8 +134,10 @@ print_calls(FromModule,ToModule) :-
 print_calls(_,_) :- format('===================~n',[]).
 
 :- dynamic dead_predicate/2.
+% a simple dead code analysis; will not detect groups of dead code predicates which call each other
+% Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
 dca :- retractall(dead_predicate(_,_)),predicate(M,P), \+ is_public(M,P), assert(dead_predicate(M,P)),fail.
-dca :- calling(_,_,M,P,_,_),
+dca :- calling(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
        retract(dead_predicate(M,P)),fail.
 dca :- print('dead predicates: '),nl, dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
 dca :- nl.
