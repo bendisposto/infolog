@@ -24,6 +24,7 @@ portray_message(informational, _).
     defined_module/2,% module(name,file)
     predicate/2,     % predicate(module,name/arity)
     is_dynamic/2,    % is_dynamic(module,name/arity)
+    is_public/2,     % is_public(module,name/arity)
     is_volatile/2,   % is_volatile(module,name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
     klaus/4,         % klaus(module,name/arity,  startline, endline)
@@ -131,6 +132,13 @@ print_calls(FromModule,ToModule) :-
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
+
+:- dynamic dead_predicate/2.
+dca :- retractall(dead_predicate(_,_)),predicate(M,P), \+ is_public(M,P), assert(dead_predicate(M,P)),fail.
+dca :- calling(_,_,M,P,_,_),
+       retract(dead_predicate(M,P)),fail.
+dca :- print('dead predicates: '),nl, dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
+dca :- nl.
 
 % try and find calls where the predicate is not annotated with a meta_predicate
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
@@ -808,6 +816,11 @@ analyze((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_dynamic, Module),L).
+
+analyze((:- public(X)), _Layout,Module,_File) :-
+       !,
+       pairs_to_list(X,L),
+       maplist(add_fact2(is_public, Module),L).
 
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
