@@ -304,3 +304,6 @@ meta_user_pred(x_existis_satisfiable_subset_of_length(_,_,_,_,_), maxsolver, [me
 
 meta_user_pred(x_maxsolver_exact_with_marker(_,_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
 
+meta_user_pred(call_pred_on_expanded_state(_,_,_,_), user, [meta_arg(1,3)]).
+
+meta_user_pred(map_over_history(_,_), user, [meta_arg(1,3)]).
