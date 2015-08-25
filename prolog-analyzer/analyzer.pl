@@ -608,6 +608,8 @@ ignore_meta_user_pred(module_info(_,_),module_information).
 %! goal:  user:;(q,r,a,_23255)
 
 meta_built_in_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
+meta_built_in_pred(on_exception(_,_,_),built_in,[meta_arg(2,0),meta_arg(3,0)]).
+meta_built_in_pred(catch(_,_,_),built_in,[meta_arg(1,0),meta_arg(3,0)]).
 meta_built_in_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
 %meta_built_in_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
 meta_built_in_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
