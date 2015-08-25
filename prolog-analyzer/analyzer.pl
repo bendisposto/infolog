@@ -612,19 +612,24 @@ meta_built_in_pred(on_exception(_,_,_),built_in,[meta_arg(2,0),meta_arg(3,0)]).
 meta_built_in_pred(catch(_,_,_),built_in,[meta_arg(1,0),meta_arg(3,0)]).
 meta_built_in_pred(if(_,_,_),built_in,[meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
 %meta_built_in_pred(( _ -> _), built_in,[meta_arg(1,0),meta_arg(2,0)]). % dealt with specially in DCG mode
+meta_built_in_pred(bagof(_,_,_),built_in,[meta_arg(2,0)]).
 meta_built_in_pred(findall(_,_,_),built_in,[meta_arg(2,0)]).
 meta_built_in_pred(findall(_,_,_,_),built_in,[meta_arg(2,0)]).
+meta_built_in_pred(setof(_,_,_),built_in,[meta_arg(2,0)]).
 meta_built_in_pred(assert(_),built_in,[meta_arg(1,0)]). % TO DO: keep more info about which predicate asserted
 meta_built_in_pred(asserta(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(assertz(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
-meta_built_in_pred(call(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call_cleanup(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call_residue_vars(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call(_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(call(_,_),built_in,[meta_arg(1,1)]).
 meta_built_in_pred(call(_,_,_),built_in,[meta_arg(1,2)]).
 meta_built_in_pred(call(_,_,_,_),built_in,[meta_arg(1,3)]).
 meta_built_in_pred(call(_,_,_,_,_),built_in,[meta_arg(1,4)]).
-% TO DO: support setof/3, bagof/3
+meta_built_in_pred(once(_),built_in,[meta_arg(1,0)]).
+% TO DO: support setof/3, bagof/3 arguments ^ 
 % We could add ;/2, \+/1, ...
 
 
