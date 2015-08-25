@@ -674,8 +674,8 @@ meta_built_in_pred(asserta(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(assertz(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
-meta_built_in_pred(call_cleanup(_),built_in,[meta_arg(1,0)]).
-meta_built_in_pred(call_residue_vars(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call_cleanup(_,_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call_residue_vars(_,_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(call(_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(call(_,_),built_in,[meta_arg(1,1)]).
 meta_built_in_pred(call(_,_,_),built_in,[meta_arg(1,2)]).
