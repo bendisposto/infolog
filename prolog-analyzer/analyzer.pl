@@ -43,7 +43,7 @@ portray_message(informational, _).
 
 % compute paths / transitive closure with at most one cycle and at least one step
 :- meta_predicate transitive(0,-).
-transitive(M:Call,[A1,A2|Path]) :- Call =.. [P,A1,AFinal],
+transitive(M:Call,[A1,A2|Path]) :- binop(Call,P,A1,AFinal), %Call =.. [P,A1,AFinal],
    call(M:P,A1,A2),
    trans(M:P,A2,AFinal,[A1],Path).
 
@@ -625,17 +625,17 @@ mk_problem(P) :- assert(problem(P)).
 % exporting as binary fact
 add_fact2(Fact, Module, Name/Arity) :-
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Module, Name/Arity],
+    binop(X,Fact,Module,Name/Arity), %X =..[Fact, Module, Name/Arity],
     assert(X).
 add_fact3(Fact, Arg1, Arg2, Name/Arity) :-
-    X =..[Fact, Arg1, Arg2, Name/Arity],
+    ternop(X,Fact,Arg1,Arg2,Name/Arity), %X =..[Fact, Arg1, Arg2, Name/Arity],
     assert(X).
 
 % TO DO: remove add_fact and replace by add_fact2 for performance and indexing
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Predicate],
+    unop(X,Fact,Predicate), %X =..[Fact, Predicate],
     assert(X).
 
 add_fact(Fact, Module, Term ) :-
@@ -643,8 +643,13 @@ add_fact(Fact, Module, Term ) :-
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Predicate, Arguments], assert(X).
+    binop(X,Fact,Predicate,Arguments), %X =..[Fact, Predicate, Arguments],
+    assert(X).
 
+% utilities to construct/deconstruct terms; faster than =..
+unop(X,P,A1) :- functor(X,P,1), arg(1,X,A1).
+binop(X,P,A1,A2) :- functor(X,P,2), arg(1,X,A1), arg(2,X,A2).
+ternop(X,P,A1,A2,A3) :- functor(X,P,3), arg(1,X,A1), arg(2,X,A2), arg(3,X,A3).
 
 pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
 pairs_to_list(X, [X]).
