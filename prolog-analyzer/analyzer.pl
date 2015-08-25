@@ -1,7 +1,9 @@
-:- prolog_flag(compiling,_,debugcode).
-:- prolog_flag(source_info,_,on).
-:- prolog_flag(profiling,_,on).
+
+
 portray_message(informational, _).
+
+:- use_module(escaper).
+:- use_module(infolog_tools).
 
 :- use_module(library(lists)).
 :- use_module(library(terms)).
@@ -10,7 +12,7 @@ portray_message(informational, _).
 :- use_module(library(codesio)).
 :- use_module(library(process)).
 
-:- use_module(escaper).
+
 
 
 
@@ -68,23 +70,31 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 
-lint :- print('Start checking'),nl,lint(_).
-lint(vacuous_modules) :-
-        vacuous_module_dependency(_M1,_M2),fail.
-lint(uncovered_calls) :-
-        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2),
-        format('*** Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,FromQ]),
-        fail.
-lint(missing_meta_predicates) :-
-        uncovered_meta_call(FromModule,Pred,L1,L2,Msg),
-        format('*** Missing meta_predicate annotation (~w) for ~w:~w [lines ~w-~w]~n',[Msg,FromModule,Pred,L1,L2]),
-        fail.
+lint :- start_analysis_timer(T), print('Start checking'),nl,lint(_), stop_analysis_timer(T).
+
+lint(Category) :- infolog_problem(Category,ErrorInfo,Location),
+     print(' *** '),print_information(ErrorInfo), print(' '),
+     print_location(Location),nl,
+     fail.
 lint(_) :- print('Done checking'),nl.
 
+
+% HERE WE DEFINE NEW PROBLEM RULES
+% problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
+infolog_problem(analysis_problem,string(P),unknown) :- problem(P).
+infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
+        vacuous_module_dependency(M1,M2).
+infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
+                                module_pred_lines(FromModule,FromQ,L1,L2)) :-
+        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2).
+infolog_problem(missing_meta_predicates,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
+                                        module_lines(FromModule,L1,L2)) :-
+        uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
+
+% DERIVED RULES to examine the CORE InfoLog database
 % check if there is a dependency without a call that requires it:
 vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
-   \+ calling(M1:_,M2:_),
-   format('*** Vacuous Module Dependency: ~w -> ~w~n',[M1,M2]).
+   \+ calling(M1:_,M2:_).
 
 % is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
@@ -113,7 +123,7 @@ uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
      -> get_required_meta_position(Head,XX,ArgNr),
         nonmember(meta_arg(ArgNr,NrAddedArgs),MetaList),
         Msg = arg(ArgNr,NrAddedArgs)
-        ,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
+        %,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
      ;  get_required_meta_position(Head,XX,ArgNr) -> Msg = no_annotation(ArgNr,NrAddedArgs)
      ;  Msg = no_annotation).
 
@@ -653,13 +663,6 @@ add_fact(Fact, Module, Term ) :-
     binop(X,Fact,Predicate,Arguments), %X =..[Fact, Predicate, Arguments],
     assert(X).
 
-% utilities to construct/deconstruct terms; faster than =..
-unop(X,P,A1) :- functor(X,P,1), arg(1,X,A1).
-binop(X,P,A1,A2) :- functor(X,P,2), arg(1,X,A1), arg(2,X,A2).
-ternop(X,P,A1,A2,A3) :- functor(X,P,3), arg(1,X,A1), arg(2,X,A2), arg(3,X,A3).
-
-pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
-pairs_to_list(X, [X]).
 
 
 fixity(fy, prefix, right,1).
@@ -855,9 +858,11 @@ update :-
 update.
 
 :- multifile user:term_expansion/6.
-
-
 :- dynamic seen_token/0.
+
+:- prolog_flag(compiling,_,debugcode).
+:- prolog_flag(source_info,_,on).
+%:- prolog_flag(profiling,_,on).
 
 user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
@@ -870,3 +875,4 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
   % print(expand(Module,Term)),nl,
     (analyzef(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
+
