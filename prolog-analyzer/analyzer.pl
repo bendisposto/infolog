@@ -21,17 +21,17 @@ portray_message(informational, _).
 :-  dynamic
     defined_module/2,% module(name,file)
     predicate/2,     % predicate(module,name/arity)
-    is_dynamic/1,    % is_dynamic(module:name/arity)
-    is_volatile/1,   % is_volatile(module:name/arity)
+    is_dynamic/2,    % is_dynamic(module,name/arity)
+    is_volatile/2,   % is_volatile(module,name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
-    klaus/4,        % klaus(module,name/arity,  startline, endline)
+    klaus/4,         % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
     meta_call/7,     % meta_call(callingmodule,callingpredicate/callingarity, VAR, ExtraArgs, ClauseHead, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/2,   % is_exported(module,name/arity)
     is_imported/3,   % is_imported(from_module,imported_module,imported_name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
-    is_multifile/1,  % is_multifile(module:name/arity)
+    is_multifile/2,  % is_multifile(module,name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/1.       % problem(details)
@@ -130,7 +130,7 @@ print_meta_calls(_) :- format('===================~n',[]).
 uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ,ToModule,Call,L1,L2),
     \+ klaus(ToModule,Call,_,_),
     \+ always_defined(Call),
-    \+ is_dynamic(ToModule:Call),
+    \+ is_dynamic(ToModule,Call),
     \+ check_imported(ToModule,Call,FromModule).
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
@@ -265,10 +265,10 @@ export_all(S) :-
  format(S, '[git "~a"]~n',[Sha]),
 
  export_X2(S,predicate),
- export_X1(S,is_dynamic),
- export_X1(S,is_volatile),
+ export_X2(S,is_dynamic),
+ export_X2(S,is_volatile),
  export_X2(S,is_exported),
- export_X1(S,is_multifile),
+ export_X2(S,is_multifile),
  export_X2(S,is_meta),
  export_X2(S,declared_mode),
  export_X2(S,is_blocking),
@@ -724,7 +724,7 @@ analyze((:- use_module(X)), _Layout, Module, _File) :-
 analyze((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_dynamic, Module),L).
+       maplist(add_fact2(is_dynamic, Module),L).
 
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
@@ -752,12 +752,12 @@ analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
 analyze((:- volatile(X)), _Layout,Module, _File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_volatile, Module),L).
+       maplist(add_fact2(is_volatile, Module),L).
 
 analyze((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_multifile, Module),L).
+       maplist(add_fact2(is_multifile, Module),L).
 
 analyze(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
     !,
