@@ -1,7 +1,9 @@
-:- prolog_flag(compiling,_,debugcode).
-:- prolog_flag(source_info,_,on).
-:- prolog_flag(profiling,_,on).
+
+
 portray_message(informational, _).
+
+:- use_module(escaper).
+:- use_module(infolog_tools).
 
 :- use_module(library(lists)).
 :- use_module(library(terms)).
@@ -10,7 +12,7 @@ portray_message(informational, _).
 :- use_module(library(codesio)).
 :- use_module(library(process)).
 
-:- use_module(escaper).
+
 
 
 
@@ -21,17 +23,17 @@ portray_message(informational, _).
 :-  dynamic
     defined_module/2,% module(name,file)
     predicate/2,     % predicate(module,name/arity)
-    is_dynamic/1,    % is_dynamic(module:name/arity)
-    is_volatile/1,   % is_volatile(module:name/arity)
+    is_dynamic/2,    % is_dynamic(module,name/arity)
+    is_volatile/2,   % is_volatile(module,name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
-    klaus/4,        % klaus(module,name/arity,  startline, endline)
+    klaus/4,         % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
     meta_call/7,     % meta_call(callingmodule,callingpredicate/callingarity, VAR, ExtraArgs, ClauseHead, startline, endline)
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/2,   % is_exported(module,name/arity)
     is_imported/3,   % is_imported(from_module,imported_module,imported_name/arity)
     depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
-    is_multifile/1,  % is_multifile(module:name/arity)
+    is_multifile/2,  % is_multifile(module,name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/1.       % problem(details)
@@ -43,7 +45,7 @@ portray_message(informational, _).
 
 % compute paths / transitive closure with at most one cycle and at least one step
 :- meta_predicate transitive(0,-).
-transitive(M:Call,[A1,A2|Path]) :- Call =.. [P,A1,AFinal],
+transitive(M:Call,[A1,A2|Path]) :- binop(Call,P,A1,AFinal), %Call =.. [P,A1,AFinal],
    call(M:P,A1,A2),
    trans(M:P,A2,AFinal,[A1],Path).
 
@@ -68,22 +70,52 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 
-lint :- print('Start checking'),nl,lint(_).
-lint(vacuous_modules) :-
-        vacuous_module_dependency(_M1,_M2),fail.
-lint(uncovered_calls) :-
-        uncovered_call(_,_,_),fail.
+lint :- start_analysis_timer(T), print('Start checking'),nl,lint(_), stop_analysis_timer(T).
+
+lint(Category) :- infolog_problem(Category,ErrorInfo,Location),
+     print(' *** '),print_information(ErrorInfo), print(' '),
+     print_location(Location),nl,
+     fail.
 lint(_) :- print('Done checking'),nl.
 
+
+info(Category) :- infolog_info(Category,Info,Location),
+     print_information(Info), print(' '),
+     print_location(Location),nl,
+     fail.
+info(_).
+
+% HERE WE DEFINE NEW PROBLEM RULES
+% problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
+infolog_problem(analysis_problem,string(P),unknown) :- problem(P).
+infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
+        vacuous_module_dependency(M1,M2).
+infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
+                                module_pred_lines(FromModule,FromQ,L1,L2)) :-
+        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2).
+infolog_problem(missing_meta_predicates,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
+                                        module_lines(FromModule,L1,L2)) :-
+        uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
+
+% HERE WE DEFINE INFOLOG INFOS
+infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
+   defined_module(FromModule,_),
+   (cycle(FromModule,ModulePath) -> true ; fail).
+infolog_info(calls(FromModule,ToModule),informat('Call ~w:~w -> ~w:~w',[FromModule,C1,ToModule,C2]),
+                                        module_lines(FromModule,L1,L2)) :-
+   defined_module(FromModule,_),
+   calling(FromModule,C1,ToModule,C2,L1,L2).
+
+% DERIVED RULES to examine the CORE InfoLog database
 % check if there is a dependency without a call that requires it:
 vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
-   \+ calling(M1:_,M2:_),
-   format('*** Vacuous Module Dependency: ~w -> ~w~n',[M1,M2]).
+   \+ calling(M1:_,M2:_).
 
 % is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
+% TO DO: provide more efficient way of computing this; maybe saturation BUP approach
 
 % is there a calling cycle which leaves a module and enters it again ?
 cross_module_cycle(Module,Call,[Module:Call|Path]) :-
@@ -100,6 +132,22 @@ print_calls(FromModule,ToModule) :-
    fail.
 print_calls(_,_) :- format('===================~n',[]).
 
+% try and find calls where the predicate is not annotated with a meta_predicate
+uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
+   meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
+   (meta_pred_functor(Pred,FromModule,MetaList)
+     -> get_required_meta_position(Head,XX,ArgNr),
+        nonmember(meta_arg(ArgNr,NrAddedArgs),MetaList),
+        Msg = arg(ArgNr,NrAddedArgs)
+        %,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
+     ;  get_required_meta_position(Head,XX,ArgNr) -> Msg = no_annotation(ArgNr,NrAddedArgs)
+     ;  Msg = no_annotation).
+
+get_required_meta_position(Head,XX,ArgNr) :-
+     Head =.. [_|Args],
+     nth1(ArgNr,Args,Arg),
+     Arg==XX.
+   
 print_meta_calls(FromModule) :-
    defined_module(FromModule,_),
    format('Unresolved Meta Calls from ~w~n===================~n',[FromModule]),
@@ -110,15 +158,14 @@ print_meta_calls(FromModule) :-
 print_meta_calls(_) :- format('===================~n',[]).
 
 % try and find uncovered call
-uncovered_call(FromModule,ToModule,Call) :- calling(FromModule,Q,ToModule,Call,L1,L2),
+uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ,ToModule,Call,L1,L2),
     \+ klaus(ToModule,Call,_,_),
     \+ always_defined(Call),
-    \+ is_dynamic(ToModule:Call),
-    \+ check_imported(ToModule,Call,FromModule),
-   format('Uncovered Call in module ~w: ~w:~w [~w - ~w, (~w)]~n',[FromModule,ToModule,Call,L1,L2,Q]).
+    \+ is_dynamic(ToModule,Call),
+    \+ check_imported(ToModule,Call,FromModule).
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
-check_imported(Module,Call,_,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
+check_imported(Module,Call,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
    !,
    (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
      ; is_exported(Module,Call) -> true
@@ -134,26 +181,32 @@ check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % impor
 always_defined(recursive_call/0).
 always_defined(put_atts/2).
 always_defined(get_atts/2).
+always_defined('~~'/1).  % ProB specific term expander; TO DO: get rid of this
 always_defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
 % to do: more precise analysis of which predicates are actually exported
+standard_module(aggregate).
+standard_module(assoc).
+standard_module(avl).
+standard_module(between).
 standard_module(built_in).
-standard_module(lists).
+standard_module(clpfd).
 standard_module(codesio).
-standard_module(random).
-standard_module(tcltk).
-standard_module(system).
+standard_module(fastrw).
 standard_module(file_systems).
+standard_module(heaps).
+standard_module(lists).
+standard_module(ordsets).
 standard_module(process).
+standard_module(random).
+standard_module(samsort).
+standard_module(sets).
+standard_module(system).
+standard_module(tcltk).
 standard_module(terms).
 standard_module(timeout).
-standard_module(avl).
-standard_module(clpfd).
-standard_module(ordsets).
-standard_module(sets).
-standard_module(samsort).
-standard_module(fastrw).
-standard_module(aggregate).
+standard_module(xml).
+
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
@@ -182,7 +235,10 @@ repl :-
 
 analyze(InputFile,OutputFile) :-
     analyze(InputFile),
-    export_to_clj_file(OutputFile).
+    print(exporting(OutputFile)),nl,
+    start_analysis_timer(T3),
+    export_to_clj_file(OutputFile),
+    stop_analysis_timer(T3).
 
 analyze(InputFile) :-
     print('loading modules'),nl,
@@ -241,10 +297,10 @@ export_all(S) :-
  format(S, '[git "~a"]~n',[Sha]),
 
  export_X2(S,predicate),
- export_X1(S,is_dynamic),
- export_X1(S,is_volatile),
+ export_X2(S,is_dynamic),
+ export_X2(S,is_volatile),
  export_X2(S,is_exported),
- export_X1(S,is_multifile),
+ export_X2(S,is_multifile),
  export_X2(S,is_meta),
  export_X2(S,declared_mode),
  export_X2(S,is_blocking),
@@ -259,75 +315,64 @@ export_all(S) :-
 
 
 export_dependencies(S) :-
-   findall([LM,string,IM,string], depends_on(LM,IM),L),
-   maplist(write_clojure(S,dependency),L).
+   (depends_on(LM,IM),
+    write_clojure(S,dependency,[LM,string,IM,string]),fail
+    ; true).
 
 export_defined_modules(S) :-
-  findall([M,string, File,string], defined_module(M,File),L),
-  maplist(write_clojure(S,module),L).
+  (defined_module(M,File), write_clojure(S,module,[M,string, File,string]),fail
+   ; true).
 
 export_problems(S) :-
   findall([P], problem(P),L),
   maplist(escaping_format(S,'[problem "~w"]~n'),L).
 
 export_clause(S) :-
-  findall( [M,string,
-            P,string,
-            A, number,
-            Start, number,
-            End, number], klaus(M,P/A, Start, End),L),
-  maplist(write_clojure(S,clause),L).
+   (klaus(M,P/A, Start, End),
+    write_clojure(S,clause,[M,string, P,string, A, number, Start, number, End, number]), fail
+    ; true).
 
 export_operator(S) :-
-
-  findall( [M,string,
-            P,string,
-            A, number,
-            Prio, number,
-            Fix, string,
-            Assoc, string], operator(M:P/A,Prio, Fix, Assoc),L),
-  maplist(write_clojure(S, operator),L).
+  (operator(M:P/A,Prio, Fix, Assoc),
+   write_clojure(S, operator,[M,string,  P,string,  A, number,
+            Prio, number,  Fix, string,  Assoc, string]),fail
+    ; true).
 
 export_calling(S) :-
-  findall( [M,string,
-            P,string,
-            A, number,
-            CM, string,
-            CP, string,
-            CA, number,
-            Start, number,
-            End, number], calling(M,P/A, CM,CP/CA, Start, End),L),
-  maplist(write_clojure(S,call),L).
+  (calling(M,P/A, CM,CP/CA, Start, End), 
+   write_clojure(S,call,[M,string, P,string, A, number,
+            CM, string, CP, string, CA, number, Start, number, End, number]), fail
+    ; true).
 
-clojure_fact_wrap(S,X,E) :-
- format(S,'[ ~a ',[X]),
- call(E),
- format(S,']~n',[]).
+
+%clojure_fact_wrap(S,X,E) :-
+% format(S,'[ ~a ',[X]),
+% call(E),
+% format(S,']~n',[]).
 
 
 export_X1(S, X) :-
-  F =.. [X,M:P/A],
-  findall([M,string, P,string, A, number], F,L),
-  maplist(write_clojure(S,X),L).
+  (call(X,M:P/A),write_clojure(S,X,[M,string, P,string, A, number]),fail ; true),!.
 
 export_X2(S, X) :-
-  F =.. [X,M:P/A,Args],
-  findall([M,string, P,string, A, number,  Args, string], F,L),
-  maplist(write_clojure(S,X),L).
+   (call(X,M:P/A,Args),
+    write_clojure(S,X,[M,string, P,string, A, number,  Args, string]),fail ; true).
 
 write_clojure(S,X,E) :-
- clojure_fact_wrap(S,X,write_clojure2(S,X,E)).
+ format(S,'[ ~a ',[X]),
+ %clojure_fact_wrap(S,X,write_clojure2(S,X,E)),
+ write_clojure2(E,S,X),
+ format(S,']~n',[]).
 
-write_clojure2(_,_,[]).
-write_clojure2(S,X,[Content,Type|T]) :-
-  write_clojure(S,X, Content,Type),write_clojure2(S,X, T).
+write_clojure2([],_,_).
+write_clojure2([Content,Type|T],S,X) :-
+  write_clojure_type(Type, S,X, Content),
+  write_clojure2(T,S,X).
 
-
-write_clojure(S,_, Content, number) :- !,
+write_clojure_type(number, S,_, Content) :- !,
   format(S, '~d ',[Content]).
-
 %default type is string
-write_clojure(S,_, Content, _) :-
+write_clojure_type(_, S,_, Content) :-
   escaping_format(S, '"~w" ',[Content]).
 
 % ==========================================
@@ -357,9 +402,12 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
-layout_sub_term([],N,[]) :- format('~n*** Could not obtain layout information (~w)~n',[N]).
-layout_sub_term([H|T],N,Res) :-
+layout_sub_term([],N,[]) :- !, format('~n*** Could not obtain layout information (~w)~n',[N]).
+layout_sub_term([H|T],N,Res) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
+layout_sub_term(Term,N,Res) :-
+    format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res)]), % can happen when add_args adds new positions which did not exist
+    Res=Term.
 
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
@@ -375,6 +423,8 @@ is_meta_call_n(call(C,_),1,C).
 is_meta_call_n(call(C,_,_),2,C).
 is_meta_call_n(call(C,_,_,_),3,C).
 is_meta_call_n(call(C,_,_,_,_),4,C).
+is_meta_call_n(call(C,_,_,_,_,_),5,C).
+is_meta_call_n(call(C,_,_,_,_,_,_),6,C).
 
 % assert that a meta-call occured and could not be resolved statically
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
@@ -406,7 +456,9 @@ adapt_arity(DCG,Arity,R) :- format('*** Unknown DCG type: ~w~n',[DCG]), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
    (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
-     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])).
+     ; format('~n**** Analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)])
+     ,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
+    ).
 
 % analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg, _Info).
@@ -493,7 +545,10 @@ analyze_body(OrigMETA, Layout, CallingPredicate, DCG, Info) :-
    meta_pred(META,MODULE,List),
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
    ((MODULE=built_in ; decompose_call(CallingPredicate,CallingModule,_), depends_on(CallingModule,MODULE))
-     -> true ; format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),fail),
+     -> true
+      ; %format('*** meta_predicate not (yet) imported : ~w (from ~w)~n',[META,MODULE]),
+        true
+    ),
    !,
    %format('~n~n Analyze META ~w ~w ~w (from ~w)~n',[META,MODULE,List, CallingPredicate]),
    assert_call(CallingPredicate, MODULE:META, Layout, no_dcg),
@@ -528,6 +583,8 @@ add_meta_predicate(Module,Pattern) :-
 gen_user :- % tell meta_user_pred_cache.pl
      meta_user_pred(H,M,L), portray_clause(meta_user_pred(H,M,L)),nl,fail.
 gen_user.
+
+meta_pred_functor(F/N,Module,MetaList) :- functor(Skel,F,N), meta_pred(Skel,Module,MetaList).
 
 :- use_module(meta_preds,[meta_library_pred/3]).
 % a list of predefined meta_predicates:
@@ -584,7 +641,7 @@ analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- N
   safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg, Info).
    
 add_args(Call,0,Res) :- !, Res=Call.
-add_args(Var,N,Res) :- var(Var),!, print(cannot_add_args(Var,N,Res)),nl.
+add_args(Var,_N,Res) :- var(Var),!, Res=_.% causes problems with layout info: is_meta_call_n(Res,N,Var).
 add_args(M:Call,N,Res) :- !, Res = M:CR, add_args(Call,N,CR).
 add_args(Call,N,Res) :- %print(add(Call,N)),nl,
   Call =.. FA,
@@ -602,17 +659,17 @@ mk_problem(P) :- assert(problem(P)).
 % exporting as binary fact
 add_fact2(Fact, Module, Name/Arity) :-
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Module, Name/Arity],
+    binop(X,Fact,Module,Name/Arity), %X =..[Fact, Module, Name/Arity],
     assert(X).
 add_fact3(Fact, Arg1, Arg2, Name/Arity) :-
-    X =..[Fact, Arg1, Arg2, Name/Arity],
+    ternop(X,Fact,Arg1,Arg2,Name/Arity), %X =..[Fact, Arg1, Arg2, Name/Arity],
     assert(X).
 
 % TO DO: remove add_fact and replace by add_fact2 for performance and indexing
 add_fact(Fact, Module, Name/Arity) :- !,
     Predicate = Module:Name/Arity,
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Predicate],
+    unop(X,Fact,Predicate), %X =..[Fact, Predicate],
     assert(X).
 
 add_fact(Fact, Module, Term ) :-
@@ -620,11 +677,9 @@ add_fact(Fact, Module, Term ) :-
     Term =..[_Fun|Arguments],
     Predicate = Module:Name/Arity,
     assert_if_new(predicate(Module,Name/Arity)),
-    X =..[Fact, Predicate, Arguments], assert(X).
+    binop(X,Fact,Predicate,Arguments), %X =..[Fact, Predicate, Arguments],
+    assert(X).
 
-
-pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
-pairs_to_list(X, [X]).
 
 
 fixity(fy, prefix, right,1).
@@ -689,10 +744,11 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     assert_if_new(defined_module(Name,File)),
     maplist(add_fact2(is_exported, Name),ListOfExported).
 
-analyze((:- use_module(Name, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
-    !, dependency(Module,Name),
+analyze((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
+    !, dependency(Module,UsedModule),
+    x_unwrap_module(UsedModule,UnwrappedUsedName),
     x_unwrap_module(Module,UnwrappedName),
-    maplist(add_fact3(is_imported,UnwrappedName,Name),ListOfImported).
+    maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported).
 
 analyze((:- use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
@@ -700,7 +756,7 @@ analyze((:- use_module(X)), _Layout, Module, _File) :-
 analyze((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_dynamic, Module),L).
+       maplist(add_fact2(is_dynamic, Module),L).
 
 analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
@@ -728,19 +784,20 @@ analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
 analyze((:- volatile(X)), _Layout,Module, _File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_volatile, Module),L).
+       maplist(add_fact2(is_volatile, Module),L).
 
 analyze((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact(is_multifile, Module),L).
+       maplist(add_fact2(is_multifile, Module),L).
 
-analyze(':-'(Body), Layout, Module, _File) :-
-    !, layout_sub_term(Layout,1,LayoutSub),
-    analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
+analyze(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
+    !,
+    layout_sub_term(Layout,2,LayoutSub),
+    safe_analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
 
 analyze((Head :- Body), Layout, Module, _File) :-
-    !,
+    !, %portray_clause((Head :- Body)),
     functor(Head,Name,Arity),
     % nl,nl,print(layout_clause(Name/Arity,Head,Body)),nl,
     Predicate = Module:Name/Arity,
@@ -750,7 +807,7 @@ analyze((Head :- Body), Layout, Module, _File) :-
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]).
 
-analyze((Head --> Body), Layout, Module, _File) :-
+analyze((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
@@ -760,7 +817,7 @@ analyze((Head --> Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
 
-analyze(Fact, Layout, Module, _File) :-
+analyze(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     !,
     %nl,print(fact(Fact)),nl,
     functor(Fact,Name,Arity),
@@ -818,9 +875,11 @@ update :-
 update.
 
 :- multifile user:term_expansion/6.
-
-
 :- dynamic seen_token/0.
+
+:- prolog_flag(compiling,_,debugcode).
+:- prolog_flag(source_info,_,on).
+%:- prolog_flag(profiling,_,on).
 
 user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
@@ -833,3 +892,4 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
   % print(expand(Module,Term)),nl,
     (analyzef(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
     !.
+
