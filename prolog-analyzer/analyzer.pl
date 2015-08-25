@@ -79,6 +79,12 @@ lint(Category) :- infolog_problem(Category,ErrorInfo,Location),
 lint(_) :- print('Done checking'),nl.
 
 
+info(Category) :- infolog_info(Category,Info,Location),
+     print_information(Info), print(' '),
+     print_location(Location),nl,
+     fail.
+info(_).
+
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
 infolog_problem(analysis_problem,string(P),unknown) :- problem(P).
@@ -91,6 +97,15 @@ infolog_problem(missing_meta_predicates,informat('Missing meta_predicate annotat
                                         module_lines(FromModule,L1,L2)) :-
         uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
 
+% HERE WE DEFINE INFOLOG INFOS
+infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
+   defined_module(FromModule,_),
+   (cycle(FromModule,ModulePath) -> true ; fail).
+infolog_info(calls(FromModule,ToModule),informat('Call ~w:~w -> ~w:~w',[FromModule,C1,ToModule,C2]),
+                                        module_lines(FromModule,L1,L2)) :-
+   defined_module(FromModule,_),
+   calling(FromModule,C1,ToModule,C2,L1,L2).
+
 % DERIVED RULES to examine the CORE InfoLog database
 % check if there is a dependency without a call that requires it:
 vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
@@ -100,6 +115,7 @@ vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
+% TO DO: provide more efficient way of computing this; maybe saturation BUP approach
 
 % is there a calling cycle which leaves a module and enters it again ?
 cross_module_cycle(Module,Call,[Module:Call|Path]) :-
