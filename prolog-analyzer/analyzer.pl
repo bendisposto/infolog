@@ -176,6 +176,7 @@ repl :-
   (call(Term) ->
     (nl,write(result(VarArgs)),nl,write(cljdone),nl);
     (nl,write(result(no)),nl,write(cljdone),nl)),
+  flush_output,  
   repl.
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
