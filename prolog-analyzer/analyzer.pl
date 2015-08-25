@@ -221,6 +221,50 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
    add_args(InnerCall,Add,Call).
 
 % ==========================================
+% a utility to compute the transitive closure using a semi-naive algorithm:
+
+:- dynamic new/2.
+% compute transitive clousre of binary predicate Pred and store result in binary predicate TransPred
+transitive_closure(Pred,TransPred) :-
+    functor(InitCall,Pred,2), transitive_closure(InitCall,Pred,TransPred).
+    
+transitive_closure(InitCall,_Pred,TransPred) :- retractall(new(_,_)),
+    % copy facts matching InitCall:
+    arg(1,InitCall,X), arg(2,InitCall,Y),
+    call(InitCall),
+    assert(new(X,Y)),
+    assert2(TransPred,X,Y),fail.
+transitive_closure(_,Pred,TransPred) :- % start iteration
+    print('.'), flush_output(user_output),
+    transitive_closure_iterate(Pred,TransPred).
+
+transitive_closure_iterate(Pred,TransPred) :-
+     retract(new(X,Y)),
+     call(Pred,Y,Z), % try and extend this new edge with all possible pairs from original relation
+     binop(DerivedFact,TransPred,X,Z),
+     \+(DerivedFact), % we have found a new fact
+     assert(new(X,Z)), assert(DerivedFact),
+     fail.
+transitive_closure_iterate(Pred,TransPred) :-
+     (new(_,_) % we have added a new fact not yet processed
+       ->  print('.'), flush_output(user_output),
+           transitive_closure_iterate(Pred,TransPred)
+        ;  print('Finished'),nl).
+assert2(Pred,X,Y) :- binop(Fact,Pred,X,Y), assert_if_new(Fact).
+
+:- dynamic depends_on_transitive/2.
+compute_cycles :- retractall(depends_on_transitive(_,_)),
+    start_analysis_timer(T1), 
+    transitive_closure(depends_on,depends_on_transitive),
+    stop_analysis_timer(T1).
+
+:- dynamic calling_transitive/2.
+compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
+    start_analysis_timer(T1),
+    transitive_closure(calling(From:Call,_),calling,calling_transitive),
+    stop_analysis_timer(T1).
+
+% ==========================================
 
 repl :-
   read(Term),
