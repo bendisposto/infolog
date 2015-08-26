@@ -136,11 +136,21 @@ print_calls(_,_) :- format('===================~n',[]).
 :- dynamic dead_predicate/2.
 % a simple dead code analysis; will not detect groups of dead code predicates which call each other
 % Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
-dca :- retractall(dead_predicate(_,_)),predicate(M,P), \+ is_public(M,P), assert(dead_predicate(M,P)),fail.
-dca :- calling(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
+dca :- dca(all).
+% all: look at all not exported predicates whether they are used
+% cross: look at all exported predicats whether they are used by another module
+dca(Type) :- retractall(dead_predicate(_,_)),
+       predicate(M,P),
+       (Type=cross -> is_exported(M,P) ; \+ is_exported(M,P)),
+       \+ is_public(M,P),
+       assert(dead_predicate(M,P)),fail.
+dca(cross) :- calling(M1,_,M,P,_,_), M1 \= M, % only look at cross_module calls
        retract(dead_predicate(M,P)),fail.
-dca :- print('dead predicates: '),nl, dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
-dca :- nl.
+dca(all) :- calling(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
+       retract(dead_predicate(M,P)),fail.
+dca(Type) :- print('dead predicates: '),print(Type),nl,
+       dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
+dca(_) :- nl.
 
 % try and find calls where the predicate is not annotated with a meta_predicate
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
@@ -958,6 +968,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     (member(rm_debug_calls,Tokens) -> assert_if_new(seen_token); true),
     %(seen_token -> member(rm_debug_calls,Tokens) ; true), % I am not sure what the purpose of this is ? It certainly removes certain clauses from the analysis
   % print(expand(Module,Term)),nl,
-    (analyzef(Term, Layout, Module, File, TermOut) ; (analyze(Term, Layout, Module, File), TermOut = Term)),
+    (  analyzef(Term, Layout, Module, File, TermOut)
+     ; analyze(Term, Layout, Module, File), (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
     !.
 
