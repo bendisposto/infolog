@@ -27,6 +27,7 @@ portray_message(informational, _).
     is_public/2,     % is_public(module,name/arity)
     is_volatile/2,   % is_volatile(module,name/arity)
     is_chr_constraint/2,   % is_chr_constraint(module,name/arity)
+    is_attribute/2,  % is_attribute(module,name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
     klaus/4,         % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
@@ -224,6 +225,7 @@ uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ
     \+ always_defined(Call),
     \+ is_dynamic(ToModule,Call),
     \+ is_chr_constraint(ToModule,Call),
+    \+ is_attribute(ToModule,Call),
     \+ check_imported(ToModule,Call,FromModule).
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
@@ -942,6 +944,11 @@ analyze((:- chr_constraint(X)), _Layout,Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact2(is_chr_constraint, Module),L).
 
+analyze((:- attribute(X)), _Layout,Module, _File) :- depends_on(Module,atts),
+       !,
+       pairs_to_list(X,L),
+       maplist(add_fact2(is_attribute, Module),L).
+
 analyze((:- chr_option(_,_)), _Layout, _Module, _File). % just ignore for analysis
 
 analyze((:- multifile(X)), _Layout, Module, _File) :-
@@ -1023,6 +1030,9 @@ get_module(Name, Arity, CallingModule, CallingModule,_Loc) :-
    (predicate_property(CallingModule:Call,interpreted); predicate_property(CallingModule:Call,compiled)),!.
 
 get_module(chr_constraint, 1, CallingModule, CallingModule, _Loc) :- depends_on(CallingModule,chr),!.
+get_module('#<=>', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
+get_module('#=', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
+get_module('#=>', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
     
 get_module(Name, Arity, CallingModule, undefined_module, Loc) :-
   mk_problem(could_not_infer_module(Name, Arity, CallingModule),Loc).
