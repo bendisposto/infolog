@@ -76,7 +76,7 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(_), stop_analysis_timer(T).
 
 lint(Category) :- infolog_problem_hash(Category,ErrorInfo,Location,Hash),
-     \+ reviewed(Hash,_,_),
+     \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
@@ -108,9 +108,14 @@ infolog_problem_hash(Category,ErrorInfo,Location,Hash) :-
      infolog_problem(Category,ErrorInfo,Location),
      term_hash(infolog_problem(Category,ErrorInfo,Location),Hash).
 
-:- dynamic reviewed/3.
-% reviewed(HashOfIssue,User,Date)
+:- dynamic reviewed/6.
+% reviewed(HashOfIssue,Category,ErrorInfo,Location,User,Sha)
 :- include(reviewed_db).
+gen_reviewed(Hash,Category,ErrorInfo) :- infolog_problem_hash(Category,ErrorInfo,Location,Hash),
+    git_revision(Sha),
+    portray_clause( reviewed(Hash, Category,ErrorInfo,Location, _User, Sha) ),
+    fail.
+gen_reviewed(_,_,_).
 
 % HERE WE DEFINE INFOLOG INFOS
 infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
