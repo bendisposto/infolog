@@ -257,7 +257,7 @@ dot_state_trans(Module1,Label,Module2,Color,Style) :-
   (calling(Module1:_,Module2:P)
    -> Style=solid,  
       (depends_on_transitive(Module2,_) % we loop back to a starting module
-        -> Label = '(CIRCULAR)', Color=red
+        -> Label = 'CIRCULAR'(P), Color=red
         ; Label = uses(P),    Color=black)
     ; Style=dashed, Label = vacuous, Color=gray).
 dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ standard_module(Module2),
