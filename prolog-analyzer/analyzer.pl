@@ -11,7 +11,7 @@ portray_message(informational, _).
 :- use_module(library(file_systems)).
 :- use_module(library(codesio)).
 :- use_module(library(process)).
-
+:- use_module(library(prologbeans)).
 
 
 
@@ -363,14 +363,15 @@ compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
 % ==========================================
 
 repl :-
-  read(Term),
-  Term =.. [_|Args],
-  exclude(ground,Args,VarArgs),
-  (call(Term) ->
-    (nl,write(result(VarArgs)),nl,write(cljdone),nl);
-    (nl,write(result(no)),nl,write(cljdone),nl)),
-  flush_output,  
-  repl.
+  register_query(evaluate(C,R), evaluate_repl(C,R)),
+  start.
+
+evaluate_repl(Chars,Variables) :-
+  read_from_codes(Chars, Term),
+   Term =.. [_|Args],
+   exclude(ground,Args,Variables),
+   call(Term).
+
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze(InputFile,OutputFile) :-
