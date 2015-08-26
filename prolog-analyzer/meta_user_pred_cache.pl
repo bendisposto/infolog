@@ -313,3 +313,21 @@ meta_user_pred(catch_interrupt_assertion_call(_), user, [meta_arg(1,0)]).
 meta_user_pred(tcltk_time_call(_), user, [meta_arg(1,0)]).
 
 meta_user_pred(add_csp_process_id1(_,_,_), user, [meta_arg(3,1)]).
+
+meta_user_pred(block_my_findall_catch(_,_,_,_,_), delay, [meta_arg(3,0)]).
+
+meta_user_pred(block_findall_check(_,_,_,_,_,_,_,_), delay, [meta_arg(3,0),meta_arg(5,0),meta_arg(6,0)]).
+
+meta_user_pred(block_my_findall_sort(_,_,_,_), delay, [meta_arg(3,0)]).
+
+meta_user_pred(not_with_enum_warning2(_,_), delay, [meta_arg(1,0)]).
+
+meta_user_pred(find_enabled_fairids_for_state(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(find_enabled_fairids(_,_,_,_), ltl_verification, [meta_arg(2,3)]).
+
+meta_user_pred(eval_fairness(_,_,_,_), ltl_verification, [meta_arg(3,3)]).
+
+meta_user_pred(is_executed(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(is_executed2(_,_,_), ltl_verification, [meta_arg(1,3)]).

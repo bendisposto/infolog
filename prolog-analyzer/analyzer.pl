@@ -75,9 +75,12 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(_), stop_analysis_timer(T).
 
-lint(Category) :- infolog_problem(Category,ErrorInfo,Location),
-     print(' *** '),print_information(ErrorInfo), print(' '),
-     print_location(Location),nl,
+lint(Category) :- infolog_problem_hash(Category,ErrorInfo,Location,Hash),
+     \+ reviewed(Hash,_,_),
+     format(' *** ',[]),
+     print_information(ErrorInfo), print(' '),
+     print_location(Location),
+     format(' [[~w]]~n',[Hash]),
      fail.
 lint(_) :- print('Done checking'),nl.
 
@@ -99,6 +102,15 @@ infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',
 infolog_problem(missing_meta_predicates,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
                                         module_lines(FromModule,L1,L2)) :-
         uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
+
+:- use_module(library(terms),[term_hash/2]).
+infolog_problem_hash(Category,ErrorInfo,Location,Hash) :-
+     infolog_problem(Category,ErrorInfo,Location),
+     term_hash(infolog_problem(Category,ErrorInfo,Location),Hash).
+
+:- dynamic reviewed/3.
+% reviewed(HashOfIssue,User,Date)
+:- include(reviewed_db).
 
 % HERE WE DEFINE INFOLOG INFOS
 infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
