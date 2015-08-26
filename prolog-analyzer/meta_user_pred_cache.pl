@@ -76,7 +76,7 @@ meta_user_pred(get_options(_,_,_,_), tools, [meta_arg(2,4)]).
 
 meta_user_pred(get_options(_,_,_,_,_), tools, [meta_arg(2,4),meta_arg(5,0)]).
 
-meta_user_pred(call_residue(_,_), tools, [meta_arg(1,0)]).
+meta_user_pred(call_residue(_,_), tools_meta, [meta_arg(1,0)]).
 
 meta_user_pred(space_call(_), tools, [meta_arg(1,0)]).
 
@@ -304,6 +304,6 @@ meta_user_pred(time_out_call(_,_), tools, [meta_arg(1,0),meta_arg(2,0)]).
 
 meta_user_pred(time_out_call(_), tools, [meta_arg(1,0)]).
 
-meta_user_pred(safe_time_out(_,_,_), tools_timeout, [meta_arg(1,0)]).
+meta_user_pred(safe_time_out(_,_,_), tools_meta, [meta_arg(1,0)]).
 
 meta_user_pred(catch_clpfd_overflow_call_for_state(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
