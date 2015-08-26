@@ -287,6 +287,7 @@ dot_state_trans(Module1,Label,Module2,Color,Style) :-
 dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ standard_module(Module2),
     (depends_on(Module1,Module2),M1=Module1,M2=Module2 % the link itself
      ; % or another relevant link not included in the transitive closure from starting module
+      Module1 \= Module2,
       depends_on(Module2,Module3),  \+ standard_module(Module3),
       M1=Module2, M2=Module3, once(depends_on_transitive(_,Module3))
     ).
