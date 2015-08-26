@@ -92,17 +92,9 @@ meta_user_pred(foldl(_,_,_,_,_,_), tools, [meta_arg(1,5)]).
 
 meta_user_pred(assert_once(_), tools, [meta_arg(1,0)]).
 
-meta_user_pred(safe_time_out(_,_,_), tools, [meta_arg(1,0)]).
-
 meta_user_pred(call_with_preference(_,_,_), preferences, [meta_arg(1,0)]).
 
 meta_user_pred(register_event_listener(_,_,_), eventhandling, [meta_arg(2,0)]).
-
-meta_user_pred(time_out_with_factor_call(_,_,_), self_check, [meta_arg(1,0),meta_arg(3,0)]).
-
-meta_user_pred(time_out_call(_,_), self_check, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(time_out_call(_), self_check, [meta_arg(1,0)]).
 
 meta_user_pred(pp_mnf(_), self_check, [meta_arg(1,0)]).
 
@@ -270,8 +262,6 @@ meta_user_pred(catch_and_ignore_well_definedness_error(_), static_analysis, [met
 
 meta_user_pred(printtime(_), ctl, [meta_arg(1,0)]).
 
-meta_user_pred(map_over_history(_,_), user, [meta_arg(1,0)]).
-
 meta_user_pred(register_conjunct_error_hook(_), predicate_evaluator, [meta_arg(1,5)]).
 
 meta_user_pred(analyse_quick_time_out(_), predicate_evaluator, [meta_arg(1,0)]).
@@ -307,3 +297,13 @@ meta_user_pred(x_maxsolver_exact_with_marker(_,_,_,_,_,_), maxsolver, [meta_arg(
 meta_user_pred(call_pred_on_expanded_state(_,_,_,_), user, [meta_arg(1,3)]).
 
 meta_user_pred(map_over_history(_,_), user, [meta_arg(1,3)]).
+
+meta_user_pred(time_out_with_factor_call(_,_,_), tools, [meta_arg(1,0),meta_arg(3,0)]).
+
+meta_user_pred(time_out_call(_,_), tools, [meta_arg(1,0),meta_arg(2,0)]).
+
+meta_user_pred(time_out_call(_), tools, [meta_arg(1,0)]).
+
+meta_user_pred(safe_time_out(_,_,_), tools_timeout, [meta_arg(1,0)]).
+
+meta_user_pred(catch_clpfd_overflow_call_for_state(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
