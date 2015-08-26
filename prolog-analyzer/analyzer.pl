@@ -133,6 +133,12 @@ print_calls(FromModule,ToModule) :-
    fail.
 print_calls(_,_) :- format('===================~n',[]).
 
+% --------------------------------------------
+
+% GLOBAL ANALYSES: 
+% these reqruire passes over all calls/clauses (indexing does not help); hence should be done
+% for all modules/predicates in one go
+
 :- dynamic dead_predicate/2.
 % a simple dead code analysis; will not detect groups of dead code predicates which call each other
 % Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
@@ -152,7 +158,19 @@ dca(Type) :- print('dead predicates: '),print(Type),nl,
        dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
 dca(_) :- nl.
 
+:- dynamic useless_import/3.
+uia :- retractall(useless_import(_,_,_)),
+   is_imported(FromModule,M,P),
+   assert(useless_import(FromModule,M,P)),fail.
+uia :- calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
+uia :- print('useless imports: '),nl,
+       useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
+uia.
+
+% ------------------
+
 % try and find calls where the predicate is not annotated with a meta_predicate
+% this indicates that the InfoLog meta-predicate call analysis could be imprecise
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
    meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
    (meta_pred_functor(Pred,FromModule,MetaList)
@@ -686,7 +704,7 @@ meta_built_in_pred(asserta(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(assertz(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
-meta_built_in_pred(call_cleanup(_,_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(call_cleanup(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(call_residue_vars(_,_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(call(_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(call(_,_),built_in,[meta_arg(1,1)]).
