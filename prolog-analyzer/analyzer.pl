@@ -127,11 +127,12 @@ cross_module_cycle(Module,Call,[Module:Call|Path]) :-
     calls_path(TargetModule:TargetCall,Module:Call,Path),
     instantiate(Path).
 
+print_calls(FromModule) :- print_calls(FromModule,_).
 print_calls(FromModule,ToModule) :-
    safe_defined_module(FromModule),
    format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
    calling(FromModule,C1,ToModule,C2,L1,L2),
-   format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
+   format('Call ~w  ->  ~w : ~w   [lines: ~w - ~w]~n',[C1,ToModule,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
 
@@ -850,23 +851,20 @@ dependency(Module, Name) :-
   assert_if_new(depends_on(Module,UnwrappedName)).
 
 
-x_unwrap_module(chrsrc(X),Y) :- !, X=Y.
-x_unwrap_module(library(X),Y) :- !, X=Y.
-x_unwrap_module(probsrc(X),Y) :- !, X=Y.
-x_unwrap_module(probcspsrc(X),Y) :- !, X=Y.
-x_unwrap_module(bparser(X),Y) :- !, X=Y.
-x_unwrap_module(plugins(X),Y) :- !, X=Y.
-x_unwrap_module(abstract_domains(X),Y) :- !, X=Y.
-x_unwrap_module(tclsrc(X),Y) :- !, X=Y.
-x_unwrap_module(smt_solvers_interface(X),Y) :- !, X=Y.
-x_unwrap_module(probporsrc(X),Y) :- !, X=Y.
-x_unwrap_module(prozsrc(X),Y) :- !, X=Y.
-x_unwrap_module(probltlsrc(X),Y) :- !, X=Y.
-x_unwrap_module(probpgesrc(X),Y) :- !, X=Y.
-x_unwrap_module(extension(E),Y) :- !,
-    atom_chars(E,ExtensionPath),
-    suffix(ExtensionPath,Module),
-    atom_chars(Y,Module).
+x_unwrap_module(chrsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(library(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probcspsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(bparser(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(plugins(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(abstract_domains(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(tclsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(smt_solvers_interface(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probporsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(prozsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probltlsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probpgesrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(extension(E),Y) :- !, remove_opt_path(E,Y).
 x_unwrap_module(Path,X) :-
     atom_chars(Path,PathChars),
     ( append(Base,[.,p,l],PathChars),
@@ -876,6 +874,10 @@ x_unwrap_module(Path,X) :-
     atom_chars(X,CharsWithoutPath).
 x_unwrap_module(X,X) :- !. % might even be unwrapped
 
+remove_opt_path(P,Module) :- atom_chars(P,ExtensionPath),
+    (x_remove_path(ExtensionPath,MY) -> atom_chars(Module,MY)
+     ; Module=P).
+    
 x_remove_path(L,L2) :-
     reverse(L,LR),
     nth0(N,LR,'/',_), %key code of /
