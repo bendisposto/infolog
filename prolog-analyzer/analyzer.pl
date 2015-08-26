@@ -245,6 +245,31 @@ standard_module(terms).
 standard_module(timeout).
 standard_module(xml).
 
+% -----------------------------------------
+% Dot graph generation
+:- use_module(infolog_dot_graph_generator).
+
+dot_state_node(ID,none,Desc,box,none,green) :- defined_module(ID,_),
+   \+ standard_module(ID),
+   ((depends_on_transitive(ID,_) ; depends_on_transitive(_,ID)) -> Desc=ID).
+dot_state_trans(Module1,Label,Module2,Color,Style) :- 
+  dot_depends(Module1,Module2),
+  (calling(Module1:_,Module2:_)
+   -> Style=solid,  Label = uses,    Color=black
+    ; Style=dashed, Label = vacuous, Color=gray).
+dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ standard_module(Module2),
+    (M1=Module1,M2=Module2 % the link itself
+     ; % or another relevant link not included in the transitive closure from starting module
+      depends_on(Module2,Module3),  \+ standard_module(Module3),
+      M1=Module2, M2=Module3, once(depends_on_transitive(_,Module3))
+    ).
+  
+dot_gen_dep(Module) :-
+    defined_module(Module,_),
+    transitive_closure(depends_on(Module,_),depends_on,depends_on_transitive),
+    il_gen_dot_graph('infolog.dot',user,dot_state_node,dot_state_trans,none,none).
+
+% -------------------------------------------
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
@@ -269,7 +294,7 @@ transitive_closure(Pred,TransPred) :-
 transitive_closure(InitCall,_Pred,TransPred) :- retractall(new(_,_)),
     % copy facts matching InitCall:
     arg(1,InitCall,X), arg(2,InitCall,Y),
-    call(InitCall),
+    call(InitCall), %print(init(InitCall)),nl,
     assert(new(X,Y)),
     assert2(TransPred,X,Y),fail.
 transitive_closure(_,Pred,TransPred) :- % start iteration
@@ -281,6 +306,7 @@ transitive_closure_iterate(Pred,TransPred) :-
      call(Pred,Y,Z), % try and extend this new edge with all possible pairs from original relation
      binop(DerivedFact,TransPred,X,Z),
      \+(DerivedFact), % we have found a new fact
+     %print(derived(DerivedFact)),nl,
      assert(new(X,Z)), assert(DerivedFact),
      fail.
 transitive_closure_iterate(Pred,TransPred) :-
