@@ -37,7 +37,7 @@ portray_message(informational, _).
     is_multifile/2,  % is_multifile(module,name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
-    problem/1.       % problem(details)
+    problem/2.       % problem(details,Loc)
 
 
 % ==========================================
@@ -88,7 +88,7 @@ info(_).
 
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
-infolog_problem(analysis_problem,string(P),unknown) :- problem(P).
+infolog_problem(analysis_problem,string(P),Loc) :- problem(P,Loc).
 infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
         vacuous_module_dependency(M1,M2).
 infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
@@ -126,12 +126,34 @@ cross_module_cycle(Module,Call,[Module:Call|Path]) :-
     instantiate(Path).
 
 print_calls(FromModule,ToModule) :-
-   defined_module(FromModule,_),
+   safe_defined_module(FromModule),
    format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
    calling(FromModule,C1,ToModule,C2,L1,L2),
    format('Call ~w  ->  ~w   [lines: ~w - ~w]~n',[C1,C2,L1,L2]),
    fail.
 print_calls(_,_) :- format('===================~n',[]).
+
+% print the required :- use_module declarations for a module; could be copied and pasted into the source
+print_uses(FromModule) :- format('~n MODULE IMPORTS for ~w~n',[FromModule]),
+   print_uses(FromModule,_), fail.
+print_uses(FromModule) :- nl,
+   findall(M:P,missing_import(FromModule,M,P),Missing),
+   sort(Missing,Sorted),
+   (Sorted=[] -> true ; format('~n *** MISSING IMPORTS:~n ~w~n',[Sorted])).
+print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
+   depends_on(FromModule,ToModule),
+   (calling(FromModule,_,ToModule,_,_,_) -> true),
+   findall(C2,calling(FromModule,_C1,ToModule,C2,_L1,_L2),Imports),
+   sort(Imports,SortedImports),
+   format(':- use_module(~w,~w).~n',[ToModule,SortedImports]).
+
+missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_,_),
+    resolve(M,Call,ToModule).
+
+resolve(undefined_module,PRED,Res) :- 
+  if(is_exported(Module,PRED),Res=Module,Res=undefined_module).
+
+safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
 
 % --------------------------------------------
 
@@ -219,6 +241,8 @@ check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % impor
 always_defined(recursive_call/0).
 always_defined(put_atts/2).
 always_defined(get_atts/2).
+always_defined(true/0).
+always_defined(fail/0).
 always_defined('~~'/1).  % ProB specific term expander; TO DO: get rid of this
 always_defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
@@ -769,8 +793,9 @@ add_args(Call,N,Res) :- %print(add(Call,N)),nl,
 
 
 
-
-mk_problem(P) :- assert(problem(P)).
+problem(X) :- problem(X,_).
+mk_problem(P,Loc) :- assert(problem(P,Loc)).
+mk_problem(P) :- assert(problem(P,unknown)).
 
 %% analyzing Prolog Code
 
@@ -974,26 +999,26 @@ decompose_call2(P,OuterModule,MR,PR) :- var(P),!, (MR,PR)=(OuterModule:P).
 decompose_call2(M:P,_OuterModule,MR,PR) :- !, decompose_call2(P,M,MR,PR).
 decompose_call2(P,OuterModule,OuterModule,P).
 
-get_module(Name, Arity, CallingModule, built_in) :-
+get_module(Name, Arity, CallingModule, built_in,_Loc) :-
    functor(Call, Name, Arity),
    predicate_property(CallingModule:Call,built_in),!.
 
-get_module(Name, Arity, CallingModule, Module) :-
+get_module(Name, Arity, CallingModule, Module,_Loc) :-
    functor(Call, Name, Arity),
    predicate_property(CallingModule:Call,imported_from(Module)),!.
 
 
-get_module(Name, Arity, CallingModule, CallingModule) :-
+get_module(Name, Arity, CallingModule, CallingModule,_Loc) :-
    functor(Call, Name, Arity),
    (predicate_property(CallingModule:Call,interpreted); predicate_property(CallingModule:Call,compiled)),!.
 
-get_module(Name, Arity, CallingModule, undefined_module) :-
-  mk_problem(could_not_infer_module(Name, Arity, CallingModule)).
+get_module(Name, Arity, CallingModule, undefined_module, Loc) :-
+  mk_problem(could_not_infer_module(Name, Arity, CallingModule),Loc).
 
 
 update :-
     retract(calling(CallingModule,CallingPred, module_yet_unknown,Name/Arity, Start, End)),
-    get_module(Name, Arity, CallingModule, Module),
+    get_module(Name, Arity, CallingModule, Module, module_pred_lines(CallingModule,CallingPred,Start,End)),
     assert_if_new(predicate(Module,Name/Arity)),
     assert_if_new(calling(CallingModule,CallingPred, Module,Name/Arity, Start, End)),
     fail.
