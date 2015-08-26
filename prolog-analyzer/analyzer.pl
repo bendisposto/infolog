@@ -254,14 +254,14 @@ dot_state_node(ID,none,Desc,box,none,green) :- defined_module(ID,_),
    ((depends_on_transitive(ID,_) ; depends_on_transitive(_,ID)) -> Desc=ID).
 dot_state_trans(Module1,Label,Module2,Color,Style) :- 
   dot_depends(Module1,Module2),
-  (calling(Module1:_,Module2:_)
+  (calling(Module1:_,Module2:P)
    -> Style=solid,  
       (depends_on_transitive(Module2,_) % we loop back to a starting module
-        -> Label = 'uses (CIRCULAR)', Color=red
-        ; Label = uses,    Color=black)
+        -> Label = '(CIRCULAR)', Color=red
+        ; Label = uses(P),    Color=black)
     ; Style=dashed, Label = vacuous, Color=gray).
 dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ standard_module(Module2),
-    (M1=Module1,M2=Module2 % the link itself
+    (depends_on(Module1,Module2),M1=Module1,M2=Module2 % the link itself
      ; % or another relevant link not included in the transitive closure from starting module
       depends_on(Module2,Module3),  \+ standard_module(Module3),
       M1=Module2, M2=Module3, once(depends_on_transitive(_,Module3))
