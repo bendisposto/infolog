@@ -115,7 +115,7 @@ meta_predicate(queues,
 	somechk_queue(1, ?),
 	somechk_queue(2, ?, ?)]).
 
-:- meta_predicate
+meta_predicate(bags,[
 	checkbag(2, +),
 	    check_bag(+, 2),
 	mapbag(1, +),
@@ -123,4 +123,8 @@ meta_predicate(queues,
 	mapbag(2, +, -),
 	    map_bag_list(+, -, 2),
 	somebag(2, +),
-	somechkbag(2, +).
+	somechkbag(2, +)]).
+
+meta_predicate(trees,[
+	map_tree(2, ?, ?),
+	    'map tree'(?, ?, 2)]).

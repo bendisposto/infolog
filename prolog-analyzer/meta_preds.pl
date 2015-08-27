@@ -80,3 +80,19 @@ meta_library_pred(some_queue(_,_,_), queues, [meta_arg(1,2)]).
 meta_library_pred(somechk_queue(_,_), queues, [meta_arg(1,1)]).
 meta_library_pred(somechk_queue(_,_,_), queues, [meta_arg(1,2)]).
 
+% module bags
+
+meta_library_pred(checkbag(_,_), bags, [meta_arg(1,2)]).
+meta_library_pred(check_bag(_,_), bags, [meta_arg(2,2)]).
+meta_library_pred(mapbag(_,_), bags, [meta_arg(1,1)]).
+meta_library_pred(map_bag(_,_), bags, [meta_arg(2,1)]).
+meta_library_pred(mapbag(_,_,_), bags, [meta_arg(1,2)]).
+meta_library_pred(map_bag_list(_,_,_), bags, [meta_arg(3,2)]).
+meta_library_pred(somebag(_,_), bags, [meta_arg(1,2)]).
+meta_library_pred(somechkbag(_,_), bags, [meta_arg(1,2)]).
+
+% module trees
+
+meta_library_pred(map_tree(_,_,_), trees, [meta_arg(1,2)]).
+meta_library_pred('map tree'(_,_,_), trees, [meta_arg(3,2)]).
+

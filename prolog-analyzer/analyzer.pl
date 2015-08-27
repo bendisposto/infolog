@@ -176,8 +176,8 @@ print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
 print_use_module(Module,List) :-
     format(':- use_module(~w,~w).~n',[Module,List]),
     (is_library_module(Module) -> 
-       (export_list_available(Module) ->
-         exclude(library_export(Module),List,NotExported),
+       (library_export_list_available(Module) ->
+         exclude(is_exported_by_library(Module),List,NotExported),
          (NotExported=[] -> true
            ; format('*** LIBRARY PREDICATES NOT EXPORTED in ~w: ~w~n',[Module,NotExported]))
          ; true)
@@ -186,7 +186,7 @@ print_use_module(Module,List) :-
         ; format('*** NEED TO BE EXPORTED in ~w: ~w~n',[Module,NotExported]))
      ).
 
-is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; library_export(Module,Pred).
+is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
 
 % compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
 missing_imports(FromModule,ToModule,AllCalls) :-
@@ -202,7 +202,7 @@ missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_
     resolve(M,Call,ToModule).
 
 resolve(undefined_module,PRED,Res) :- !, 
-  if(is_exported(Module,PRED),Res=Module,Res=undefined_module).
+  if(is_exported_by_user_or_library(Module,PRED),Res=Module,Res=undefined_module).
 resolve(M,_,M).
 
 safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
@@ -283,7 +283,8 @@ is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
 is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
 is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
-is_defined(ToModule,_) :- is_library_module(ToModule). % TO DO: check if it really exists
+is_defined(ToModule,Call) :-  is_library_module(ToModule),
+  (library_export_list_available(ToModule) -> is_exported_by_library(ToModule,Call) ; true).
 is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
   is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
