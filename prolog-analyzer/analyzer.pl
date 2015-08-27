@@ -159,6 +159,7 @@ print_calls(FromModule,ToModule) :-
 print_calls(_,_) :- format('===================~n',[]).
 
 % print the required :- use_module declarations for a module; could be copied and pasted into the source
+pu(Module) :- print_uses(Module).
 print_uses(FromModule) :- format('~n MODULE IMPORTS for ~w~n',[FromModule]),
    print_uses(FromModule,_), fail.
 print_uses(FromModule) :- nl,
@@ -168,10 +169,11 @@ print_uses(FromModule) :- nl,
      ; format('~n---~n',[])).
 print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
    depends_on(FromModule,ToModule),
-   (calling(FromModule,_,ToModule,_,_,_) -> true),
-   findall(C2,calling(FromModule,_C1,ToModule,C2,_L1,_L2),Imports),
-   sort(Imports,SortedImports),
-   print_use_module(ToModule,SortedImports).
+   (calling(FromModule,_,ToModule,_,_,_) 
+    ->  findall(C2,calling(FromModule,_C1,ToModule,C2,_L1,_L2),Imports),
+        sort(Imports,SortedImports),
+        print_use_module(ToModule,SortedImports)
+    ;   format(' *** unnecessary use_module(~w).~n',[ToModule])).
 
 print_use_module(Module,List) :-
     format(':- use_module(~w,~w).~n',[Module,List]),
