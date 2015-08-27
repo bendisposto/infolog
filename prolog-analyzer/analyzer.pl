@@ -94,6 +94,8 @@ info(_).
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
 infolog_problem(analysis_problem,string(P),Loc) :- problem(P,Loc).
+infolog_problem(missing_import,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
+        missing_imports(M1,M2,Calls).
 infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
         vacuous_module_dependency(M1,M2).
 infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
@@ -157,9 +159,10 @@ print_calls(_,_) :- format('===================~n',[]).
 print_uses(FromModule) :- format('~n MODULE IMPORTS for ~w~n',[FromModule]),
    print_uses(FromModule,_), fail.
 print_uses(FromModule) :- nl,
-   findall(M:P,missing_import(FromModule,M,P),Missing),
-   sort(Missing,Sorted),
-   (Sorted=[] -> true ; format('~n *** MISSING IMPORTS:~n ~w~n',[Sorted])).
+   format('~n MISSING IMPORTS for ~w~n',[FromModule]),
+   (missing_imports(FromModule,ToModule,AllCalls),
+    format(':- use_module(~w,~w).~n',[ToModule,AllCalls]),fail
+     ; format('~n---~n',[])).
 print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
    depends_on(FromModule,ToModule),
    (calling(FromModule,_,ToModule,_,_,_) -> true),
@@ -167,11 +170,21 @@ print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
    sort(Imports,SortedImports),
    format(':- use_module(~w,~w).~n',[ToModule,SortedImports]).
 
+% compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
+missing_imports(FromModule,ToModule,AllCalls) :-
+     safe_defined_module(FromModule),
+     findall(M:P,missing_import(FromModule,M,P),Missing),
+     Missing \= [],
+     findall(MM,member(MM:_,Missing),MMs), sort(MMs,ModulesToImport),
+     member(ToModule,ModulesToImport),
+     findall(P,member(ToModule:P,Missing),Ps), sort(Ps,AllCalls).
+     
 missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_,_),
     resolve(M,Call,ToModule).
 
-resolve(undefined_module,PRED,Res) :- 
+resolve(undefined_module,PRED,Res) :- !, 
   if(is_exported(Module,PRED),Res=Module,Res=undefined_module).
+resolve(M,_,M).
 
 safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
 
@@ -239,14 +252,23 @@ print_meta_calls(_) :- format('===================~n',[]).
 
 % try and find uncovered call
 uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ,ToModule,Call,L1,L2),
-    \+ klaus(ToModule,Call,_,_),
-    \+ always_defined(Call),
-    \+ is_dynamic(ToModule,Call),
-    \+ is_chr_constraint(ToModule,Call),
-    \+ is_attribute(ToModule,Call),
-    \+ check_imported(ToModule,Call,FromModule).
+    (always_defined(Call) -> fail
+     ; ToModule=built_in -> fail % we assume SICStus only assigns built_in if it exists
+     ; is_defined(ToModule,Call)
+     -> \+ check_imported(ToModule,Call,FromModule) % it is defined but not imported
+     ;  true % it is not defined
+     ).
+
+% check various way a module:call can be defined:
+is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
+is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
+is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
+is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
+is_defined(ToModule,_) :- standard_module(ToModule). % TO DO: check if it really exists
+
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
+check_imported(M,_,M) :- !. % we see all predicates in our own module
 check_imported(Module,Call,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
    !,
    (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
