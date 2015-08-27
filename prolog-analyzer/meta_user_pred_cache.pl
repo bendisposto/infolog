@@ -298,11 +298,11 @@ meta_user_pred(call_pred_on_expanded_state(_,_,_,_), user, [meta_arg(1,3)]).
 
 meta_user_pred(map_over_history(_,_), user, [meta_arg(1,3)]).
 
-meta_user_pred(time_out_with_factor_call(_,_,_), tools, [meta_arg(1,0),meta_arg(3,0)]).
+meta_user_pred(time_out_with_factor_call(_,_,_), tools_timeout, [meta_arg(1,0),meta_arg(3,0)]).
 
-meta_user_pred(time_out_call(_,_), tools, [meta_arg(1,0),meta_arg(2,0)]).
+meta_user_pred(time_out_call(_,_), tools_timeout, [meta_arg(1,0),meta_arg(2,0)]).
 
-meta_user_pred(time_out_call(_), tools, [meta_arg(1,0)]).
+meta_user_pred(time_out_call(_), tools_timeout, [meta_arg(1,0)]).
 
 meta_user_pred(safe_time_out(_,_,_), tools_meta, [meta_arg(1,0)]).
 

@@ -365,6 +365,8 @@ transitive_closure_iterate(Pred,TransPred) :-
            transitive_closure_iterate(Pred,TransPred)
         ;  print('Finished'),nl).
 assert2(Pred,X,Y) :- binop(Fact,Pred,X,Y), assert_if_new(Fact).
+% above we compute  Init <| closure1(pred)  [In B terms]
+% TO DO: write a version which only computes the reachable set [can be more efficient] : closure1(pred)[Init]
 
 :- dynamic depends_on_transitive/2.
 compute_cycles :- retractall(depends_on_transitive(_,_)),
@@ -377,6 +379,27 @@ compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
     transitive_closure(calling(From:Call,_),calling,calling_transitive),
     stop_analysis_timer(T1).
+
+% compute the predicates within a module that M:P depends on
+% helps in refactoring (deciding what else would need to move or be imported if we move M:P to another module)
+calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
+calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
+compute_intra_module_dependence(Module,Call,SList) :- predicate(Module,Call),
+    retractall(calling_transitive(_,_)),
+    start_analysis_timer(T1),
+    transitive_closure(calling_in_same_module(Module:Call,_),calling_in_same_module,calling_transitive),
+    stop_analysis_timer(T1),
+    findall(P2,calling_transitive(_,_:P2),List),
+    sort(List,SList).
+
+
+pred_links(M,C) :-
+      compute_intra_module_dependence(M,C,SList),
+      format('~nCall ~w:~w depends on:~n  ~w~n',[M,C,SList]),
+      format('External calls:~n  ',[]),printall(M2:C2,calling_in_other_module(M:C,M2:C2)),nl,
+      format('Called by:~n  ',[]),printall(C2,calling_in_same_module(M:C2,M:C)),nl.
+
+printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
 % ==========================================
 
