@@ -161,14 +161,22 @@ print_uses(FromModule) :- format('~n MODULE IMPORTS for ~w~n',[FromModule]),
 print_uses(FromModule) :- nl,
    format('~n MISSING IMPORTS for ~w~n',[FromModule]),
    (missing_imports(FromModule,ToModule,AllCalls),
-    format(':- use_module(~w,~w).~n',[ToModule,AllCalls]),fail
+    print_use_module(ToModule,AllCalls),fail
      ; format('~n---~n',[])).
 print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
    depends_on(FromModule,ToModule),
    (calling(FromModule,_,ToModule,_,_,_) -> true),
    findall(C2,calling(FromModule,_C1,ToModule,C2,_L1,_L2),Imports),
    sort(Imports,SortedImports),
-   format(':- use_module(~w,~w).~n',[ToModule,SortedImports]).
+   print_use_module(ToModule,SortedImports).
+
+print_use_module(Module,List) :-
+    format(':- use_module(~w,~w).~n',[Module,List]),
+    (standard_module(Module) -> true % TO DO: check export
+     ; exclude(is_exported(Module),List,NotExported),
+      (NotExported = [] -> true
+        ; format('*** NEED TO BE EXPORTED in ~w: ~w~n',[Module,NotExported]))
+     ).
 
 % compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
 missing_imports(FromModule,ToModule,AllCalls) :-
@@ -180,6 +188,7 @@ missing_imports(FromModule,ToModule,AllCalls) :-
      findall(P,member(ToModule:P,Missing),Ps), sort(Ps,AllCalls).
      
 missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_,_),
+    \+ is_imported(ToModule,Call,FromModule), % even though it does not exist it is imported; generate error elsewhere
     resolve(M,Call,ToModule).
 
 resolve(undefined_module,PRED,Res) :- !, 
