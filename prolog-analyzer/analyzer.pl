@@ -4,6 +4,7 @@ portray_message(informational, _).
 
 :- use_module(escaper).
 :- use_module(infolog_tools).
+:- use_module(library_modules).
 
 :- use_module(library(lists)).
 :- use_module(library(terms)).
@@ -174,11 +175,18 @@ print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
 
 print_use_module(Module,List) :-
     format(':- use_module(~w,~w).~n',[Module,List]),
-    (standard_module(Module) -> true % TO DO: check export
+    (is_library_module(Module) -> 
+       (export_list_available(Module) ->
+         exclude(library_export(Module),List,NotExported),
+         (NotExported=[] -> true
+           ; format('*** LIBRARY PREDICATES NOT EXPORTED in ~w: ~w~n',[Module,NotExported]))
+         ; true)
      ; exclude(is_exported(Module),List,NotExported),
       (NotExported = [] -> true
         ; format('*** NEED TO BE EXPORTED in ~w: ~w~n',[Module,NotExported]))
      ).
+
+is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; library_export(Module,Pred).
 
 % compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
 missing_imports(FromModule,ToModule,AllCalls) :-
@@ -275,7 +283,7 @@ is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
 is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
 is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
-is_defined(ToModule,_) :- standard_module(ToModule). % TO DO: check if it really exists
+is_defined(ToModule,_) :- is_library_module(ToModule). % TO DO: check if it really exists
 is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
   is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
@@ -284,12 +292,12 @@ check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
 check_imported(M,_,M) :- !. % we see all predicates in our own module
 check_imported(Module,Call,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
    !,
-   (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
+   (is_library_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
      ; is_exported(Module,Call) -> true
      ; format('Importing call which is not exported: ~w:~w~n',[Module,Call]),fail
     ).
 check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % imported, but not selectively imported
-   (standard_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
+   (is_library_module(Module) -> true % ASSUME OK; TO DO: Check more rigourously
      ; is_exported(Module,Call)
     ).
    
@@ -303,35 +311,14 @@ always_defined(fail/0).
 always_defined('~~'/1).  % ProB specific term expander; TO DO: get rid of this
 always_defined(F/N) :- functor(Call,F,N), meta_pred(Call,built_in,_).
 
-% to do: more precise analysis of which predicates are actually exported
-standard_module(aggregate).
-standard_module(assoc).
-standard_module(avl).
-standard_module(between).
-standard_module(built_in).
-standard_module(clpfd).
-standard_module(codesio).
-standard_module(fastrw).
-standard_module(file_systems).
-standard_module(heaps).
-standard_module(lists).
-standard_module(ordsets).
-standard_module(process).
-standard_module(random).
-standard_module(samsort).
-standard_module(sets).
-standard_module(system).
-standard_module(tcltk).
-standard_module(terms).
-standard_module(timeout).
-standard_module(xml).
+
 
 % -----------------------------------------
 % Dot graph generation
 :- use_module(infolog_dot_graph_generator).
 
 dot_state_node(ID,none,Desc,box,none,green) :- defined_module(ID,_),
-   \+ standard_module(ID),
+   \+ is_library_module(ID),
    ((depends_on_transitive(ID,_) ; depends_on_transitive(_,ID)) -> Desc=ID).
 dot_state_trans(Module1,Label,Module2,Color,Style) :- 
   dot_depends(Module1,Module2),
@@ -341,11 +328,11 @@ dot_state_trans(Module1,Label,Module2,Color,Style) :-
         -> Label = 'CIRCULAR'(P), Color=red
         ; Label = uses(P),    Color=black)
     ; Style=dashed, Label = vacuous, Color=gray).
-dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ standard_module(Module2),
+dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ is_library_module(Module2),
     (depends_on(Module1,Module2),M1=Module1,M2=Module2 % the link itself
      ; % or another relevant link not included in the transitive closure from starting module
       Module1 \= Module2,
-      depends_on(Module2,Module3),  \+ standard_module(Module3),
+      depends_on(Module2,Module3),  \+ is_library_module(Module3),
       M1=Module2, M2=Module3, once(depends_on_transitive(_,Module3))
     ).
   
@@ -459,6 +446,7 @@ analyze(InputFile,OutputFile) :-
     stop_analysis_timer(T3).
 
 analyze(InputFile) :-
+    precompile_library_modules,
     print('loading modules'),nl,
     start_analysis_timer(T1),
     use_module(InputFile),

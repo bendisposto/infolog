@@ -114,3 +114,13 @@ meta_predicate(queues,
 	some_queue(2, ?, ?),
 	somechk_queue(1, ?),
 	somechk_queue(2, ?, ?)]).
+
+:- meta_predicate
+	checkbag(2, +),
+	    check_bag(+, 2),
+	mapbag(1, +),
+	    map_bag(+, 1),
+	mapbag(2, +, -),
+	    map_bag_list(+, -, 2),
+	somebag(2, +),
+	somechkbag(2, +).
