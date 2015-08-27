@@ -96,6 +96,8 @@ info(_).
 infolog_problem(analysis_problem,string(P),Loc) :- problem(P,Loc).
 infolog_problem(missing_import,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
         missing_imports(M1,M2,Calls).
+infolog_problem(export_undefined,informat('Exporting undefined predicate ~w in module ~w.',[P,M]),module_loc(M)) :-
+        is_exported(M,P), \+ is_defined(M,P).
 infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
         vacuous_module_dependency(M1,M2).
 infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
