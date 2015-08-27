@@ -276,7 +276,8 @@ uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ
     (always_defined(Call) -> fail
      ; ToModule=built_in -> fail % we assume SICStus only assigns built_in if it exists
      ; is_defined(ToModule,Call)
-     -> \+ check_imported(ToModule,Call,FromModule) % it is defined but not imported
+     -> %fail, % comment in to only detect calls without definition 
+        \+ check_imported(ToModule,Call,FromModule) % it is defined but not imported
      ;  true % it is not defined
      ).
 
@@ -922,6 +923,7 @@ dependency(Module, Name) :-
 x_unwrap_module(chrsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(library(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(kodkodsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probcspsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(bparser(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(plugins(X),Y) :- !, remove_opt_path(X,Y).
@@ -933,7 +935,7 @@ x_unwrap_module(prozsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probltlsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probpgesrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(extension(E),Y) :- !, remove_opt_path(E,Y).
-x_unwrap_module(Path,X) :-
+x_unwrap_module(Path,X) :- atom(Path),
     atom_chars(Path,PathChars),
     ( append(Base,[.,p,l],PathChars),
       suffix(Base,XChars)  % module loaded with .pl ending
@@ -969,6 +971,8 @@ analyze((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- %
     maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported).
 
 analyze((:- use_module(X)), _Layout, Module, _File) :-
+    (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
+analyze((:- prob_use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
 
 analyze((:- dynamic(X)), _Layout,Module,_File) :-
