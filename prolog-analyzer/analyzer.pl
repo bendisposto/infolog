@@ -384,20 +384,22 @@ compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
 % helps in refactoring (deciding what else would need to move or be imported if we move M:P to another module)
 calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
 calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
-compute_intra_module_dependence(Module,Call,SList) :- predicate(Module,Call),
+calling_in_same_module_from(M:P,M:P2,StartingPreds) :- calling_in_same_module(M:P,M:P2), member(P,StartingPreds).
+compute_intra_module_dependence(Module,Calls,SList) :-
     retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
-    transitive_closure(calling_in_same_module(Module:Call,_),calling_in_same_module,calling_transitive),
+    transitive_closure(calling_in_same_module_from(Module:_,_,Calls),calling_in_same_module,calling_transitive),
     stop_analysis_timer(T1),
     findall(P2,calling_transitive(_,_:P2),List),
     sort(List,SList).
 
 
-pred_links(M,C) :-
-      compute_intra_module_dependence(M,C,SList),
-      format('~nCall ~w:~w depends on:~n  ~w~n',[M,C,SList]),
-      format('External calls:~n  ',[]),printall(M2:C2,calling_in_other_module(M:C,M2:C2)),nl,
-      format('Called by:~n  ',[]),printall(C2,calling_in_same_module(M:C2,M:C)),nl.
+pred_links(M,C) :- predicate(M,C), !, pred_links(M,[C]).
+pred_links(M,List) :-
+      compute_intra_module_dependence(M,List,SList), % If SList /= List we could add SList to List below ?
+      format('~nCalls ~w : ~w depend on:~n  ~w~n',[M,List,SList]),
+      format('External calls:~n  ',[]),printall(M2:C2,(member(C,List),calling_in_other_module(M:C,M2:C2))),nl,
+      format('Called by in ~w:~n  ',[M]),printall(C2,(member(C,List),calling_in_same_module(M:C2,M:C))),nl.
 
 printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
