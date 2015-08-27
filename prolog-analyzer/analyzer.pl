@@ -265,6 +265,8 @@ is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
 is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
 is_defined(ToModule,_) :- standard_module(ToModule). % TO DO: check if it really exists
+is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
+  is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
