@@ -1,4 +1,5 @@
-:- module(infolog_tools, [print_location/1, print_information/1,
+:- module(infolog_tools, [print_location/1, location_affects_module/2,
+                          print_information/1,
                           add_infolog_error/1, add_infolog_error/2, infolog_internal_error/2,
                           unop/3, binop/4, ternop/5,
                           pairs_to_list/2
@@ -12,6 +13,10 @@ print_location(module_pred_lines(Module,Predicate,From,To)) :- !, format(' in ~w
 print_location(module_loc(Module)) :- !, format(' in module ~w ',[Module]).
 print_location(unknown) :- !.
 print_location(E) :- add_infolog_error(informat('Illegal location: ~w',E)).
+
+location_affects_module(module_lines(Module,_,_),Module).
+location_affects_module(module_pred_lines(Module,_,_,_),Module).
+location_affects_module(module_loc(Module),Module).
 
 % print an (error) information term
 print_information(Info) :- print_information(Info,user_output).

@@ -110,15 +110,17 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 
 
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
-lint(Type) :- lint(_,Type).
-lint(Category,Type) :- infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
+lint(Type) :- lint(_,Type,_).
+lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
+lint(Category,Type,Module) :- infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
+     (nonvar(Module) -> location_affects_module(Location,Module) ; true),
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
      format(' [[~w]]~n',[Hash]),
      fail.
-lint(_,_) :- print('Done checking'),nl.
+lint(_,_,_) :- print('Done checking'),nl.
 
 
 info(Category) :- infolog_info(Category,Info,Location),
