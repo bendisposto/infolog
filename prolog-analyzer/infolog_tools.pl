@@ -2,7 +2,8 @@
                           print_information/1,
                           add_infolog_error/1, add_infolog_error/2, infolog_internal_error/2,
                           unop/3, binop/4, ternop/5,
-                          pairs_to_list/2
+                          pairs_to_list/2,
+                          git_revision/1
                           ]).
 
 % various utilities:
@@ -42,3 +43,11 @@ ternop(X,P,A1,A2,A3) :- functor(X,P,3), arg(1,X,A1), arg(2,X,A2), arg(3,X,A3).
 
 pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
 pairs_to_list(X, [X]).
+
+
+:- use_module(library(process)).
+git_revision(Sha) :-
+   absolute_file_name('$SHELL', Shell),
+   process_create(Shell, ['-c','cd $PROB_HOME && git rev-parse HEAD && cd - >/dev/null'],[stdout(pipe(F)), process(P)]),
+   process_wait(P,_ExitCode),
+   stream2code(F,Sha).
