@@ -44,13 +44,14 @@ portray_message(informational, _).
 
 % external calls from Tcl/Tk (Java still to do)
 
-% tcltk_call(Name/Arity,Module,TclTkFile,Line)
+% tcltk_call(Name,Module,TclTkFile,Line)
 
 :- use_module(tcltk_calls, [tcltk_call/4]).
 
 calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
-calling_with_ext(tcltkfile(File),tcltk,M2,C2,Line,Line) :- 
-    tcltk_call(C2,TkM2,File,Line), resolve_module_location(TkM2,C2,M2).
+calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :- 
+    tcltk_call(Pred,TkM2,File,Line),
+    resolve_module_location(TkM2,Pred/Arity,M2).
 
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
 is_used_by_sicstus(_,foreign_resource/2).
@@ -205,13 +206,14 @@ cross_module_cycle(Module,Call,[Module:Call|Path]) :-
     instantiate(Path).
 
 print_calls(FromModule) :- print_calls(FromModule,_).
-print_calls(FromModule,ToModule) :-
+print_calls(FromModule,ToModule) :- print_calls(FromModule,_,ToModule).
+print_calls(FromModule,C1,ToModule) :-
    safe_defined_module(FromModule),
    format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
    calling(FromModule,C1,ToModule,C2,L1,L2),
    format('Call ~w  ->  ~w : ~w   [lines: ~w - ~w]~n',[C1,ToModule,C2,L1,L2]),
    fail.
-print_calls(_,_) :- format('===================~n',[]).
+print_calls(_,_,_) :- format('===================~n',[]).
 
 % print the required :- use_module declarations for a module; could be copied and pasted into the source
 pu(Module) :- print_uses(Module).
@@ -1238,3 +1240,5 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 
 %%% Infolog cannot deal with calls of the form MODULE:(A,B) 
 %%% attribute usage is not checked
+%%% tcltk_call does not store arity
+

@@ -371,3 +371,9 @@ meta_user_pred(if_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
 meta_user_pred(timeout_call(_,_), user, [meta_arg(1,0)]).
 
 meta_user_pred(call_probcli_option(_), user, [meta_arg(1,0)]).
+
+meta_user_pred(z3_interface_call(_), z3interface, [meta_arg(1,0)]).
+
+meta_user_pred(cvc4_interface_call(_), z3interface, [meta_arg(1,0)]).
+
+meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, [meta_arg(2,0)]).
