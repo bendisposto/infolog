@@ -45,6 +45,40 @@ portray_message(informational, _).
 
 % ==========================================
 
+% a few indexing facts (variations of the above for better indexing lookups)
+
+:- dynamic predicate_in/2 % predicate_in(Pred,Module)
+           .
+
+compute_indexing_facts :- retractall(predicate_in(_,_)),
+    predicate(M,P), assert(predicate_in(P,M)),fail.
+compute_indexing_facts.
+
+% ==========================================
+% DERIVED RULES to examine the CORE InfoLog database
+
+is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
+
+calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
+calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
+calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
+
+% check if there is a dependency without a call that requires it:
+vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
+   \+ calling(M1:_,M2:_).
+
+% check various way a module:call can be defined:
+is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
+is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
+is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
+is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
+is_defined(ToModule,Call) :-  is_library_module(ToModule),
+  (library_export_list_available(ToModule) -> is_exported_by_library(ToModule,Call) ; true).
+is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
+  is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
+
+% ==========================================
+
 % a few analysis utilities
 
 % compute paths / transitive closure with at most one cycle and at least one step
@@ -62,7 +96,6 @@ trans(P,A1,AFinal,History,[A2|Path]) :-
 
 depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Path).
 
-calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
 calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
 
 % instantiate module dependency path with call witnesses
@@ -74,16 +107,16 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 
-lint :- start_analysis_timer(T), print('Start checking'),nl,lint(_), stop_analysis_timer(T).
-
-lint(Category) :- infolog_problem_hash(Category,ErrorInfo,Location,Hash),
+lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
+lint(Type) :- lint(_,Type).
+lint(Category,Type) :- infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
      format(' [[~w]]~n',[Hash]),
      fail.
-lint(_) :- print('Done checking'),nl.
+lint(_,_) :- print('Done checking'),nl.
 
 
 info(Category) :- infolog_info(Category,Info,Location),
@@ -94,29 +127,35 @@ info(_).
 
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
-infolog_problem(analysis_problem,string(P),Loc) :- problem(P,Loc).
-infolog_problem(missing_import,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
+infolog_problem(analysis_problem,error,string(P),Loc) :- problem(P,Loc).
+infolog_problem(missing_import,warning,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
         missing_imports(M1,M2,Calls).
-infolog_problem(export_undefined,informat('Exporting undefined predicate ~w in module ~w.',[P,M]),module_loc(M)) :-
+infolog_problem(export_undefined,error,informat('Exporting undefined predicate ~w in module ~w.',[P,M]),module_loc(M)) :-
         is_exported(M,P), \+ is_defined(M,P).
-infolog_problem(vacuous_modules,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
+infolog_problem(importing_undefined,error,informat('Importing undefined predicate ~w:~w.',[M,P]),module_loc(FromM)) :-
+        is_imported(FromM,M,P), \+ is_defined(M,P).
+infolog_problem(importing_private,error,informat('Importing private predicate ~w:~w.',[M,P]),module_loc(FromM)) :-
+        is_imported(FromM,M,P), is_defined(M,P), \+ is_exported_by_user_or_library(M,P).
+infolog_problem(export_multiple,info,informat('Predicate ~w exported by modules ~w and ~w.',[P,M1,M2]),module_loc(M1)) :-
+        is_exported(M1,P), is_exported(M2,P), M2 @>M1.
+infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
         vacuous_module_dependency(M1,M2).
-infolog_problem(uncovered_calls,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
+infolog_problem(uncovered_calls,error,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
                                 module_pred_lines(FromModule,FromQ,L1,L2)) :-
         uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2).
-infolog_problem(missing_meta_predicates,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
+infolog_problem(missing_meta_predicates,warning,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
                                         module_lines(FromModule,L1,L2)) :-
         uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
 
 :- use_module(library(terms),[term_hash/2]).
-infolog_problem_hash(Category,ErrorInfo,Location,Hash) :-
-     infolog_problem(Category,ErrorInfo,Location),
+infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
+     infolog_problem(Category,Type,ErrorInfo,Location),
      term_hash(infolog_problem(Category,ErrorInfo,Location),Hash).
 
 :- dynamic reviewed/6.
 % reviewed(HashOfIssue,Category,ErrorInfo,Location,User,Sha)
 :- include(reviewed_db).
-gen_reviewed(Hash,Category,ErrorInfo) :- infolog_problem_hash(Category,ErrorInfo,Location,Hash),
+gen_reviewed(Hash,Category,ErrorInfo) :- infolog_problem_hash(Category,_Type,ErrorInfo,Location,Hash),
     git_revision(Sha),
     portray_clause( reviewed(Hash, Category,ErrorInfo,Location, _User, Sha) ),
     fail.
@@ -131,10 +170,7 @@ infolog_info(calls(FromModule,ToModule),informat('Call ~w:~w -> ~w:~w',[FromModu
    defined_module(FromModule,_),
    calling(FromModule,C1,ToModule,C2,L1,L2).
 
-% DERIVED RULES to examine the CORE InfoLog database
-% check if there is a dependency without a call that requires it:
-vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
-   \+ calling(M1:_,M2:_).
+
 
 % is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
@@ -188,7 +224,6 @@ print_use_module(Module,List) :-
         ; format('*** NEED TO BE EXPORTED in ~w: ~w~n',[Module,NotExported]))
      ).
 
-is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
 
 % compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
 missing_imports(FromModule,ToModule,AllCalls) :-
@@ -200,12 +235,15 @@ missing_imports(FromModule,ToModule,AllCalls) :-
      findall(P,member(ToModule:P,Missing),Ps), sort(Ps,AllCalls).
      
 missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_,_),
-    \+ is_imported(ToModule,Call,FromModule), % even though it does not exist it is imported; generate error elsewhere
-    resolve(M,Call,ToModule).
+    \+ is_imported(FromModule,ToModule,Call), % if it is imported: generate error elsewhere
+    resolve_module_location(M,Call,ToModule).
 
-resolve(undefined_module,PRED,Res) :- !, 
-  if(is_exported_by_user_or_library(Module,PRED),Res=Module,Res=undefined_module).
-resolve(M,_,M).
+% try and locate source modules for calls with undefined modules:
+resolve_module_location(undefined_module,PRED,Res) :- !, 
+  (is_exported_by_user_or_library(Module,PRED) -> Res=Module % there could be multiple solutions !
+    ; predicate_in(PRED,Module) -> Res=Module % private predicate, there could be multiple solutions
+    ; Res=undefined_module).
+resolve_module_location(M,_,M).
 
 safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
 
@@ -280,16 +318,6 @@ uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ
         \+ check_imported(ToModule,Call,FromModule) % it is defined but not imported
      ;  true % it is not defined
      ).
-
-% check various way a module:call can be defined:
-is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
-is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
-is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
-is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
-is_defined(ToModule,Call) :-  is_library_module(ToModule),
-  (library_export_list_available(ToModule) -> is_exported_by_library(ToModule,Call) ; true).
-is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
-  is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
 
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
@@ -408,9 +436,9 @@ compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
 
 % compute the predicates within a module that M:P depends on
 % helps in refactoring (deciding what else would need to move or be imported if we move M:P to another module)
-calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
-calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
+
 calling_in_same_module_from(M:P,M:P2,StartingPreds) :- calling_in_same_module(M:P,M:P2), member(P,StartingPreds).
+
 compute_intra_module_dependence(Module,Calls,SList) :-
     retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
@@ -449,11 +477,15 @@ analyze(InputFile,OutputFile) :-
     export_to_clj_file(OutputFile),
     stop_analysis_timer(T3).
 
-analyze(InputFile) :-
+analyze(InputFiles) :-
+    start_analysis_timer(T0),
+    print('precompiling'),nl,
     precompile_library_modules,
+    compute_indexing_facts,
+    stop_analysis_timer(T0),
     print('loading modules'),nl,
     start_analysis_timer(T1),
-    use_module(InputFile),
+    use_source_modules(InputFiles),
     nl,
     stop_analysis_timer(T1),
     nl, print('updating calls'), nl,
@@ -461,6 +493,12 @@ analyze(InputFile) :-
     update,
     stop_analysis_timer(T2),
     nl.
+
+% works with single file or multiple files:
+use_source_modules([]) :- !.
+use_source_modules([H|T]) :- !, use_module(H), use_source_modules(T).
+use_source_modules(M) :- use_module(M).
+
 
 start_analysis_timer(timer(R,T,W)) :- statistics(runtime,[R,_]),
    statistics(total_runtime,[T,_]),
@@ -968,7 +1006,7 @@ analyze((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- %
     !, dependency(Module,UsedModule),
     x_unwrap_module(UsedModule,UnwrappedUsedName),
     x_unwrap_module(Module,UnwrappedName),
-    maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported).
+    maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported). % TO DO: add source location
 
 analyze((:- use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
