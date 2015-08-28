@@ -52,6 +52,7 @@ is_library_module(xml).
 private_library_predicate(avl,avl_shrinkage/3).
 private_library_predicate(avl,avl/6).
 private_library_predicate(avl,avl_del_max/5).
+private_library_predicate('$fd_delete'/3).
 
 %% THE module headers from SICStus / Quintus Prolog libraries
 

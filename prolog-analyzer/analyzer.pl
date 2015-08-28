@@ -129,6 +129,8 @@ info(_).
 
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
+
+infolog_problem(infolog_internal_error,error,P,Loc) :- infolog_internal_error(P,Loc).
 infolog_problem(analysis_problem,error,string(P),Loc) :- problem(P,Loc).
 infolog_problem(missing_import,warning,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
         missing_imports(M1,M2,Calls).
@@ -669,6 +671,18 @@ layout_sub_term(Term,N,Res) :-
     format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res)]), % can happen when add_args adds new positions which did not exist
     Res=Term.
 
+
+% for a term-expander context compute a position term; if not possible: constructs unknown
+get_position_term(CallingPredicate,Layout,PositionTerm) :-
+   decompose_call(CallingPredicate,Module,CallingPred),
+   get_position(Layout, StartLine, EndLine),!,
+   PositionTerm = module_pred_lines(Module,CallingPred,StartLine,EndLine).
+get_position_term(CallingPredicate,_,PositionTerm) :-
+   decompose_call(CallingPredicate,Module,_),!,
+   PositionTerm = module_loc(Module).
+get_position_term(_,_,unknown).
+
+
 get_position(Layout, StartLine, EndLine) :-
   get_position1(Layout, Start, End),
   (Start = [] -> StartLine = -1 ; StartLine = Start),
@@ -700,7 +714,8 @@ assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,I
      % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
     (assert_call2(DCG,CallingPredicate, Predicate, Layout) -> true
-      ; format('*** assert_call failed ~w~n',[assert_call(CallingPredicate, Predicate, Layout, DCG)])).
+      ;  get_position_term(CallingPredicate,Layout,PositionTerm),
+         add_infolog_error(informat('*** assert_call failed ~w',[assert_call(CallingPredicate, Predicate, Layout, DCG)]),PositionTerm)).
 assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
     get_position(Layout, StartLine, EndLine),
     decompose_call(Predicate,Module,Call),
@@ -712,11 +727,12 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
 adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
 adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
 %adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
-adapt_arity(DCG,Arity,R) :- add_infolog_error(informat('unknown DCG type: ~w~n',[DCG])), R=Arity.
+adapt_arity(DCG,Arity,R) :- add_infolog_error(informat('unknown DCG type: ~w',[DCG])), R=Arity.
 
 safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
    (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
-     ; add_infolog_error(informat('analyze body failed: ~w~n~n',[analyze_body(X,Layout, CallingPredicate, DCG)]))
+     ; get_position_term(CallingPredicate,Layout,PositionTerm),
+       add_infolog_error(informat('analyze body failed: ~w',[analyze_body(X,Layout, CallingPredicate, DCG)]),PositionTerm)
        %,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
     ).
 
@@ -830,13 +846,17 @@ analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
 
 
 :- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
-:- dynamic meta_user_pred/3.
-:- include(meta_user_pred_cache). % cached version from previous run
+:- dynamic meta_user_pred/3, meta_user_pred_cache_needs_updating/0.
+:- include(meta_user_pred_cache). % cached version from previous run;  TO DO provide parameter
 add_meta_predicate(Module,Pattern) :-
    translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
    (meta_user_pred(Head,Module,MetaArgList) -> true
      ; format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
-       assert(meta_user_pred(Head,Module,MetaArgList))
+       assert(meta_user_pred(Head,Module,MetaArgList)),
+       (meta_user_pred_cache_needs_updating -> true
+        ; assert(meta_user_pred_cache_needs_updating),
+          add_infolog_error(informat('meta_predicate cache is out-of-date (e.g, ~w:~w) and needs to be refreshed',[Module,Head]))
+       )
     ).
 
 % write meta_user_pred facts

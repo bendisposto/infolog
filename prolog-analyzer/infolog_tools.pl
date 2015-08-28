@@ -1,5 +1,5 @@
 :- module(infolog_tools, [print_location/1, print_information/1,
-                          add_infolog_error/1,
+                          add_infolog_error/1, add_infolog_error/2, infolog_internal_error/2,
                           unop/3, binop/4, ternop/5,
                           pairs_to_list/2
                           ]).
@@ -20,10 +20,14 @@ print_information(string(Msg),Stream) :- !, format(Stream,'~w',[Msg]).  % we cou
 print_information(E,_Stream) :- add_infolog_error(informat('Illegal information: ~w',E)).
 
 % register an internal error
-add_infolog_error(T) :- format(user_error,'~n*** INTERNAL ERROR: ',[]),
+add_infolog_error(T) :- add_infolog_error(T,unknown).
+add_infolog_error(T,Loc) :- format(user_error,'~n*** INTERNAL ERROR: ',[]),
    print_information(T,user_error),
+   assert(infolog_internal_error(T,Loc)),
+   print_location(Loc),
    format(user_error,'~n',[]).
 
+:- dynamic infolog_internal_error/2.
 
 
 % utilities to construct/deconstruct terms; faster than =..

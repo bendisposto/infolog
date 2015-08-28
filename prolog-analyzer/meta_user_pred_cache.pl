@@ -106,8 +106,6 @@ meta_user_pred(mnf(_,_), self_check, [meta_arg(2,0)]).
 
 meta_user_pred(det_call(_), self_check, [meta_arg(1,0)]).
 
-meta_user_pred(residue_check_call(_), self_check, []).
-
 meta_user_pred(must_fail(_), self_check, [meta_arg(1,0)]).
 
 meta_user_pred(must_succeed(_), self_check, [meta_arg(1,0)]).
@@ -331,3 +329,29 @@ meta_user_pred(eval_fairness(_,_,_,_), ltl_verification, [meta_arg(3,3)]).
 meta_user_pred(is_executed(_,_,_), ltl_verification, [meta_arg(1,3)]).
 
 meta_user_pred(is_executed2(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(call_for_event(_,_), eventhandling, [meta_arg(2,0)]).
+
+meta_user_pred(mnf_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(mnf_call_with_pp(_,_), self_check, [meta_arg(2,0)]).
+
+meta_user_pred(prepost_mnf_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(prepost_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(check_exception_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(rt_timeout_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(mnf_det(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(residue_check_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(check_det2(_,_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(safe_call(_,_), external_functions, [meta_arg(1,0)]).
+
+meta_user_pred(try_call(_,_,_), kodkod, [meta_arg(3,0)]).
+
+meta_user_pred(force_det_call(_), self_check, [meta_arg(1,0)]).
