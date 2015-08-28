@@ -27,6 +27,15 @@ all:
 	@echo "analyzing ProB Tcl/Tk and probcli together; you will get redefinition warnings !"
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'])."
 
+prolog-analyzer/tcltk_calls.ack:
+	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
+	 ack -o '(?<=prolog)\s+("?)([[a-zA-Z0-9_:]*)' $(PROBPATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
+	 ack -o '(?<=prologmnf)\s+("?)([[a-zA-Z0-9_:]*)' $(PROBPATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
+
+prolog-analyzer/tcltk_calls.pl: prolog-analyzer/tcltk_calls.ack prolog-analyzer/tcltk_call_importer.pl
+	@echo "Importing Calls from ProB Tcl/Tk interface"
+	sicstus -l prolog-analyzer/tcltk_call_importer.pl --goal "process_file('prolog-analyzer/tcltk_calls.ack'),generate_prolog_file('prolog-analyzer/tcltk_calls.pl'),halt."
+
 test_cli_source:
 	@echo "Running infolog_cli from source (works; but probably not useful)"
 	export PROB_HOME=$(PROB_PATH)

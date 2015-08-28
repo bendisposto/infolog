@@ -42,6 +42,17 @@ portray_message(informational, _).
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
 
+% =========================================
+
+% external calls from Tcl/Tk (Java still to do)
+
+% tcltk_call(Name/Arity,Module,TclTkFile,Line)
+
+:- use_module(tcltk_calls, [tcltk_call/4]).
+
+calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
+calling_with_ext(tcltkfile(File),tcltk,M2,C2,Line,Line) :- 
+    tcltk_call(C2,TkM2,File,Line), resolve_module_location(TkM2,C2,M2).
 
 % ==========================================
 
@@ -272,7 +283,7 @@ dca(Type) :- retractall(dead_predicate(_,_)),
        assert(dead_predicate(M,P)),fail.
 dca(cross) :- calling(M1,_,M,P,_,_), M1 \= M, % only look at cross_module calls
        retract(dead_predicate(M,P)),fail.
-dca(all) :- calling(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
+dca(all) :- calling_with_ext(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
        retract(dead_predicate(M,P)),fail.
 dca(Type) :- print('dead predicates: '),print(Type),nl,
        dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
