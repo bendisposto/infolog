@@ -73,7 +73,9 @@ is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
 is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
 is_defined(ToModule,Call) :-  is_library_module(ToModule),
-  (library_export_list_available(ToModule) -> is_exported_by_library(ToModule,Call) ; true).
+  (library_export_list_available(ToModule)
+   -> (is_exported_by_library(ToModule,Call) -> true ; private_library_predicate(ToModule,Call))
+    ; true). % list not available, assume it is defined
 is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
   is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
@@ -143,7 +145,7 @@ infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -
 infolog_problem(uncovered_calls,error,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
                                 module_pred_lines(FromModule,FromQ,L1,L2)) :-
         uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2).
-infolog_problem(missing_meta_predicates,warning,informat('Missing meta_predicate annotation (~w) for ~w:~w',[Msg,FromModule,Pred]),
+infolog_problem(missing_meta_predicates,warning,informat('Missing ~w annotation for ~w:~w',[Msg,FromModule,Pred]),
                                         module_lines(FromModule,L1,L2)) :-
         uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
 
@@ -290,10 +292,20 @@ uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
    (meta_pred_functor(Pred,FromModule,MetaList)
      -> get_required_meta_position(Head,XX,ArgNr),
         nonmember(meta_arg(ArgNr,NrAddedArgs),MetaList),
-        Msg = arg(ArgNr,NrAddedArgs)
+        gen_meta_pred_term(Pred,ArgNr,NrAddedArgs,Term),
+        Msg = meta_predicate_for_position(ArgNr,Term) %arg(ArgNr,NrAddedArgs)
         %,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
-     ;  get_required_meta_position(Head,XX,ArgNr) -> Msg = no_annotation(ArgNr,NrAddedArgs)
-     ;  Msg = no_annotation).
+     ;  get_required_meta_position(Head,XX,ArgNr)
+         -> gen_meta_pred_term(Pred,ArgNr,NrAddedArgs,Term),
+            Msg = meta_predicate(Term) %no_annotation(ArgNr,NrAddedArgs)
+     ;  Msg = meta_predicate).
+
+gen_meta_pred_term(F/A, ArgNr,NrAddedArgs,Term) :-
+   functor(Term,F,A),
+   arg(ArgNr,Term,NrAddedArgs),
+   Term =.. [_|Args],
+   maplist(grnd,Args).
+grnd(V) :- (V='-' -> true ; true).
 
 get_required_meta_position(Head,XX,ArgNr) :-
      Head =.. [_|Args],
@@ -314,7 +326,7 @@ uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ
     (always_defined(Call) -> fail
      ; ToModule=built_in -> fail % we assume SICStus only assigns built_in if it exists
      ; is_defined(ToModule,Call)
-     -> %fail, % comment in to only detect calls without definition 
+     -> fail, % comment in to only detect calls without definition 
         \+ check_imported(ToModule,Call,FromModule) % it is defined but not imported
      ;  true % it is not defined
      ).

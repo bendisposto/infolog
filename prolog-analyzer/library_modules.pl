@@ -1,7 +1,8 @@
 :- module(library_modules,[precompile_library_modules/0,
      is_exported_by_library/2, library_export_list_available/1,
      is_library_module/1,
-     library_module/2 ]).
+     library_module/2,
+     private_library_predicate/2 ]).
 
 :- dynamic is_exported_by_library/2.
 :- dynamic library_export_list_available/1.
@@ -46,6 +47,11 @@ is_library_module(ugraphs).
 is_library_module(wgraphs).
 is_library_module(varnumbers).
 is_library_module(xml).
+
+% a few private predicates, which we use:
+private_library_predicate(avl,avl_shrinkage/3).
+private_library_predicate(avl,avl/6).
+private_library_predicate(avl,avl_del_max/5).
 
 %% THE module headers from SICStus / Quintus Prolog libraries
 
