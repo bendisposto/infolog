@@ -15,8 +15,6 @@ portray_message(informational, _).
 
 
 
-
-
 % :- op(300, fy, ~~).
 
 % THE DYNAMIC PREDICATES WHICH ARE PART OF THE ANALYSIS
