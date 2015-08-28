@@ -51,10 +51,12 @@ portray_message(informational, _).
 calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
 calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :- 
     tcltk_call(Pred,TkM2,File,Line),
-    resolve_module_location(TkM2,Pred/Arity,M2).
+    resolve_module_location_nondet(TkM2,Pred/Arity,M2).
 
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
 is_used_by_sicstus(_,foreign_resource/2).
+is_used_by_sicstus(_,portray_message/2). % user can turn off messages this way
+
 
 % ==========================================
 
@@ -265,6 +267,14 @@ resolve_module_location(undefined_module,PRED,Res) :- !,
     ; predicate_in(PRED,Module) -> Res=Module % private predicate, there could be multiple solutions
     ; Res=undefined_module).
 resolve_module_location(M,_,M).
+
+% a version which by backtracking generates all possible solutions
+resolve_module_location_nondet(undefined_module,PRED,Res) :- !, 
+  if(is_exported_by_user_or_library(Module,PRED),Res=Module, % Note: if we find an export; we do not look among private predicates
+     if(predicate_in(PRED,Module),Res=Module, % private predicate, there could be multiple solutions
+         Res=undefined_module)
+    ).
+resolve_module_location_nondet(M,_,M).
 
 safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
 
