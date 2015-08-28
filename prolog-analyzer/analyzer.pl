@@ -1128,6 +1128,8 @@ analyze((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Bod
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
 
+
+analyze(runtime_entry(_), _L, _M, _F) :- !.
 analyze(end_of_file, _L, _M, _F) :- !.
 
 analyze(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
