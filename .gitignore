@@ -17,3 +17,7 @@ comments.clj
 .nrepl-port
 raw-data.clj
 raw_data.clj
+infolog.pdf
+infolog.dot
+infolog_cli.sav
+infolog_cli
