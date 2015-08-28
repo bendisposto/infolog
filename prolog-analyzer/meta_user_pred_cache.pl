@@ -355,3 +355,19 @@ meta_user_pred(safe_call(_,_), external_functions, [meta_arg(1,0)]).
 meta_user_pred(try_call(_,_,_), kodkod, [meta_arg(3,0)]).
 
 meta_user_pred(force_det_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(start_worker(_,_,_,_), worker, [meta_arg(4,1)]).
+
+meta_user_pred(measured_call(_,_), kodkod_test, [meta_arg(1,0)]).
+
+meta_user_pred(wall(_), disprover_test_runner, [meta_arg(1,0)]).
+
+meta_user_pred(if_option_set(_,_), user, [meta_arg(2,0)]).
+
+meta_user_pred(if_option_set(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
+
+meta_user_pred(if_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
+
+meta_user_pred(timeout_call(_,_), user, [meta_arg(1,0)]).
+
+meta_user_pred(call_probcli_option(_), user, [meta_arg(1,0)]).

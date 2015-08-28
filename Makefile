@@ -16,19 +16,29 @@ test2:
 test3:
 	export PROB_HOME=$(PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/kernel_ordering.pl')."
+alltk:
+	export PROB_HOME=$(PROB_PATH)
+	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl'])."
+allcli:
+	export PROB_HOME=$(PROB_PATH)
+	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_cli.pl'])."
 all:
 	export PROB_HOME=$(PROB_PATH)
-	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/prob_tcltk.pl')."
-all_cli:
+	@echo "analyzing ProB Tcl/Tk and probcli together; you will get redefinition warnings !"
+	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'])."
+
+test_cli_source:
+	@echo "Running infolog_cli from source (works; but probably not useful)"
 	export PROB_HOME=$(PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/infolog_cli.pl --goal "infolog_start_cli,halt." -- '$(PROBPATH)/src/prob_tcltk.pl'
+
 infolog_cli.sav: prolog-analyzer/*.pl
-	@echo "Building infolog_cli.sav"
 	sicstus $(PROB_PROLOG_FLAGS) -l prolog-analyzer/infolog_cli.pl --goal "save_program('infolog_cli.sav'),halt."
 infolog_cli: infolog_cli.sav
-	@echo "Building infolog_cli (DOES NOT WORK !!!)"
+	@echo "Building infolog_cli (infolog_cli DOES NOT WORK compiled !!!)"
 	spld $(spld_copts) --static --output infolog_cli --resources=./infolog_cli.sav=/infolog_cli.sav
 test_cli: infolog_cli
+	@echo "compiled infolog_cli DOES NOT WORK yet !!!"
 	export PROB_HOME=$(PROB_PATH)
 	infolog_cli $(PROBPATH)/src/prob_tcltk.pl
 	

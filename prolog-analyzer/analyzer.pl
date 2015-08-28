@@ -1006,6 +1006,7 @@ x_unwrap_module(probporsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(prozsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probltlsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probpgesrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(symbolic_model_checker(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(extension(E),Y) :- !, remove_opt_path(E,Y).
 x_unwrap_module(Path,X) :- atom(Path),
     atom_chars(Path,PathChars),
@@ -1014,6 +1015,8 @@ x_unwrap_module(Path,X) :- atom(Path),
     ; suffix(PathChars,XChars)), % or without
     x_remove_path(XChars,CharsWithoutPath),
     atom_chars(X,CharsWithoutPath).
+x_unwrap_module(X,Res) :- functor(X,Prefix,1),!, print(ignoring(Prefix)),nl,
+    arg(1,X,Inner), x_unwrap_module(Inner,Res).
 x_unwrap_module(X,X) :- !. % might even be unwrapped
 
 remove_opt_path(P,Module) :- atom_chars(P,ExtensionPath),
