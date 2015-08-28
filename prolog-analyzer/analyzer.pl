@@ -52,12 +52,16 @@ calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
 calling_with_ext(tcltkfile(File),tcltk,M2,C2,Line,Line) :- 
     tcltk_call(C2,TkM2,File,Line), resolve_module_location(TkM2,C2,M2).
 
+is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
+is_used_by_sicstus(_,foreign_resource/2).
+
 % ==========================================
 
 % a few indexing facts (variations of the above for better indexing lookups)
 
 :- dynamic predicate_in/2 % predicate_in(Pred,Module)
            .
+predicate_in(A,B) :- nl,print('*** NOT COMPUTED  '),print(predicate_in(A,B)),nl,fail.
 
 compute_indexing_facts :- retractall(predicate_in(_,_)),
     predicate(M,P), assert(predicate_in(P,M)),fail.
@@ -271,15 +275,18 @@ safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module
 :- dynamic dead_predicate/2.
 % a simple dead code analysis; will not detect groups of dead code predicates which call each other
 % Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
-dca :- dca(all).
+dca :- print('Looking for internal predicates which are not used'),nl,dca(all).
+dcax :- print('Looking for exported predicates which are not used'),nl, dca(cross).
 % all: look at all not exported predicates whether they are used
 % cross: look at all exported predicats whether they are used by another module
 dca(Type) :- retractall(dead_predicate(_,_)),
        predicate(M,P),
        (Type=cross -> is_exported(M,P) ; \+ is_exported(M,P)),
        \+ is_public(M,P),
+       \+ is_used_by_sicstus(M,P),
+       \+ is_attribute(M,P), % TO DO: we could check attribute usage with put_atts/get_atts
        assert(dead_predicate(M,P)),fail.
-dca(cross) :- calling(M1,_,M,P,_,_), M1 \= M, % only look at cross_module calls
+dca(cross) :- calling_with_ext(M1,_,M,P,_,_), M1 \= M, % only look at cross_module calls
        retract(dead_predicate(M,P)),fail.
 dca(all) :- calling_with_ext(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
        retract(dead_predicate(M,P)),fail.
@@ -506,7 +513,6 @@ analyze(InputFiles) :-
     start_analysis_timer(T0),
     print('precompiling'),nl,
     precompile_library_modules,
-    compute_indexing_facts,
     stop_analysis_timer(T0),
     print('loading modules'),nl,
     start_analysis_timer(T1),
@@ -516,6 +522,7 @@ analyze(InputFiles) :-
     nl, print('updating calls'), nl,
     start_analysis_timer(T2),
     update,
+    compute_indexing_facts,
     stop_analysis_timer(T2),
     nl.
 
@@ -1230,3 +1237,4 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 %% KNOWN ISSUES
 
 %%% Infolog cannot deal with calls of the form MODULE:(A,B) 
+%%% attribute usage is not checked

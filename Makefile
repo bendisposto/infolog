@@ -14,14 +14,13 @@ test2:
 test3:
 	export PROB_HOME=$(PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/kernel_ordering.pl')."
-alltk:
+alltk: prolog-analyzer/tcltk_calls.pl
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl'])."
 allcli:
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_cli.pl'])."
-all:
-	export PROB_HOME=$(PROB_PATH)
+all: prolog-analyzer/tcltk_calls.pl
 	@echo "analyzing ProB Tcl/Tk and probcli together; you will get redefinition warnings !"
-	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'])."
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'])."
 
 prolog-analyzer/tcltk_calls.ack:
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
