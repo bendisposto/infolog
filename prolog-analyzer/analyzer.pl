@@ -1006,6 +1006,7 @@ x_unwrap_module(probporsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(prozsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probltlsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probpgesrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(smtlib_solver(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(symbolic_model_checker(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(extension(E),Y) :- !, remove_opt_path(E,Y).
 x_unwrap_module(Path,X) :- atom(Path),
@@ -1217,3 +1218,6 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
      ; analyze(Term, Layout, Module, File), (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
     !.
 
+%% KNOWN ISSUES
+
+%%% Infolog cannot deal with calls of the form MODULE:(A,B) 
