@@ -56,7 +56,7 @@ calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :-
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
 is_used_by_sicstus(_,foreign_resource/2).
 is_used_by_sicstus(_,portray_message/2). % user can turn off messages this way
-
+is_used_by_sicstus(_,runtime_entry/1). % for building binaries
 
 % ==========================================
 
@@ -128,7 +128,9 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
 lint(Type) :- lint(_,Type,_).
 lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
-lint(Category,Type,Module) :- infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
+lint(Category,Type,Module) :-
+     (nonvar(Module) -> dif(Location,unknown) ; true),
+     infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
      (nonvar(Module) -> location_affects_module(Location,Module) ; true),
      format(' *** ',[]),
@@ -164,10 +166,20 @@ infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -
         vacuous_module_dependency(M1,M2).
 infolog_problem(uncovered_calls,error,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
                                 module_pred_lines(FromModule,FromQ,L1,L2)) :-
-        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2).
+        uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2),
+        ToModule \= undefined_module. % these are already reported in analysis_problem above
 infolog_problem(missing_meta_predicates,warning,informat('Missing ~w annotation for ~w:~w',[Msg,FromModule,Pred]),
                                         module_lines(FromModule,L1,L2)) :-
         uncovered_meta_call(FromModule,Pred,L1,L2,Msg).
+infolog_problem(dead_code(private),warning,informat('Private predicate not used ~w',[P]),
+                                        module_loc(M)) :- % TO DO: we could compute line info of first clause
+        dca(all),dead_predicate(M,P).
+infolog_problem(dead_code(exported),warning,informat('Exported predicate not used anywhere: ~w',[P]),
+                                        module_loc(M)) :- % TO DO: we could compute line info of first clause
+        dca(cross),dead_predicate(M,P).
+infolog_problem(useless_import,warning,informat('Imported predicate not used: ~w:~w',[M,P]),
+                                        module_loc(From)) :- % TO DO: we could compute line info of first clause
+        uia,useless_import(From,M,P).
 
 :- use_module(library(terms),[term_hash/2]).
 infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
@@ -284,11 +296,12 @@ safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module
 % these reqruire passes over all calls/clauses (indexing does not help); hence should be done
 % for all modules/predicates in one go
 
+% Dead Code Analysis (Global)
 :- dynamic dead_predicate/2.
 % a simple dead code analysis; will not detect groups of dead code predicates which call each other
 % Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
-dca :- print('Looking for internal predicates which are not used'),nl,dca(all).
-dcax :- print('Looking for exported predicates which are not used'),nl, dca(cross).
+dca :- print('Looking for internal predicates which are not used'),nl,dca(all),print_dca(all).
+dcax :- print('Looking for exported predicates which are not used'),nl, dca(cross),print_dca(cross).
 % all: look at all not exported predicates whether they are used
 % cross: look at all exported predicats whether they are used by another module
 dca(Type) :- retractall(dead_predicate(_,_)),
@@ -302,18 +315,21 @@ dca(cross) :- calling_with_ext(M1,_,M,P,_,_), M1 \= M, % only look at cross_modu
        retract(dead_predicate(M,P)),fail.
 dca(all) :- calling_with_ext(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
        retract(dead_predicate(M,P)),fail.
-dca(Type) :- print('dead predicates: '),print(Type),nl,
+dca(_).
+print_dca(Type) :- nl,print('dead predicates: '),print(Type),nl,
        dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
-dca(_) :- nl.
+print_dca(_) :- nl.
 
 :- dynamic useless_import/3.
+% Useless Import Analysis (Global)
 uia :- retractall(useless_import(_,_,_)),
    is_imported(FromModule,M,P),
    assert(useless_import(FromModule,M,P)),fail.
 uia :- calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
-uia :- print('useless imports: '),nl,
-       useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
 uia.
+print_uia :- print('useless imports: '),nl,
+       useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
+print_uia.
 
 % ------------------
 
