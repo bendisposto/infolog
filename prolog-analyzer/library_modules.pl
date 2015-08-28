@@ -49,6 +49,16 @@ is_library_module(xml).
 
 %% THE module headers from SICStus / Quintus Prolog libraries
 
+library_module(aggregate, [
+	forall/2,
+	foreach/2,
+	aggregate/3,
+	aggregate/4,
+	aggregate_all/3,
+	aggregate_all/4,
+	free_variables/4,
+	term_variables/3
+   ]).
 library_module(assoc, [
 	empty_assoc/1,		% Assoc ->
 	assoc_to_list/2,	% Assoc -> List
@@ -146,6 +156,132 @@ library_module(between, [
 	numlist/5,		%   Lower x Step x Upper x Length -> List
 	repeat/1		%   Natural
    ]).
+library_module(clpfd, [
+	% enumeration
+	indomain/1,
+	labeling/2,
+	solve/2,
+	first_bound/2,
+	later_bound/2,
+	minimize/2,
+	minimize/3,
+	maximize/2,
+	maximize/3,
+	/* order_resource/2, */
+	% reflection
+	fd_var/1,
+	fd_min/2,
+	fd_max/2,
+	fd_size/2,
+	fd_set/2,
+	fd_dom/2,
+	fd_degree/2,
+	fd_statistics/0,
+	fd_statistics/2,
+	fd_neighbors/2,
+	fd_closure/2,
+	% constraints
+	domain/3,
+	iff/2,					% for compatibility
+	in/2,
+	in_set/2,
+	all_different/1,
+	all_different/2,
+	all_distinct/1,
+	all_distinct/2,
+	element/3,
+	relation/3,		% deprecated
+	minimum/2,
+	maximum/2,
+	nvalue/2,
+        geost/2,
+        geost/3,
+        geost/4,
+	circuit/1,
+	circuit/2,
+	assignment/2,
+	assignment/3,
+	cumulative/1,
+	cumulative/2,
+        disjoint1/1,
+        disjoint1/2,
+        disjoint2/1,
+        disjoint2/2,
+        case/3,
+        case/4,
+        table/2,
+        table/3,
+	cumulatives/2,
+	cumulatives/3,
+	global_cardinality/2,
+	global_cardinality/3,
+	count/4,		% deprecated
+	sum/3,
+	scalar_product/4,
+	scalar_product/5,
+	sorting/3,
+	keysorting/2,
+	keysorting/3,
+	lex_chain/1,
+	lex_chain/2,
+        automaton/3,
+        automaton/8,
+        automaton/9,
+        smt/1,
+        bool_and/2,
+        bool_or/2,
+        bool_xor/2,
+        bool_channel/4,
+	multi_cumulative/2,
+	multi_cumulative/3,
+	#= /2,
+	#\= /2,
+	#< /2,
+	#=< /2,
+	#> /2,
+	#>= /2,
+	#\ /1,
+	#/\ /2,
+	#\ /2,
+	#\/ /2,
+	#=> /2,
+	#<= /2,
+	#<=> /2,
+	% geost extras
+	% geost_domination_data/3,
+	% geost_domination_post/4,
+	% programming interface
+	fd_batch/1,
+	fd_global/3,
+	fd_global/4,
+	fd_flag/3,
+	is_fdset/1,
+	empty_fdset/1,
+	fdset_parts/4,
+	empty_interval/2,
+	fdset_interval/3,
+	fdset_singleton/2,
+	fdset_min/2,
+	fdset_max/2,
+	fdset_size/2,
+	list_to_fdset/2,
+	fdset_to_list/2,
+	range_to_fdset/2,
+	fdset_to_range/2,
+	fdset_add_element/3,
+	fdset_del_element/3,
+	fdset_disjoint/2,
+	fdset_intersect/2,
+	fdset_intersection/3,
+	fdset_intersection/2,
+	fdset_member/2,
+	fdset_eq/2,
+	fdset_subset/2,
+	fdset_subtract/3,
+	fdset_union/3,
+	fdset_union/2,
+	fdset_complement/2
+		 ]).
 library_module(codesio, [
 	format_to_codes/3,
 	format_to_codes/4,
@@ -371,6 +507,19 @@ library_module(plunit, [
 	  % running_tests/0	% SWI specific
 	  % test_report/1	% SWI specific
 	  ]).
+library_module(process,
+          [
+           process_create/2,
+           process_create/3,
+           process_wait/2,
+           process_wait/3,
+           process_id/1,
+           process_id/2,
+           is_process/1,
+           process_release/1,
+           process_kill/1,
+           process_kill/2
+          ]).
 library_module(queues, [
 	append_queue/3,		% List x Queue -> Queue
 	empty_queue/1,		% -> Queue
