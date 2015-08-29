@@ -143,16 +143,17 @@ lint(_,_,_) :- print('Done checking'),nl.
 lint_to_csv_file(File) :- open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)).
 lint_to_csv :- lint_to_csv_stream(user_output).
 lint_to_csv_stream(S) :-
-     format(S,'~w,~w,~w,~w,~w,~w,~w,~w~n',['Category','Type','Message','Module','Pred','L1','L2','Hash']),
-     infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash),
-     format(S,'"~w",~w,"~w",~w,~w,~w,~w,~w~n',[CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash]),
+     format(S,'~w,~w,~w,~w,~w,~w,~w,~w,~w~n',['Category','Type','Message','Module','Pred','File','L1','L2','Hash']),
+     infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,File,L1,L2,Hash),
+     format(S,'"~w",~w,"~w",~w,~w,"~w",~w,~w,~w~n',[CatStr,Type,ErrStr,Module,Pred,File,L1,L2,Hash]),
      fail.
 lint_to_csv_stream(_).
 
 % a flat view of infolog_problem, suitable for exporting (clojure, csv, tcltk):
-infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash) :-
+infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,File,L1,L2,Hash) :-
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      decompose_location(Location,Module,Pred,L1,L2),
+     (defined_module(Module,File) -> true ; File=unknown),
      information_to_atom(string(Category),CatStr),
      information_to_atom(ErrorInfo,ErrStr).
 
@@ -199,7 +200,7 @@ infolog_problem(useless_import,warning,informat('Imported predicate not used: ~w
 :- use_module(library(terms),[term_hash/2]).
 infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
      infolog_problem(Category,Type,ErrorInfo,Location),
-     term_hash(infolog_problem(Category,ErrorInfo,Location),Hash).
+     term_hash(infolog_problem(Category,ErrorInfo),Hash).
 
 :- dynamic reviewed/6.
 % reviewed(HashOfIssue,Category,ErrorInfo,Location,User,Sha)
@@ -1154,6 +1155,7 @@ update.
 :- prolog_flag(compiling,_,debugcode).
 :- prolog_flag(source_info,_,on).
 %:- prolog_flag(profiling,_,on).
+:- prolog_flag(redefine_warnings,_,off).
 
 user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
