@@ -519,7 +519,7 @@ printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
 % ==========================================
 
-repl :-
+clj_repl :-
   read(Term),
   Term =.. [_|Args],
   exclude(ground,Args,VarArgs),
@@ -527,7 +527,7 @@ repl :-
     (nl,write(result(VarArgs)),nl,write(cljdone),nl);
     (nl,write(result(no)),nl,write(cljdone),nl)),
   flush_output,  
-  repl.
+  clj_repl.
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze(InputFile,OutputFile) :-
