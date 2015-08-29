@@ -1,10 +1,14 @@
 :- module(infolog_tools, [print_location/1, location_affects_module/2,
+                          location_to_atom/2,
                           print_information/1,
+                          information_to_atom/2,
                           add_infolog_error/1, add_infolog_error/2, infolog_internal_error/2,
                           unop/3, binop/4, ternop/5,
                           pairs_to_list/2,
                           git_revision/1
                           ]).
+
+:- use_module(library(codesio),[format_to_codes/3]).
 
 % various utilities:
 
@@ -15,6 +19,17 @@ print_location(module_loc(Module)) :- !, format(' in module ~w ',[Module]).
 print_location(unknown) :- !.
 print_location(E) :- add_infolog_error(informat('Illegal location: ~w',E)).
 
+% convert location to atom
+location_to_atom(Info,Atom) :-
+  location_to_codes(Info,Codes), atom_codes(Atom,Codes).
+location_to_codes(module_lines(Module,From,To),Codes) :- !,
+     format_to_codes(' in ~w [~w - ~w] ',[Module,From,To],Codes).
+location_to_codes(module_pred_lines(Module,Predicate,From,To),Codes) :- !,
+     format_to_codes(' in ~w [~w - ~w defining ~w] ',[Module,From,To,Predicate],Codes).
+location_to_codes(module_loc(Module),Codes) :- !, format_to_codes(' in module ~w ',[Module],Codes).
+location_to_codes(unknown,[]) :- !.
+location_to_codes(E,[]) :- add_infolog_error(informat('Illegal location: ~w',E)).
+
 location_affects_module(module_lines(Module,_,_),Module).
 location_affects_module(module_pred_lines(Module,_,_,_),Module).
 location_affects_module(module_loc(Module),Module).
@@ -24,6 +39,14 @@ print_information(Info) :- print_information(Info,user_output).
 print_information(informat(Msg,Args),Stream) :- !, format(Stream,Msg,Args).
 print_information(string(Msg),Stream) :- !, format(Stream,'~w',[Msg]).  % we could also simply use informat(Msg,[]) instead
 print_information(E,_Stream) :- add_infolog_error(informat('Illegal information: ~w',E)).
+
+
+% convert information term into atom
+information_to_atom(Info,Atom) :-
+  information_to_codes(Info,Codes), atom_codes(Atom,Codes).
+information_to_codes(informat(Msg,Args),Codes) :- !, format_to_codes(Msg,Args,Codes).
+information_to_codes(string(Msg),Codes) :- !, format_to_codes('~w',[Msg],Codes).  % we could also simply use informat(Msg,[]) instead
+information_to_codes(E,[]) :- add_infolog_error(informat('Illegal information: ~w',E)).
 
 % register an internal error
 add_infolog_error(T) :- add_infolog_error(T,unknown).
