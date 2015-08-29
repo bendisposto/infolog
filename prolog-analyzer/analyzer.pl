@@ -140,6 +140,21 @@ lint(Category,Type,Module) :-
      fail.
 lint(_,_,_) :- print('Done checking'),nl.
 
+lint_to_csv_file(File) :- open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)).
+lint_to_csv :- lint_to_csv_stream(user_output).
+lint_to_csv_stream(S) :-
+     format(S,'~w,~w,~w,~w,~w,~w,~w,~w~n',['Category','Type','Message','Module','Pred','L1','L2','Hash']),
+     infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash),
+     format(S,'"~w",~w,"~w",~w,~w,~w,~w,~w~n',[CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash]),
+     fail.
+lint_to_csv_stream(_).
+
+% a flat view of infolog_problem, suitable for exporting (clojure, csv, tcltk):
+infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,L1,L2,Hash) :-
+     infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
+     decompose_location(Location,Module,Pred,L1,L2),
+     information_to_atom(string(Category),CatStr),
+     information_to_atom(ErrorInfo,ErrStr).
 
 info(Category) :- infolog_info(Category,Info,Location),
      print_information(Info), print(' '),
