@@ -43,16 +43,18 @@ portray_message(informational, _).
 % =========================================
 
 % external calls from Tcl/Tk (Java still to do)
-
-% tcltk_call(Name,Module,TclTkFile,Line)
-
 :- use_module(tcltk_calls, [tcltk_call/4]).
+% tcltkc_call/4: tcltk_call(Name,Module,TclTkFile,Line)
 
+
+% a variation of calling/6 which factors in also calls from external sources such as Tcl/Tk
 calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
 calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :- 
     tcltk_call(Pred,TkM2,File,Line),
     resolve_module_location_nondet(TkM2,Pred/Arity,M2).
+% TO DO: also add calls from Java ProB1/ProB2
 
+% predicates which are/can be used by SICStus automatically; they are not dead code:
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
 is_used_by_sicstus(_,foreign_resource/2).
 is_used_by_sicstus(_,portray_message/2). % user can turn off messages this way
@@ -62,12 +64,17 @@ is_used_by_sicstus(_,runtime_entry/1). % for building binaries
 
 % a few indexing facts (variations of the above for better indexing lookups)
 
-:- dynamic predicate_in/2 % predicate_in(Pred,Module)
+:- dynamic predicate_in/3 % predicate_in(Pred,Arity,Module) ; inverse of predicate/2 to quickly lookup module for given predicate name
            .
-predicate_in(A,B) :- nl,print('*** NOT COMPUTED  '),print(predicate_in(A,B)),nl,fail.
+predicate_in(P/Arity,Module) :- !, predicate_in(P,Arity,Module).
+predicate_in(P,_) :- add_infolog_error(informat('Illegal predicate_in arg: ~w', [P])),fail.
 
-compute_indexing_facts :- retractall(predicate_in(_,_)),
-    predicate(M,P), assert(predicate_in(P,M)),fail.
+predicate_in(A,B,C) :- nl,print('*** NOT COMPUTED  '),print(predicate_in(A,B,C)),nl,fail.
+
+compute_indexing_facts :- retractall(predicate_in(_,_,_)),
+    predicate(M,P),
+    (P=Pred/Arity -> assert(predicate_in(Pred,Arity,M)) ; add_infolog_error(informat('Illegal pred: ~w', [P]))),
+    fail.
 compute_indexing_facts.
 
 % ==========================================
@@ -140,7 +147,8 @@ lint(Category,Type,Module) :-
      fail.
 lint(_,_,_) :- print('Done checking'),nl.
 
-lint_to_csv_file(File) :- open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)).
+lint_to_csv_file(File) :- start_analysis_timer(T), format('Exporting to csv file: ~w~n',[File]),nl,
+    open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)), stop_analysis_timer(T).
 lint_to_csv :- lint_to_csv_stream(user_output).
 lint_to_csv_stream(S) :-
      format(S,'~w,~w,~w,~w,~w,~w,~w,~w,~w~n',['Category','Type','Message','Module','Pred','File','L1','L2','Hash']),
