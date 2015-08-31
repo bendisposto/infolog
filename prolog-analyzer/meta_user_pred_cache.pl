@@ -372,7 +372,7 @@ meta_user_pred(timeout_call(_,_), user, [meta_arg(1,0)]).
 
 meta_user_pred(call_probcli_option(_), user, [meta_arg(1,0)]).
 
-meta_user_pred(z3_interface_call(_), z3interface, [meta_arg(1,0)]).
+%meta_user_pred(z3_interface_call(_), z3interface, [meta_arg(1,0)]).
 
 meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, [meta_arg(2,0)]).
 
@@ -384,7 +384,7 @@ meta_user_pred(ifm_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
 
 meta_user_pred(maplist(_,_,_,_,_), predicate_handling, [meta_arg(1,4)]).
 
-meta_user_pred(cvc4_interface_call(_), cvc4interface, [meta_arg(1,0)]).
+% meta_user_pred(cvc4_interface_call(_), cvc4interface, [meta_arg(1,0)]).
 
 meta_user_pred(sm_node_pred(_,_,_,_,_,_,_), state_space_reduction, [meta_arg(1,2)]).
 
@@ -397,3 +397,17 @@ meta_user_pred(multiple_times(_,_), smtlib2_parser, [meta_arg(1,0)]).
 meta_user_pred(at_least_once_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
 
 meta_user_pred(multiple_times_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
+
+meta_user_pred(cvc4_interface_call(_), cvc4interface, []).
+
+meta_user_pred(z3_interface_call(_), z3interface, []).
+
+meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, []).
+
+meta_user_pred(at_least_once(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(multiple_times(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(at_least_once_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(multiple_times_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).

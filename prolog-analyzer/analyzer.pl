@@ -77,6 +77,11 @@ compute_indexing_facts :- retractall(predicate_in(_,_,_)),
     fail.
 compute_indexing_facts.
 
+% check if exported explicitly via use_module(P,[PRED]) or implicitly via use_module(P)
+is_imported_from(M,Other,Pred) :-
+   if(is_imported(M,Other,Pred),true,
+      (is_exported(Other,Pred), depends_on(M,Other))).
+
 % ==========================================
 % DERIVED RULES to examine the CORE InfoLog database
 
@@ -583,9 +588,11 @@ print_classes([Head/Pred|T],_,Module) :- print('--------'),nl,
 
 print_pred(P/N,M) :- %print(p(P,N,M)),nl,
     (is_exported(M,P/N) -> EXP='*exported' ; EXP=''),
-    (is_imported(_,M,P/N) -> IMP=imported ; IMP=''),
+    (is_imported(Other,M,P/N) -> IMP=imported_eg_in(Other) ; IMP=''),
+    (is_imported_from(M,Other,P/N) -> IMPF = imported_from(M) ; IMPF = ''),
     (calling_with_ext(_,_,M,P/N,_,_) -> DEAD='' ; DEAD='DEAD'),
-    format('  ~w/~w  ~w ~w ~w~n',[P,N,EXP,IMP,DEAD]).
+    (is_public(M,P/N) -> PUBLIC='*public' ; PUBLIC=''),
+    format('  ~w/~w  ~w ~w ~w ~w ~w~n',[P,N,EXP,IMP,DEAD,IMPF,PUBLIC]).
 
 rem_add(same_class(P1,P2),R,R2) :-
   ((P1 = (:-)/1 ; P2 = recursive_call/0) -> R2=R % ignore this call
