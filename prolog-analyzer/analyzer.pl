@@ -186,7 +186,7 @@ infolog_problem(importing_private,error,informat('Importing private predicate ~w
         is_imported(FromM,M,P), is_defined(M,P), \+ is_exported_by_user_or_library(M,P).
 infolog_problem(export_multiple,info,informat('Predicate ~w exported by modules ~w and ~w.',[P,M1,M2]),module_loc(M1)) :-
         is_exported(M1,P), is_exported(M2,P), M2 @>M1.
-infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),unknown) :-
+infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),module_loc(M1)) :-
         vacuous_module_dependency(M1,M2).
 infolog_problem(uncovered_calls,error,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
                                 module_pred_lines(FromModule,FromQ,L1,L2)) :-
