@@ -551,6 +551,60 @@ printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
 % ==========================================
 
+% split module into call equivalence classes using REM's algorithm
+
+:- use_module(library(rem)).
+
+:- dynamic rem_id/3, id_rem/2, next_rem_id/1.
+rem_id(M/P,ID) :- rem_id(M,P,ID).
+rem(Module) :- 
+   print(computing_equivalence_classes(Module)),nl,
+   findall(P,predicate(Module,P),List),
+   retractall(rem_id(_,_,_)),retractall(id_rem(_,_)), retractall(next_rem_id(_)),
+   assert(next_rem_id(1)),
+   maplist(gen_gem_id,List),
+   length(List,Len),
+   %print(rem_creat(Len)),nl,
+   rem_create(Len,R),
+   findall(same_class(P1,P2), calling_in_same_module(Module:P1,Module:P2), EqList),
+   %print(fold),nl,
+   il_foldl(rem_add,EqList,R,RRes),
+   %print(eqclasses),nl,
+   findall(Head/Pred, (rem_head(H,RRes,Head),id_rem(H,Pred)),L),
+   sort(L,SL),
+   format('Call components of ~w~n',[Module]),
+   print_classes(SL,0,Module).
+
+print_classes([],_,_).
+print_classes([Head/Pred|T],Head,Module) :- !,
+    print_pred(Pred,Module), print_classes(T,Head,Module).
+print_classes([Head/Pred|T],_,Module) :- print('--------'),nl,
+    print_pred(Pred,Module), print_classes(T,Head,Module).
+
+print_pred(P/N,M) :- %print(p(P,N,M)),nl,
+    (is_exported(M,P/N) -> EXP='*exported' ; EXP=''),
+    (is_imported(_,M,P/N) -> IMP=imported ; IMP=''),
+    (calling_with_ext(_,_,M,P/N,_,_) -> DEAD='' ; DEAD='DEAD'),
+    format('  ~w/~w  ~w ~w ~w~n',[P,N,EXP,IMP,DEAD]).
+
+rem_add(same_class(P1,P2),R,R2) :-
+  ((P1 = (:-)/1 ; P2 = recursive_call/0) -> R2=R % ignore this call
+    ; rem_id(P1,I1), rem_id(P2,I2),rem_add_link(I1,I2,R,R2)),!.
+rem_add(SC,R,R) :- print(err(SC)),nl.
+
+gen_gem_id(P/N) :- retract(next_rem_id(C)), C1 is C+1, assert(next_rem_id(C1)),
+  %print(gen(C,P:N)),nl,
+  assert(rem_id(P,N,C)), assert(id_rem(C,P/N)).
+
+il_foldl(Pred,List,Start,Result) :-
+    il_foldl2(List,Pred,Start,Result).
+il_foldl2([],_Pred,Value,Value).
+il_foldl2([Elem|Rest],Pred,OldValue,NewValue) :-
+    call(Pred,Elem,OldValue,Value),
+    il_foldl2(Rest,Pred,Value,NewValue).
+
+% ==========================================
+
 clj_repl :-
   read(Term),
   Term =.. [_|Args],
@@ -1191,4 +1245,8 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 %%% Infolog cannot deal with calls of the form MODULE:(A,B) 
 %%% attribute usage is not checked
 %%% tcltk_call does not store arity
+%%% lint does not cache; lint_for_module computes almost all errors/warning
 
+%% TO DO:
+
+%% DETECT unnecessary unification foldl(Module:Pred,List,Start,Result) :- foldl2(List,Module:Pred,Start,Result).
