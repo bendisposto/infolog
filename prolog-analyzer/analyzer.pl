@@ -147,6 +147,14 @@ lint(Category,Type,Module) :-
      fail.
 lint(_,_,_) :- print('Done checking'),nl.
 
+lint_for_pat(Pat) :- find_module(Pat,Module), lint_for_module(Module).
+find_module(Pat,Module) :- defined_module(Module,_), atom_matches(Pat,Module).
+% check if an atom's name is contained in another atom's name
+atom_matches(P,M) :- P=M,!.
+atom_matches(Pattern,Name) :- atom_codes(Pattern,Codes),
+   atom_codes(Name,NC), append(Codes,_,C),
+   append(_,C,NC).
+
 lint_to_csv_file(File) :- start_analysis_timer(T), format('Exporting to csv file: ~w~n',[File]),nl,
     open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)), stop_analysis_timer(T).
 lint_to_csv :- lint_to_csv_stream(user_output).
