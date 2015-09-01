@@ -26,6 +26,20 @@ infolog_problems.csv:  prolog-analyzer/*.pl
 	@echo "Generating CSV FIle"
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('infolog_problems.csv')."
 
+ui:
+	@echo "Compiling User Interface"
+	lein clean
+	lein cljsbuild once min
+
+infolog:
+	@echo "Generationg csv file"
+	sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('resources/public/infolog_problems.csv'), halt."
+
+server: ui prolog-analyzer/*.pl
+	@echo "Starting Python Simpleserver"
+	pushd resources/public; python -m SimpleHTTPServer; popd
+
+
 prolog-analyzer/tcltk_calls.ack:
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
 	 ack -o '(?<=prolog)\s+("?)([[a-zA-Z0-9_:]*)' $(PROBPATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
