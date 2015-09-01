@@ -9,17 +9,11 @@
 
 
 (defn home-title []
-  (let [name (re-frame/subscribe [:name])]
-    (fn []
-      [re-com/title
-       :label (str "Hello from: " @name)
-       :level :level1])))
+  (fn []
+    [re-com/title
+     :label (str "Infolog Problems")
+     :level :level1]))
 
-
-(defn link-to-about-page []
-  [re-com/hyperlink-href
-   :label "go to About Page"
-   :href "#/about"])
 
 (defn problem-row [row]
   (into [:tr {:id (str "hash_" (last row))}] (mapv (fn [c] [:td c]) (butlast row))))
@@ -31,29 +25,12 @@
        :gap "1em"
        :children
        [[home-title]
-        (when @problems (into [:table#problem-table] (mapv problem-row @problems)))
-        [link-to-about-page]]])))
+        (when @problems (into [:table#problem-table.table.table-striped] (mapv problem-row @problems)))]])))
 
-;; --------------------
-(defn about-title []
-  [re-com/title
-   :label "This is the About Page."
-   :level :level1])
-
-(defn link-to-home-page []
-  [re-com/hyperlink-href
-   :label "go to Home Page"
-   :href "#/"])
-
-(defn about-panel []
-  [re-com/v-box
-   :gap "1em"
-   :children [[about-title] [link-to-home-page]]])
 
 ;; --------------------
 (defmulti panels identity)
 (defmethod panels :home-panel [] [home-panel])
-(defmethod panels :about-panel [] [about-panel])
 (defmethod panels :default [] [:div])
 
 (defn main-panel []
