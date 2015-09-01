@@ -1,7 +1,7 @@
 .PHONY: test all all_cli
 PROLOG_FLAGS=
 #PROBPATH=$(PROB_HOME)
-PROBPATH=/Users/leuschel/git_root/prob_prolog
+#PROBPATH=/Users/leuschel/git_root/prob_prolog
 test:
 	export PROB_HOME=$(PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl')."
@@ -47,7 +47,7 @@ infolog_cli: infolog_cli.sav
 test_cli: infolog_cli
 	@echo "compiled infolog_cli DOES NOT WORK yet !!!"
 	export PROB_HOME=$(PROBPATH) ; infolog_cli $(PROBPATH)/src/prob_tcltk.pl
-	
+
 databse.clj:
 	export PROB_HOME=$(PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/prob_tcltk.pl', 'database.clj')."
