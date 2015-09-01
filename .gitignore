@@ -24,3 +24,4 @@ infolog_cli
 *-init.clj
 *.csv
 resources/public/js/compiled
+figwheel_server.log

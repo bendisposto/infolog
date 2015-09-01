@@ -1,15 +1,12 @@
 (ns infolog.views
     (:require [re-frame.core :as re-frame]
               [re-com.core :as re-com]
+              [taoensso.encore :as enc  :refer (logf log logp)]
               [cljsjs.csv :as csv]))
 
 ;; --------------------
 
 
-(defn print-csv []
-  (let [content "Category,Type,Message,Module,Pred,File,L1,L2,Hash\n\"infolog_internal_error\",error,\"analyze body failed: analyze_body(call(_92361#=_92363),[87,[87,87,87]],chr_integer_inequality:setup_eq/2,no_dcg)\",chr_integer_inequality,setup_eq/2,\"/Users/leuschel/git_root/prob_prolog/src/chr/chr_integer_inequality.pl\",87,87,_33177"
-        parsed (. js/CSV parse content)]
-        (clojure.string/join "," (map count parsed))))
 
 (defn home-title []
   (let [name (re-frame/subscribe [:name])]
@@ -24,13 +21,18 @@
    :label "go to About Page"
    :href "#/about"])
 
+(defn problem-row [row]
+  (into [:tr {:id (str "hash_" (last row))}] (mapv (fn [c] [:td c]) (butlast row))))
+
 (defn home-panel []
-  [re-com/v-box
-   :gap "1em"
-   :children
-   [[home-title]
-   [:p (print-csv)]
-   [link-to-about-page]]])
+  (let [problems (re-frame/subscribe [:problems])]
+    (fn [_]
+      [re-com/v-box
+       :gap "1em"
+       :children
+       [[home-title]
+        (when @problems (into [:table#problem-table] (mapv problem-row @problems)))
+        [link-to-about-page]]])))
 
 ;; --------------------
 (defn about-title []

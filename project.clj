@@ -4,6 +4,8 @@
                  [reagent "0.5.0"]
                  [re-frame "0.4.1"]
                  [re-com "0.6.1"]
+                 [com.taoensso/encore "2.5.0"]
+                 [cljs-ajax "0.3.14"]
                  [cljsjs/csv "1.1.1-0"]
                  [secretary "1.2.3"]]
 
