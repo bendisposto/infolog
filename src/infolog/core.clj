@@ -42,11 +42,23 @@
                       "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
                       "aggregate" "tcltk" "heaps" })
 
+
+(defn read-data [csv-file]
+  (with-open [in-file (io/reader csv-file)]
+    (doall (csv/read-csv in-file))))
+
+(defn prepare-data [csv-file]
+  (->> csv-file
+      read-data
+      rest
+      (assoc {} :data )))
+
+
 (defroutes app-routes
   (GET "/" [] (h/html [:h1 "Infolog"]
      #_[:a {:href "dependencies.html"} "Module Dependency Visualization"]
        [:a {:href "problems.html"} "linter-Results"]))
-       (GET "problemlist" [] (json/write-str []))
+       (GET "/problemlist" [] (json/write-str (prepare-data "infolog_problems.csv")))
   #_(GET "/dependencies" [] (json/write-str (mk-dep @facts)))
   #_(GET "/cycles" [] (json/write-str (cyclic-dependencies @facts)))
   #_(GET "/dependency-details/:module" [module] (json/write-str (details @facts module)))
@@ -54,46 +66,3 @@
 
 (def app (do (-> (handler/site app-routes)
              (wrap-base-url))))
-
-
-(defn start-prolog-repl []
-  (let [p (shell/proc "sicstus" "-i" "-l" "prolog-analyzer/analyzer.pl" :redirect-err true)
-        wrt (java.io.OutputStreamWriter. (:in p))
-        rdr (java.io.InputStreamReader. (:out p))]
-    (.write wrt "repl.\n")
-    (.flush wrt)
-    (assoc p :writer wrt :reader rdr)))
-
-(defn q [sicstus query]
-  (let [w (:writer sicstus)
-        r (:reader sicstus)]
-    (doto w
-      (.write query)
-      (.write "\n")
-      (.flush))
-    ;;(println (shell/read-line sicstus :out))
-    ;; read-result
-    ;; process result
-    ))
-
-
-(comment
-
-  ;; extracting the information from Prolog
-  ;; make sure that the PROB_HOME env variable is set
-  (run-prolog-analyzer (System/getenv "PROB_HOME") "raw-data.clj")
-
-  ;; Create a database from the extracted information
-  (make-db "raw-data.clj" "database.clj")
-
-  ;; load the database for processing
-  (def f (load-database "database.clj"))
-
-  ;; find modules that are loaded but not using use_module
-  (with-db f (run* [q] (fresh [m f d] (module m f) (noto (dependency d m)) (== q m))))
-
-  ;; print all problems
-  (doseq [x (with-db f (run* [q] (problem q)))] (println x))
-
-
-  )
