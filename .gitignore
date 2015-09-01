@@ -21,3 +21,6 @@ infolog.pdf
 infolog.dot
 infolog_cli.sav
 infolog_cli
+*-init.clj
+*.csv
+resources/public/js/compiled
