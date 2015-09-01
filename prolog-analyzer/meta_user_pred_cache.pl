@@ -106,8 +106,6 @@ meta_user_pred(mnf(_,_), self_check, [meta_arg(2,0)]).
 
 meta_user_pred(det_call(_), self_check, [meta_arg(1,0)]).
 
-meta_user_pred(residue_check_call(_), self_check, []).
-
 meta_user_pred(must_fail(_), self_check, [meta_arg(1,0)]).
 
 meta_user_pred(must_succeed(_), self_check, [meta_arg(1,0)]).
@@ -298,12 +296,118 @@ meta_user_pred(call_pred_on_expanded_state(_,_,_,_), user, [meta_arg(1,3)]).
 
 meta_user_pred(map_over_history(_,_), user, [meta_arg(1,3)]).
 
-meta_user_pred(time_out_with_factor_call(_,_,_), tools, [meta_arg(1,0),meta_arg(3,0)]).
+meta_user_pred(time_out_with_factor_call(_,_,_), tools_timeout, [meta_arg(1,0),meta_arg(3,0)]).
 
-meta_user_pred(time_out_call(_,_), tools, [meta_arg(1,0),meta_arg(2,0)]).
+meta_user_pred(time_out_call(_,_), tools_timeout, [meta_arg(1,0),meta_arg(2,0)]).
 
-meta_user_pred(time_out_call(_), tools, [meta_arg(1,0)]).
+meta_user_pred(time_out_call(_), tools_timeout, [meta_arg(1,0)]).
 
 meta_user_pred(safe_time_out(_,_,_), tools_meta, [meta_arg(1,0)]).
 
 meta_user_pred(catch_clpfd_overflow_call_for_state(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
+
+meta_user_pred(catch_interrupt_assertion_call(_), user, [meta_arg(1,0)]).
+
+meta_user_pred(tcltk_time_call(_), user, [meta_arg(1,0)]).
+
+meta_user_pred(add_csp_process_id1(_,_,_), user, [meta_arg(3,1)]).
+
+meta_user_pred(block_my_findall_catch(_,_,_,_,_), delay, [meta_arg(3,0)]).
+
+meta_user_pred(block_findall_check(_,_,_,_,_,_,_,_), delay, [meta_arg(3,0),meta_arg(5,0),meta_arg(6,0)]).
+
+meta_user_pred(block_my_findall_sort(_,_,_,_), delay, [meta_arg(3,0)]).
+
+meta_user_pred(not_with_enum_warning2(_,_), delay, [meta_arg(1,0)]).
+
+meta_user_pred(find_enabled_fairids_for_state(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(find_enabled_fairids(_,_,_,_), ltl_verification, [meta_arg(2,3)]).
+
+meta_user_pred(eval_fairness(_,_,_,_), ltl_verification, [meta_arg(3,3)]).
+
+meta_user_pred(is_executed(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(is_executed2(_,_,_), ltl_verification, [meta_arg(1,3)]).
+
+meta_user_pred(call_for_event(_,_), eventhandling, [meta_arg(2,0)]).
+
+meta_user_pred(mnf_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(mnf_call_with_pp(_,_), self_check, [meta_arg(2,0)]).
+
+meta_user_pred(prepost_mnf_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(prepost_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(check_exception_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(rt_timeout_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(mnf_det(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(residue_check_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(check_det2(_,_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(safe_call(_,_), external_functions, [meta_arg(1,0)]).
+
+meta_user_pred(try_call(_,_,_), kodkod, [meta_arg(3,0)]).
+
+meta_user_pred(force_det_call(_), self_check, [meta_arg(1,0)]).
+
+meta_user_pred(start_worker(_,_,_,_), worker, [meta_arg(4,1)]).
+
+meta_user_pred(measured_call(_,_), kodkod_test, [meta_arg(1,0)]).
+
+meta_user_pred(wall(_), disprover_test_runner, [meta_arg(1,0)]).
+
+meta_user_pred(if_option_set(_,_), user, [meta_arg(2,0)]).
+
+meta_user_pred(if_option_set(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
+
+meta_user_pred(if_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
+
+meta_user_pred(timeout_call(_,_), user, [meta_arg(1,0)]).
+
+meta_user_pred(call_probcli_option(_), user, [meta_arg(1,0)]).
+
+%meta_user_pred(z3_interface_call(_), z3interface, [meta_arg(1,0)]).
+
+meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, [meta_arg(2,0)]).
+
+meta_user_pred(if_options_set(_,_), user, [meta_arg(2,0)]).
+
+meta_user_pred(ifm_option_set(_,_), user, [meta_arg(2,0)]).
+
+meta_user_pred(ifm_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
+
+meta_user_pred(maplist(_,_,_,_,_), predicate_handling, [meta_arg(1,4)]).
+
+% meta_user_pred(cvc4_interface_call(_), cvc4interface, [meta_arg(1,0)]).
+
+meta_user_pred(sm_node_pred(_,_,_,_,_,_,_), state_space_reduction, [meta_arg(1,2)]).
+
+meta_user_pred(check(_,_), kodkod_test, [meta_arg(1,0)]).
+
+meta_user_pred(at_least_once(_,_), smtlib2_parser, [meta_arg(1,0)]).
+
+meta_user_pred(multiple_times(_,_), smtlib2_parser, [meta_arg(1,0)]).
+
+meta_user_pred(at_least_once_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
+
+meta_user_pred(multiple_times_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
+
+meta_user_pred(cvc4_interface_call(_), cvc4interface, []).
+
+meta_user_pred(z3_interface_call(_), z3interface, []).
+
+meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, []).
+
+meta_user_pred(at_least_once(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(multiple_times(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(at_least_once_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+
+meta_user_pred(multiple_times_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
