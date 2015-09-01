@@ -1,0 +1,26 @@
+<html>
+<h1>Infolog Problems</h1>
+<table id="example" class="display" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Type</th>
+                <th>Message</th>
+                <th>Module</th>
+                <th>Predicate</th>
+                <th>Filename</th>
+                <th>Start Line</th>
+                <th>End Line</th>
+                <th>Hash</th>
+            </tr>
+        </thead>
+
+    </table>
+    <script>
+    $(document).ready(function() {
+    $('#example').DataTable( {
+        "ajax": 'problems.txt'
+    } );
+    } );
+</script>
+</html>
