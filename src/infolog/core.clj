@@ -25,13 +25,13 @@
       (map (partial transform-comments m) comments))))
 
 #_(defn sicstus-call [prob-home output-file]
-  ["sicstus" "-l" "./prolog-analyzer/analyzer.pl"
-   "--goal"
-   (str "analyze('" prob-home entry-point "','" output-file "').")])
+    ["sicstus" "-l" "./prolog-analyzer/analyzer.pl"
+     "--goal"
+     (str "analyze('" prob-home entry-point "','" output-file "').")])
 
 #_(defn run-prolog-analyzer [prob-home filename]
-  (apply sh (sicstus-call prob-home filename))
-  filename)
+    (apply sh (sicstus-call prob-home filename))
+    filename)
 
 (defn get-comments [modules]
   (mapcat extract-comments modules))
@@ -42,27 +42,46 @@
                       "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
                       "aggregate" "tcltk" "heaps" })
 
+(defn common-prefix [sep paths]
+  (let [parts-per-path (map #(clojure.string/split % (re-pattern sep)) paths)
+        parts-per-position (apply map vector parts-per-path)]
+    (clojure.string/join sep
+          (for [parts parts-per-position :while (apply = parts)]
+            (first parts)))))
 
 (defn read-data [csv-file]
   (with-open [in-file (io/reader csv-file)]
     (doall (csv/read-csv in-file))))
 
+(defn fix-wrapping [line]
+  (mapv #(clojure.string/replace % #"," ", ") line))
+
+(defn fix-path [prefix line]
+  (mapv #(clojure.string/replace % (java.util.regex.Pattern/compile prefix) "") line))
+
+(defn fix-paths [data]
+  (let [files (remove #{"unknown"} (map #(nth % 5) data))
+        prefix (common-prefix "/" files)]
+    (mapv (partial fix-path prefix) data)))
+
 (defn prepare-data [csv-file]
   (->> csv-file
-      read-data
-      rest
-      (assoc {} :data )))
+       read-data
+       rest
+       fix-paths
+       (mapv fix-wrapping)
+       (assoc {} :data )))
 
 
 (defroutes app-routes
   (GET "/" [] (h/html [:h1 "Infolog"]
-     #_[:a {:href "dependencies.html"} "Module Dependency Visualization"]
-       [:a {:href "problems.html"} "linter-Results"]))
-       (GET "/problemlist" [] (json/write-str (prepare-data "infolog_problems.csv")))
+                      #_[:a {:href "dependencies.html"} "Module Dependency Visualization"]
+                      [:a {:href "problems.html"} "linter-Results"]))
+  (GET "/problemlist" [] (json/write-str (prepare-data "infolog_problems.csv")))
   #_(GET "/dependencies" [] (json/write-str (mk-dep @facts)))
   #_(GET "/cycles" [] (json/write-str (cyclic-dependencies @facts)))
   #_(GET "/dependency-details/:module" [module] (json/write-str (details @facts module)))
   (route/resources "/"))
 
 (def app (do (-> (handler/site app-routes)
-             (wrap-base-url))))
+                 (wrap-base-url))))
