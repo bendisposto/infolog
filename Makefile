@@ -31,11 +31,11 @@ ui:
 	lein clean
 	lein cljsbuild once min
 
-infolog:
+infolog: prolog-analyzer/*.pl
 	@echo "Generationg csv file"
-	sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('resources/public/infolog_problems.csv'), halt."
+	export PROB_HOME=$(PROBPATH) ;sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('resources/public/infolog_problems.csv'), halt."
 
-server: ui prolog-analyzer/*.pl
+server: ui infolog
 	@echo "Starting Python Simpleserver"
 	pushd resources/public; python -m SimpleHTTPServer; popd
 
