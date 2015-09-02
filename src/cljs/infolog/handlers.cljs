@@ -13,7 +13,6 @@
 
 (re-frame/register-handler
  :process-infolog-problems
- re-frame/debug
  (fn [db [_ result]]
    (let [data (rest (js->clj (. js/CSV parse result)))]
      (logp :received (count data) :datasets)
