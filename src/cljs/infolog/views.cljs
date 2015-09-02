@@ -58,7 +58,7 @@
                     [:th "File"]
                     [:th "Start Line"]
                     [:th "End Line"]]]]
-          (mapv (partial render-row prefix) data))))
+          (mapv (partial render-row prefix) (sort-by (comp {"error" 0 "warning" 1 "info" 2} second) data)))))
 
 (defn home-panel []
   (let [problems (re-frame/subscribe [:problems])]
