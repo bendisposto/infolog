@@ -16,3 +16,9 @@
  :problems
  (fn [db]
    (reaction (:infolog-problems @db))))
+
+(re-frame/register-sub
+ :location
+ (fn [db]
+   (reaction (:directory @db))))
+
