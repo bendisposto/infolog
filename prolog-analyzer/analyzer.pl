@@ -614,14 +614,21 @@ il_foldl2([Elem|Rest],Pred,OldValue,NewValue) :-
 
 %% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
-analyze(InputFile,OutputFile) :-
+analyze_clj(InputFile,OutputFile) :-
     analyze(InputFile),
     print(exporting(OutputFile)),nl,
     start_analysis_timer(T3),
     export_to_clj_file(OutputFile),
     stop_analysis_timer(T3).
 
-analyze(InputFiles) :-
+analyze(InputFiles,CacheFile) :-
+    format('Loading meta_predicate cache file ~w~n',[CacheFile]),
+    ensure_loaded(CacheFile),
+    analyse_files(InputFiles),
+    (meta_user_pred_cache_needs_updating -> write_meta_user_pred_cache(CacheFile) ; format('meta_predicate cache up-to-date.~n',[])).
+analyze(InputFiles) :- analyze(InputFiles,'meta_user_pred_cache.pl').
+
+analyse_files(InputFiles) :-
     start_analysis_timer(T0),
     print('precompiling'),nl,
     precompile_library_modules,
@@ -865,10 +872,23 @@ analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
 
+% --------------------------
+% Manipulating cache of meta_predicate annotations
+
+:- dynamic meta_user_pred/3, meta_user_pred_cache_needs_updating/0.
+%:- include(meta_user_pred_cache). % cached version from previous run;  TO DO provide parameter
+% write meta_user_pred facts
+write_meta_user_pred_cache(F) :- format('Writing meta_prediate Cache file: ~w~n',[F]),
+     open(F,write,S), call_cleanup(gen_user(S),close(S)).
+gen_user(S) :-
+     format(S,':- dynamic meta_user_pred/3.~n',[]),
+     meta_user_pred(H,M,L), format(S,'~k.~n',[meta_user_pred(H,M,L)]), %portray_clause(meta_user_pred(H,M,L)),nl,
+     fail.
+gen_user(_).
 
 :- use_module(meta_pred_generator,[translate_meta_predicate_pattern/3]).
-:- dynamic meta_user_pred/3, meta_user_pred_cache_needs_updating/0.
-:- include(meta_user_pred_cache). % cached version from previous run;  TO DO provide parameter
+
+
 add_meta_predicate(Module,Pattern) :-
    translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
    (meta_user_pred(Head,Module,MetaArgList) -> true
@@ -880,10 +900,7 @@ add_meta_predicate(Module,Pattern) :-
        )
     ).
 
-% write meta_user_pred facts
-gen_user :- % tell meta_user_pred_cache.pl
-     meta_user_pred(H,M,L), portray_clause(meta_user_pred(H,M,L)),nl,fail.
-gen_user.
+% --------------------------
 
 meta_pred_functor(F/N,Module,MetaList) :- functor(Skel,F,N), meta_pred(Skel,Module,MetaList).
 

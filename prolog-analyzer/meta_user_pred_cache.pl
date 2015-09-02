@@ -1,413 +1,207 @@
-meta_user_pred(module_info(_,_), module_information, [meta_arg(1,0)]).
-
-meta_user_pred(assert_pre(_,_), self_check, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(assert_post(_,_), self_check, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(assert_must_succeed_any(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(assert_must_succeed(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(assert_must_succeed_multiple(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(assert_must_fail(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(catch_call(_), tools, [meta_arg(1,0)]).
-
-meta_user_pred(safe_on_exception(_,_,_), tools, [meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(catch_matching(_,_,_), tools, [meta_arg(1,0),meta_arg(3,0)]).
-
-meta_user_pred('~~'(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(timer_call(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(timer_call(_,_), debug, [meta_arg(2,0)]).
-
-meta_user_pred(time_if_debug(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(time(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(watch_det(_,_), debug, [meta_arg(2,0)]).
-
-meta_user_pred(watch(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(watch(_,_), debug, [meta_arg(2,0)]).
-
-meta_user_pred(det_check(_), debug, [meta_arg(1,0)]).
-
-meta_user_pred(det_check(_,_), debug, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(if_det_check(_,_,_), debug, [meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(if_det_check_pp(_,_,_,_), debug, [meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(add_failed_call_error(_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(add_internal_error(_,_), error_manager, [meta_arg(2,0)]).
-
-meta_user_pred(call_in_fresh_error_scope_for_one_solution(_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(add_new_event_in_error_scope(_,_), error_manager, [meta_arg(2,1)]).
-
-meta_user_pred(on_enumeration_warning(_,_), error_manager, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(on_enumeration_warning_with_continue(_,_,_), error_manager, [meta_arg(1,0),meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(catch_enumeration_warning_exceptions(_,_), error_manager, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(catch_enumeration_warning_exceptions(_,_,_), error_manager, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(call_with_enumeration_warning(_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_with_enum_warning_one_solution(_,_,_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_with_enum_warning_one_solution_no_new_error_scope(_,_,_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_with_enum_warning_for_findall(_,_,_), error_manager, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_with_enum_warning_for_findall2(_,_,_,_), error_manager, [meta_arg(2,0)]).
-
-meta_user_pred(time_out_with_enum_warning_for_findall_in_current_error_scope(_,_,_,_), error_manager, [meta_arg(2,0)]).
-
-meta_user_pred(filter(_,_,_,_), tools, [meta_arg(1,1)]).
-
-meta_user_pred(get_options(_,_,_,_), tools, [meta_arg(2,4)]).
-
-meta_user_pred(get_options(_,_,_,_,_), tools, [meta_arg(2,4),meta_arg(5,0)]).
-
-meta_user_pred(call_residue(_,_), tools_meta, [meta_arg(1,0)]).
-
-meta_user_pred(space_call(_), tools, [meta_arg(1,0)]).
-
-meta_user_pred(split_list(_,_,_,_), tools, [meta_arg(1,1)]).
-
-meta_user_pred(split_list2(_,_,_,_), tools, [meta_arg(2,1)]).
-
-meta_user_pred(foldl(_,_,_,_), tools, [meta_arg(1,3)]).
-
-meta_user_pred(foldl(_,_,_,_,_), tools, [meta_arg(1,4)]).
-
-meta_user_pred(foldl(_,_,_,_,_,_), tools, [meta_arg(1,5)]).
-
-meta_user_pred(assert_once(_), tools, [meta_arg(1,0)]).
-
-meta_user_pred(call_with_preference(_,_,_), preferences, [meta_arg(1,0)]).
-
-meta_user_pred(register_event_listener(_,_,_), eventhandling, [meta_arg(2,0)]).
-
-meta_user_pred(pp_mnf(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(pp_cll(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(mnf(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(mnf(_,_), self_check, [meta_arg(2,0)]).
-
-meta_user_pred(det_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(must_fail(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(must_succeed(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(must_succeed_without_residue(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(must_succeed_multiple_without_residue(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(safe_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(check_deterministic(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(check_det(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(assert_must_abort_wf(_,_), kernel_waitflags, [meta_arg(1,0)]).
-
-meta_user_pred(post_constraint(_), clpfd_interface, [meta_arg(1,0)]).
-
-meta_user_pred(post_constraint(_,_), clpfd_interface, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(post_constraint2(_,_), clpfd_interface, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_constraint(_,_), clpfd_interface, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(catch_clpfd_overflow_call1(_), clpfd_interface, [meta_arg(1,0)]).
-
-meta_user_pred(catch_clpfd_overflow_call2(_,_), clpfd_interface, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(map_over_bvalue(_,_,_), kernel_tools, [meta_arg(1,2)]).
-
-meta_user_pred(my_findall(_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(my_findall_catch(_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(my_findall_catch(_,_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(my_findall_check(_,_,_,_,_,_), delay, [meta_arg(2,0),meta_arg(5,0),meta_arg(6,0)]).
-
-meta_user_pred(succeed_max_call(_,_), succeed_max, [meta_arg(1,0)]).
-
-meta_user_pred(succeed_max_call_id(_,_,_), succeed_max, [meta_arg(2,0)]).
-
-meta_user_pred(open_cache_file(_,_,_,_), value_persistance, [meta_arg(4,0)]).
-
-meta_user_pred(show_cache_file_contents_for_machine(_,_,_,_), value_persistance, [meta_arg(2,0)]).
-
-meta_user_pred(apply_transformation_step(_,_,_,_), bmachine, [meta_arg(2,2)]).
-
-meta_user_pred(kernel_call_or(_,_,_,_,_), kernel_mappings, [meta_arg(1,0)]).
-
-meta_user_pred(wd_delay(_,_,_,_), b_interpreter_check, [meta_arg(1,0)]).
-
-meta_user_pred(wd_delay_block(_,_,_,_,_,_), b_interpreter_check, [meta_arg(1,0)]).
-
-meta_user_pred(must_succ(_,_), kernel_mappings, [meta_arg(1,0)]).
-
-meta_user_pred(delay_setof_with_explicit_waitvars(_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(delay_setof(_,_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(delay_setof_check(_,_,_,_,_,_,_), delay, [meta_arg(2,0),meta_arg(6,0),meta_arg(7,0)]).
-
-meta_user_pred(delay_setof_list(_,_,_,_), delay, [meta_arg(2,0)]).
-
-meta_user_pred(delay_call(_,_,_), delay, [meta_arg(1,0)]).
-
-meta_user_pred(delay_call(_,_), delay, [meta_arg(1,0)]).
-
-meta_user_pred(delay_not(_,_), delay, [meta_arg(1,0)]).
-
-meta_user_pred(not_with_enum_warning(_), delay, [meta_arg(1,0)]).
-
-meta_user_pred(profile_single_call(_,_,_), runtime_profiler, [meta_arg(3,0)]).
-
-meta_user_pred(profile_single_call(_,_), runtime_profiler, [meta_arg(2,0)]).
-
-meta_user_pred(call_with_smt_mode_enabled(_), solver_interface, [meta_arg(1,0)]).
-
-meta_user_pred(call_with_chr(_), solver_interface, [meta_arg(1,0)]).
-
-meta_user_pred(findall_keepvars(_,_,_), haskell_csp_analyzer, [meta_arg(2,0)]).
-
-meta_user_pred(read_compiled_prolog_file(_,_,_), haskell_csp, [meta_arg(3,1)]).
-
-meta_user_pred(map_over_bexpr(_,_), bsyntaxtree, [meta_arg(1,1)]).
-
-meta_user_pred(map_over_typed_bexpr(_,_), bsyntaxtree, [meta_arg(1,1)]).
-
-meta_user_pred(map_over_typed_bexpr(_,_,_), bsyntaxtree, [meta_arg(1,2)]).
-
-meta_user_pred(map_over_bexpr_top_down_acc(_,_,_), bsyntaxtree, [meta_arg(1,3)]).
-
-meta_user_pred(reduce_over_bexpr(_,_,_,_), bsyntaxtree, [meta_arg(1,3)]).
-
-meta_user_pred(transform_bexpr(_,_,_), bsyntaxtree, [meta_arg(1,2)]).
-
-meta_user_pred(transform_bexpr_with_acc(_,_,_,_,_), bsyntaxtree, [meta_arg(1,4)]).
-
-meta_user_pred(user_interruptable_call_det(_,_), user_signal, [meta_arg(1,0)]).
-
-meta_user_pred(protect_from_user_interrupt_det(_), user_signal, [meta_arg(1,0)]).
-
-meta_user_pred(ignore_user_interrupt_det(_), user_signal, [meta_arg(1,0)]).
-
-meta_user_pred(catch_interrupt_exception(_,_), user_signal, [meta_arg(1,0)]).
-
-meta_user_pred(c_ltl_modelcheck(_,_,_,_), ltlc, [meta_arg(4,5)]).
-
-meta_user_pred(evaluate_ltl_formula(_,_,_,_,_,_), ltl_verification, [meta_arg(4,2),meta_arg(5,3)]).
-
-meta_user_pred(evaluate_ltl_fairness(_,_,_,_,_), ltl_verification, [meta_arg(4,3)]).
-
-meta_user_pred(bv_time_out_call(_,_,_,_), bvisual2, [meta_arg(1,0)]).
-
-meta_user_pred(call_with_temp_preference(_,_,_), bvisual2, [meta_arg(3,0)]).
-
-meta_user_pred(probcli_clpfd_overflow_mnf_call1(_), eval_strings, [meta_arg(1,0)]).
-
-meta_user_pred(probcli_clpfd_overflow_call1(_), eval_strings, [meta_arg(1,0)]).
-
-meta_user_pred(maxsolver(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(maxsolver(_,_,_,_), maxsolver, [meta_arg(2,1)]).
-
-meta_user_pred(maxsolver_by_longest_prefix(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_append_and_eval(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_prepend_and_eval(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(longest_satisfiable_prefix(_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_longest_satisfiable_prefix(_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(satisfiable_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(longest_satisfiable_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(maxsolver_by_longest_segment(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_maxsolver_by_longest_segment(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(maxsolver_exact_with_marker(_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_precalc(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(visit_tree(_,_,_,_,_), bvisual, [meta_arg(1,3),meta_arg(2,2)]).
-
-meta_user_pred(reduce_state_space(_,_), state_space_reduction, [meta_arg(1,3),meta_arg(2,5)]).
-
-meta_user_pred(catch_and_ignore_well_definedness_error(_), static_analysis, [meta_arg(1,0)]).
-
-meta_user_pred(printtime(_), ctl, [meta_arg(1,0)]).
-
-meta_user_pred(register_conjunct_error_hook(_), predicate_evaluator, [meta_arg(1,5)]).
-
-meta_user_pred(analyse_quick_time_out(_), predicate_evaluator, [meta_arg(1,0)]).
-
-meta_user_pred(time_out_and_catch_errors(_,_,_), predicate_evaluator, [meta_arg(1,0)]).
-
-meta_user_pred(catch_interrupt_assertion_call(_), user_interrupts, [meta_arg(1,0)]).
-
-meta_user_pred(interruptable_call(_), user_interrupts, [meta_arg(1,0)]).
-
-meta_user_pred(interruptable_call(_,_), user_interrupts, [meta_arg(1,0)]).
-
-meta_user_pred(l_transform_bexpr(_,_,_), bsyntaxtree, [meta_arg(2,2)]).
-
-meta_user_pred(l_transform_bexpr_with_acc(_,_,_,_,_), bsyntaxtree, [meta_arg(2,4)]).
-
-meta_user_pred(foldl2(_,_,_,_), tools, [meta_arg(2,3)]).
-
-meta_user_pred(foldl2(_,_,_,_,_), tools, [meta_arg(2,4)]).
-
-meta_user_pred(foldl2(_,_,_,_,_,_), tools, [meta_arg(2,5)]).
-
-meta_user_pred(x_false_subset(_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_satisfiable_subset_of_length(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_false_subset_til_true(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_existis_satisfiable_subset_of_length(_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(x_maxsolver_exact_with_marker(_,_,_,_,_,_), maxsolver, [meta_arg(1,1)]).
-
-meta_user_pred(call_pred_on_expanded_state(_,_,_,_), user, [meta_arg(1,3)]).
-
-meta_user_pred(map_over_history(_,_), user, [meta_arg(1,3)]).
-
-meta_user_pred(time_out_with_factor_call(_,_,_), tools_timeout, [meta_arg(1,0),meta_arg(3,0)]).
-
-meta_user_pred(time_out_call(_,_), tools_timeout, [meta_arg(1,0),meta_arg(2,0)]).
-
-meta_user_pred(time_out_call(_), tools_timeout, [meta_arg(1,0)]).
-
-meta_user_pred(safe_time_out(_,_,_), tools_meta, [meta_arg(1,0)]).
-
-meta_user_pred(catch_clpfd_overflow_call_for_state(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(catch_interrupt_assertion_call(_), user, [meta_arg(1,0)]).
-
-meta_user_pred(tcltk_time_call(_), user, [meta_arg(1,0)]).
-
-meta_user_pred(add_csp_process_id1(_,_,_), user, [meta_arg(3,1)]).
-
-meta_user_pred(block_my_findall_catch(_,_,_,_,_), delay, [meta_arg(3,0)]).
-
-meta_user_pred(block_findall_check(_,_,_,_,_,_,_,_), delay, [meta_arg(3,0),meta_arg(5,0),meta_arg(6,0)]).
-
-meta_user_pred(block_my_findall_sort(_,_,_,_), delay, [meta_arg(3,0)]).
-
-meta_user_pred(not_with_enum_warning2(_,_), delay, [meta_arg(1,0)]).
-
-meta_user_pred(find_enabled_fairids_for_state(_,_,_), ltl_verification, [meta_arg(1,3)]).
-
-meta_user_pred(find_enabled_fairids(_,_,_,_), ltl_verification, [meta_arg(2,3)]).
-
-meta_user_pred(eval_fairness(_,_,_,_), ltl_verification, [meta_arg(3,3)]).
-
-meta_user_pred(is_executed(_,_,_), ltl_verification, [meta_arg(1,3)]).
-
-meta_user_pred(is_executed2(_,_,_), ltl_verification, [meta_arg(1,3)]).
-
-meta_user_pred(call_for_event(_,_), eventhandling, [meta_arg(2,0)]).
-
-meta_user_pred(mnf_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(mnf_call_with_pp(_,_), self_check, [meta_arg(2,0)]).
-
-meta_user_pred(prepost_mnf_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(prepost_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(check_exception_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(rt_timeout_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(mnf_det(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(residue_check_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(check_det2(_,_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(safe_call(_,_), external_functions, [meta_arg(1,0)]).
-
-meta_user_pred(try_call(_,_,_), kodkod, [meta_arg(3,0)]).
-
-meta_user_pred(force_det_call(_), self_check, [meta_arg(1,0)]).
-
-meta_user_pred(start_worker(_,_,_,_), worker, [meta_arg(4,1)]).
-
-meta_user_pred(measured_call(_,_), kodkod_test, [meta_arg(1,0)]).
-
-meta_user_pred(wall(_), disprover_test_runner, [meta_arg(1,0)]).
-
-meta_user_pred(if_option_set(_,_), user, [meta_arg(2,0)]).
-
-meta_user_pred(if_option_set(_,_,_), user, [meta_arg(2,0),meta_arg(3,0)]).
-
-meta_user_pred(if_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
-
-meta_user_pred(timeout_call(_,_), user, [meta_arg(1,0)]).
-
-meta_user_pred(call_probcli_option(_), user, [meta_arg(1,0)]).
-
-%meta_user_pred(z3_interface_call(_), z3interface, [meta_arg(1,0)]).
-
-meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, [meta_arg(2,0)]).
-
-meta_user_pred(if_options_set(_,_), user, [meta_arg(2,0)]).
-
-meta_user_pred(ifm_option_set(_,_), user, [meta_arg(2,0)]).
-
-meta_user_pred(ifm_option_set_loaded(_,_,_), user, [meta_arg(3,0)]).
-
-meta_user_pred(maplist(_,_,_,_,_), predicate_handling, [meta_arg(1,4)]).
-
-% meta_user_pred(cvc4_interface_call(_), cvc4interface, [meta_arg(1,0)]).
-
-meta_user_pred(sm_node_pred(_,_,_,_,_,_,_), state_space_reduction, [meta_arg(1,2)]).
-
-meta_user_pred(check(_,_), kodkod_test, [meta_arg(1,0)]).
-
-meta_user_pred(at_least_once(_,_), smtlib2_parser, [meta_arg(1,0)]).
-
-meta_user_pred(multiple_times(_,_), smtlib2_parser, [meta_arg(1,0)]).
-
-meta_user_pred(at_least_once_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
-
-meta_user_pred(multiple_times_no_whitespace(_,_), smtlib2_parser, [meta_arg(1,0)]).
-
-meta_user_pred(cvc4_interface_call(_), cvc4interface, []).
-
-meta_user_pred(z3_interface_call(_), z3interface, []).
-
-meta_user_pred(smt_solver_interface_call(_,_), solver_dispatcher, []).
-
-meta_user_pred(at_least_once(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
-
-meta_user_pred(multiple_times(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
-
-meta_user_pred(at_least_once_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
-
-meta_user_pred(multiple_times_no_whitespace(_,_,_,_), smtlib2_parser, [meta_arg(1,3)]).
+:- dynamic meta_user_pred/3.
+meta_user_pred(module_info(_33661,_33663),module_information,'.'(meta_arg(1,0),[])).
+meta_user_pred(assert_pre(_33661,_33663),self_check,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(assert_post(_33661,_33663),self_check,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(assert_must_succeed_any(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(assert_must_succeed(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(assert_must_succeed_multiple(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(assert_must_fail(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_call(_33661),tools,'.'(meta_arg(1,0),[])).
+meta_user_pred(safe_on_exception(_33661,_33663,_33665),tools,'.'(meta_arg(2,0),'.'(meta_arg(3,0),[]))).
+meta_user_pred(catch_matching(_33661,_33663,_33665),tools,'.'(meta_arg(1,0),'.'(meta_arg(3,0),[]))).
+meta_user_pred(~~(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(timer_call(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(timer_call(_33661,_33663),debug,'.'(meta_arg(2,0),[])).
+meta_user_pred(time_if_debug(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(time(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(watch_det(_33661,_33663),debug,'.'(meta_arg(2,0),[])).
+meta_user_pred(watch(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(watch(_33661,_33663),debug,'.'(meta_arg(2,0),[])).
+meta_user_pred(det_check(_33661),debug,'.'(meta_arg(1,0),[])).
+meta_user_pred(det_check(_33661,_33663),debug,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(if_det_check(_33661,_33663,_33665),debug,'.'(meta_arg(1,0),'.'(meta_arg(2,0),'.'(meta_arg(3,0),[])))).
+meta_user_pred(if_det_check_pp(_33661,_33663,_33665,_33667),debug,'.'(meta_arg(1,0),'.'(meta_arg(2,0),'.'(meta_arg(3,0),[])))).
+meta_user_pred(add_failed_call_error(_33661),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(add_internal_error(_33661,_33663),error_manager,'.'(meta_arg(2,0),[])).
+meta_user_pred(call_in_fresh_error_scope_for_one_solution(_33661),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(add_new_event_in_error_scope(_33661,_33663),error_manager,'.'(meta_arg(2,1),[])).
+meta_user_pred(on_enumeration_warning(_33661,_33663),error_manager,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(on_enumeration_warning_with_continue(_33661,_33663,_33665),error_manager,'.'(meta_arg(1,0),'.'(meta_arg(2,0),'.'(meta_arg(3,0),[])))).
+meta_user_pred(catch_enumeration_warning_exceptions(_33661,_33663),error_manager,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(catch_enumeration_warning_exceptions(_33661,_33663,_33665),error_manager,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(call_with_enumeration_warning(_33661),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_with_enum_warning_one_solution(_33661,_33663,_33665),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_with_enum_warning_one_solution_no_new_error_scope(_33661,_33663,_33665),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_with_enum_warning_for_findall(_33661,_33663,_33665),error_manager,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_with_enum_warning_for_findall2(_33661,_33663,_33665,_33667),error_manager,'.'(meta_arg(2,0),[])).
+meta_user_pred(time_out_with_enum_warning_for_findall_in_current_error_scope(_33661,_33663,_33665,_33667),error_manager,'.'(meta_arg(2,0),[])).
+meta_user_pred(filter(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(1,1),[])).
+meta_user_pred(get_options(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(2,4),[])).
+meta_user_pred(get_options(_33661,_33663,_33665,_33667,_33669),tools,'.'(meta_arg(2,4),'.'(meta_arg(5,0),[]))).
+meta_user_pred(call_residue(_33661,_33663),tools_meta,'.'(meta_arg(1,0),[])).
+meta_user_pred(space_call(_33661),tools,'.'(meta_arg(1,0),[])).
+meta_user_pred(split_list(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(1,1),[])).
+meta_user_pred(split_list2(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(2,1),[])).
+meta_user_pred(foldl(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(1,3),[])).
+meta_user_pred(foldl(_33661,_33663,_33665,_33667,_33669),tools,'.'(meta_arg(1,4),[])).
+meta_user_pred(foldl(_33661,_33663,_33665,_33667,_33669,_33671),tools,'.'(meta_arg(1,5),[])).
+meta_user_pred(assert_once(_33661),tools,'.'(meta_arg(1,0),[])).
+meta_user_pred(call_with_preference(_33661,_33663,_33665),preferences,'.'(meta_arg(1,0),[])).
+meta_user_pred(register_event_listener(_33661,_33663,_33665),eventhandling,'.'(meta_arg(2,0),[])).
+meta_user_pred(pp_mnf(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(pp_cll(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(mnf(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(mnf(_33661,_33663),self_check,'.'(meta_arg(2,0),[])).
+meta_user_pred(det_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(must_fail(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(must_succeed(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(must_succeed_without_residue(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(must_succeed_multiple_without_residue(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(safe_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(check_deterministic(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(check_det(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(assert_must_abort_wf(_33661,_33663),kernel_waitflags,'.'(meta_arg(1,0),[])).
+meta_user_pred(post_constraint(_33661),clpfd_interface,'.'(meta_arg(1,0),[])).
+meta_user_pred(post_constraint(_33661,_33663),clpfd_interface,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(post_constraint2(_33661,_33663),clpfd_interface,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_constraint(_33661,_33663),clpfd_interface,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(catch_clpfd_overflow_call1(_33661),clpfd_interface,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_clpfd_overflow_call2(_33661,_33663),clpfd_interface,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(map_over_bvalue(_33661,_33663,_33665),kernel_tools,'.'(meta_arg(1,2),[])).
+meta_user_pred(my_findall(_33661,_33663,_33665,_33667),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(my_findall_catch(_33661,_33663,_33665,_33667),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(my_findall_catch(_33661,_33663,_33665,_33667,_33669),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(my_findall_check(_33661,_33663,_33665,_33667,_33669,_33671),delay,'.'(meta_arg(2,0),'.'(meta_arg(5,0),'.'(meta_arg(6,0),[])))).
+meta_user_pred(succeed_max_call(_33661,_33663),succeed_max,'.'(meta_arg(1,0),[])).
+meta_user_pred(succeed_max_call_id(_33661,_33663,_33665),succeed_max,'.'(meta_arg(2,0),[])).
+meta_user_pred(open_cache_file(_33661,_33663,_33665,_33667),value_persistance,'.'(meta_arg(4,0),[])).
+meta_user_pred(show_cache_file_contents_for_machine(_33661,_33663,_33665,_33667),value_persistance,'.'(meta_arg(2,0),[])).
+meta_user_pred(apply_transformation_step(_33661,_33663,_33665,_33667),bmachine,'.'(meta_arg(2,2),[])).
+meta_user_pred(kernel_call_or(_33661,_33663,_33665,_33667,_33669),kernel_mappings,'.'(meta_arg(1,0),[])).
+meta_user_pred(wd_delay(_33661,_33663,_33665,_33667),b_interpreter_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(wd_delay_block(_33661,_33663,_33665,_33667,_33669,_33671),b_interpreter_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(must_succ(_33661,_33663),kernel_mappings,'.'(meta_arg(1,0),[])).
+meta_user_pred(delay_setof_with_explicit_waitvars(_33661,_33663,_33665,_33667),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(delay_setof(_33661,_33663,_33665,_33667,_33669),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(delay_setof_check(_33661,_33663,_33665,_33667,_33669,_33671,_33673),delay,'.'(meta_arg(2,0),'.'(meta_arg(6,0),'.'(meta_arg(7,0),[])))).
+meta_user_pred(delay_setof_list(_33661,_33663,_33665,_33667),delay,'.'(meta_arg(2,0),[])).
+meta_user_pred(delay_call(_33661,_33663,_33665),delay,'.'(meta_arg(1,0),[])).
+meta_user_pred(delay_call(_33661,_33663),delay,'.'(meta_arg(1,0),[])).
+meta_user_pred(delay_not(_33661,_33663),delay,'.'(meta_arg(1,0),[])).
+meta_user_pred(not_with_enum_warning(_33661),delay,'.'(meta_arg(1,0),[])).
+meta_user_pred(profile_single_call(_33661,_33663,_33665),runtime_profiler,'.'(meta_arg(3,0),[])).
+meta_user_pred(profile_single_call(_33661,_33663),runtime_profiler,'.'(meta_arg(2,0),[])).
+meta_user_pred(call_with_smt_mode_enabled(_33661),solver_interface,'.'(meta_arg(1,0),[])).
+meta_user_pred(call_with_chr(_33661),solver_interface,'.'(meta_arg(1,0),[])).
+meta_user_pred(findall_keepvars(_33661,_33663,_33665),haskell_csp_analyzer,'.'(meta_arg(2,0),[])).
+meta_user_pred(read_compiled_prolog_file(_33661,_33663,_33665),haskell_csp,'.'(meta_arg(3,1),[])).
+meta_user_pred(map_over_bexpr(_33661,_33663),bsyntaxtree,'.'(meta_arg(1,1),[])).
+meta_user_pred(map_over_typed_bexpr(_33661,_33663),bsyntaxtree,'.'(meta_arg(1,1),[])).
+meta_user_pred(map_over_typed_bexpr(_33661,_33663,_33665),bsyntaxtree,'.'(meta_arg(1,2),[])).
+meta_user_pred(map_over_bexpr_top_down_acc(_33661,_33663,_33665),bsyntaxtree,'.'(meta_arg(1,3),[])).
+meta_user_pred(reduce_over_bexpr(_33661,_33663,_33665,_33667),bsyntaxtree,'.'(meta_arg(1,3),[])).
+meta_user_pred(transform_bexpr(_33661,_33663,_33665),bsyntaxtree,'.'(meta_arg(1,2),[])).
+meta_user_pred(transform_bexpr_with_acc(_33661,_33663,_33665,_33667,_33669),bsyntaxtree,'.'(meta_arg(1,4),[])).
+meta_user_pred(user_interruptable_call_det(_33661,_33663),user_signal,'.'(meta_arg(1,0),[])).
+meta_user_pred(protect_from_user_interrupt_det(_33661),user_signal,'.'(meta_arg(1,0),[])).
+meta_user_pred(ignore_user_interrupt_det(_33661),user_signal,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_interrupt_exception(_33661,_33663),user_signal,'.'(meta_arg(1,0),[])).
+meta_user_pred(c_ltl_modelcheck(_33661,_33663,_33665,_33667),ltlc,'.'(meta_arg(4,5),[])).
+meta_user_pred(evaluate_ltl_formula(_33661,_33663,_33665,_33667,_33669,_33671),ltl_verification,'.'(meta_arg(4,2),'.'(meta_arg(5,3),[]))).
+meta_user_pred(evaluate_ltl_fairness(_33661,_33663,_33665,_33667,_33669),ltl_verification,'.'(meta_arg(4,3),[])).
+meta_user_pred(bv_time_out_call(_33661,_33663,_33665,_33667),bvisual2,'.'(meta_arg(1,0),[])).
+meta_user_pred(call_with_temp_preference(_33661,_33663,_33665),bvisual2,'.'(meta_arg(3,0),[])).
+meta_user_pred(probcli_clpfd_overflow_mnf_call1(_33661),eval_strings,'.'(meta_arg(1,0),[])).
+meta_user_pred(probcli_clpfd_overflow_call1(_33661),eval_strings,'.'(meta_arg(1,0),[])).
+meta_user_pred(maxsolver(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(maxsolver(_33661,_33663,_33665,_33667),maxsolver,'.'(meta_arg(2,1),[])).
+meta_user_pred(maxsolver_by_longest_prefix(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_append_and_eval(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_prepend_and_eval(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(longest_satisfiable_prefix(_33661,_33663,_33665,_33667),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_longest_satisfiable_prefix(_33661,_33663,_33665,_33667),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(satisfiable_segment(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(longest_satisfiable_segment(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(maxsolver_by_longest_segment(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_maxsolver_by_longest_segment(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(maxsolver_exact_with_marker(_33661,_33663,_33665),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_precalc(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(visit_tree(_33661,_33663,_33665,_33667,_33669),bvisual,'.'(meta_arg(1,3),'.'(meta_arg(2,2),[]))).
+meta_user_pred(reduce_state_space(_33661,_33663),state_space_reduction,'.'(meta_arg(1,3),'.'(meta_arg(2,5),[]))).
+meta_user_pred(catch_and_ignore_well_definedness_error(_33661),static_analysis,'.'(meta_arg(1,0),[])).
+meta_user_pred(printtime(_33661),ctl,'.'(meta_arg(1,0),[])).
+meta_user_pred(register_conjunct_error_hook(_33661),predicate_evaluator,'.'(meta_arg(1,5),[])).
+meta_user_pred(analyse_quick_time_out(_33661),predicate_evaluator,'.'(meta_arg(1,0),[])).
+meta_user_pred(time_out_and_catch_errors(_33661,_33663,_33665),predicate_evaluator,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_interrupt_assertion_call(_33661),user_interrupts,'.'(meta_arg(1,0),[])).
+meta_user_pred(interruptable_call(_33661),user_interrupts,'.'(meta_arg(1,0),[])).
+meta_user_pred(interruptable_call(_33661,_33663),user_interrupts,'.'(meta_arg(1,0),[])).
+meta_user_pred(l_transform_bexpr(_33661,_33663,_33665),bsyntaxtree,'.'(meta_arg(2,2),[])).
+meta_user_pred(l_transform_bexpr_with_acc(_33661,_33663,_33665,_33667,_33669),bsyntaxtree,'.'(meta_arg(2,4),[])).
+meta_user_pred(foldl2(_33661,_33663,_33665,_33667),tools,'.'(meta_arg(2,3),[])).
+meta_user_pred(foldl2(_33661,_33663,_33665,_33667,_33669),tools,'.'(meta_arg(2,4),[])).
+meta_user_pred(foldl2(_33661,_33663,_33665,_33667,_33669,_33671),tools,'.'(meta_arg(2,5),[])).
+meta_user_pred(x_false_subset(_33661,_33663,_33665,_33667),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_satisfiable_subset_of_length(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_false_subset_til_true(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_existis_satisfiable_subset_of_length(_33661,_33663,_33665,_33667,_33669),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(x_maxsolver_exact_with_marker(_33661,_33663,_33665,_33667,_33669,_33671),maxsolver,'.'(meta_arg(1,1),[])).
+meta_user_pred(call_pred_on_expanded_state(_33661,_33663,_33665,_33667),user,'.'(meta_arg(1,3),[])).
+meta_user_pred(map_over_history(_33661,_33663),user,'.'(meta_arg(1,3),[])).
+meta_user_pred(time_out_with_factor_call(_33661,_33663,_33665),tools_timeout,'.'(meta_arg(1,0),'.'(meta_arg(3,0),[]))).
+meta_user_pred(time_out_call(_33661,_33663),tools_timeout,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(time_out_call(_33661),tools_timeout,'.'(meta_arg(1,0),[])).
+meta_user_pred(safe_time_out(_33661,_33663,_33665),tools_meta,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_clpfd_overflow_call_for_state(_33661,_33663,_33665),user,'.'(meta_arg(2,0),'.'(meta_arg(3,0),[]))).
+meta_user_pred(catch_interrupt_assertion_call(_33661),user,'.'(meta_arg(1,0),[])).
+meta_user_pred(tcltk_time_call(_33661),user,'.'(meta_arg(1,0),[])).
+meta_user_pred(add_csp_process_id1(_33661,_33663,_33665),user,'.'(meta_arg(3,1),[])).
+meta_user_pred(block_my_findall_catch(_33661,_33663,_33665,_33667,_33669),delay,'.'(meta_arg(3,0),[])).
+meta_user_pred(block_findall_check(_33661,_33663,_33665,_33667,_33669,_33671,_33673,_33675),delay,'.'(meta_arg(3,0),'.'(meta_arg(5,0),'.'(meta_arg(6,0),[])))).
+meta_user_pred(block_my_findall_sort(_33661,_33663,_33665,_33667),delay,'.'(meta_arg(3,0),[])).
+meta_user_pred(not_with_enum_warning2(_33661,_33663),delay,'.'(meta_arg(1,0),[])).
+meta_user_pred(find_enabled_fairids_for_state(_33661,_33663,_33665),ltl_verification,'.'(meta_arg(1,3),[])).
+meta_user_pred(find_enabled_fairids(_33661,_33663,_33665,_33667),ltl_verification,'.'(meta_arg(2,3),[])).
+meta_user_pred(eval_fairness(_33661,_33663,_33665,_33667),ltl_verification,'.'(meta_arg(3,3),[])).
+meta_user_pred(is_executed(_33661,_33663,_33665),ltl_verification,'.'(meta_arg(1,3),[])).
+meta_user_pred(is_executed2(_33661,_33663,_33665),ltl_verification,'.'(meta_arg(1,3),[])).
+meta_user_pred(call_for_event(_33661,_33663),eventhandling,'.'(meta_arg(2,0),[])).
+meta_user_pred(mnf_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(mnf_call_with_pp(_33661,_33663),self_check,'.'(meta_arg(2,0),[])).
+meta_user_pred(prepost_mnf_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(prepost_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(check_exception_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(rt_timeout_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(mnf_det(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(residue_check_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(check_det2(_33661,_33663),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(safe_call(_33661,_33663),external_functions,'.'(meta_arg(1,0),[])).
+meta_user_pred(try_call(_33661,_33663,_33665),kodkod,'.'(meta_arg(3,0),[])).
+meta_user_pred(force_det_call(_33661),self_check,'.'(meta_arg(1,0),[])).
+meta_user_pred(start_worker(_33661,_33663,_33665,_33667),worker,'.'(meta_arg(4,1),[])).
+meta_user_pred(measured_call(_33661,_33663),kodkod_test,'.'(meta_arg(1,0),[])).
+meta_user_pred(wall(_33661),disprover_test_runner,'.'(meta_arg(1,0),[])).
+meta_user_pred(if_option_set(_33661,_33663),user,'.'(meta_arg(2,0),[])).
+meta_user_pred(if_option_set(_33661,_33663,_33665),user,'.'(meta_arg(2,0),'.'(meta_arg(3,0),[]))).
+meta_user_pred(if_option_set_loaded(_33661,_33663,_33665),user,'.'(meta_arg(3,0),[])).
+meta_user_pred(timeout_call(_33661,_33663),user,'.'(meta_arg(1,0),[])).
+meta_user_pred(call_probcli_option(_33661),user,'.'(meta_arg(1,0),[])).
+meta_user_pred(smt_solver_interface_call(_33661,_33663),solver_dispatcher,'.'(meta_arg(2,0),[])).
+meta_user_pred(if_options_set(_33661,_33663),user,'.'(meta_arg(2,0),[])).
+meta_user_pred(ifm_option_set(_33661,_33663),user,'.'(meta_arg(2,0),[])).
+meta_user_pred(ifm_option_set_loaded(_33661,_33663,_33665),user,'.'(meta_arg(3,0),[])).
+meta_user_pred(maplist(_33661,_33663,_33665,_33667,_33669),predicate_handling,'.'(meta_arg(1,4),[])).
+meta_user_pred(sm_node_pred(_33661,_33663,_33665,_33667,_33669,_33671,_33673),state_space_reduction,'.'(meta_arg(1,2),[])).
+meta_user_pred(check(_33661,_33663),kodkod_test,'.'(meta_arg(1,0),[])).
+meta_user_pred(at_least_once(_33661,_33663),smtlib2_parser,'.'(meta_arg(1,0),[])).
+meta_user_pred(multiple_times(_33661,_33663),smtlib2_parser,'.'(meta_arg(1,0),[])).
+meta_user_pred(at_least_once_no_whitespace(_33661,_33663),smtlib2_parser,'.'(meta_arg(1,0),[])).
+meta_user_pred(multiple_times_no_whitespace(_33661,_33663),smtlib2_parser,'.'(meta_arg(1,0),[])).
+meta_user_pred(cvc4_interface_call(_33661),cvc4interface,[]).
+meta_user_pred(z3_interface_call(_33661),z3interface,[]).
+meta_user_pred(smt_solver_interface_call(_33661,_33663),solver_dispatcher,[]).
+meta_user_pred(at_least_once(_33661,_33663,_33665,_33667),smtlib2_parser,'.'(meta_arg(1,3),[])).
+meta_user_pred(multiple_times(_33661,_33663,_33665,_33667),smtlib2_parser,'.'(meta_arg(1,3),[])).
+meta_user_pred(at_least_once_no_whitespace(_33661,_33663,_33665,_33667),smtlib2_parser,'.'(meta_arg(1,3),[])).
+meta_user_pred(multiple_times_no_whitespace(_33661,_33663,_33665,_33667),smtlib2_parser,'.'(meta_arg(1,3),[])).
+meta_user_pred(observe_enumeration_warnings(_33661,_33663),error_manager,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).

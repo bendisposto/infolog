@@ -19,12 +19,14 @@ alltk: prolog-analyzer/tcltk_calls.pl
 allcli:
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_cli.pl'])."
 all: prolog-analyzer/tcltk_calls.pl
-	@echo "analyzing ProB Tcl/Tk and probcli together; you will get redefinition warnings !"
-	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'])."
+	@echo "analyzing ProB Tcl/Tk and probcli together"
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl')."
 
-infolog_problems.csv:  prolog-analyzer/*.pl
+infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
 	@echo "Generating CSV FIle"
-	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('infolog_problems.csv')."
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
+clean:
+	rm infolog_problems*.csv
 
 ui:
 	@echo "Compiling User Interface"
