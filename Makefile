@@ -1,4 +1,4 @@
-.PHONY: test all all_cli
+.PHONY: test all all_cli server
 PROLOG_FLAGS=
 #PROBPATH=$(PROB_HOME)
 #PROBPATH=/Users/leuschel/git_root/prob_prolog
@@ -35,10 +35,11 @@ infolog: prolog-analyzer/*.pl
 	@echo "Generationg csv file"
 	export PROB_HOME=$(PROBPATH) ;sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('resources/public/infolog_problems.csv'), halt."
 
-server: ui infolog
+run_server:
 	@echo "Starting Python Simpleserver"
 	pushd resources/public; python -m SimpleHTTPServer; popd
 
+server: ui infolog run_server
 
 prolog-analyzer/tcltk_calls.ack:
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl

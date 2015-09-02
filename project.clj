@@ -32,5 +32,5 @@
                         :source-paths ["src/cljs"]
                         :compiler {:main infolog.core
                                    :output-to "resources/public/js/compiled/app.js"
-                                   :optimizations :advanced
+                                   :optimizations :simple
                                    :pretty-print false}}]})

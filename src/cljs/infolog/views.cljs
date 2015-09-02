@@ -52,12 +52,23 @@
     (r/create-class
      {:component-did-mount
       (fn [e]
-        (let [data (frequencies (map :problem-type @problems))
-              chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
-                                                             :type "pie"}})]
-          (logp (seq data))
-          (. js/c3 generate chart)))
-      :reagent-render (fn [_] [:div#pie_problems])})))
+        (when @problems
+          (do (logp :problems-found)
+              (let [data (frequencies (map :problem-type @problems))
+                    chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
+                                                                   :type "pie"}})]
+                (logp :prepared-data data chart)
+                (. js/c3 generate chart)))))
+      :component-did-update
+      (fn [e]
+        (when @problems
+          (do (logp :problems-found)
+              (let [data (frequencies (map :problem-type @problems))
+                    chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
+                                                                   :type "pie"}})]
+                (logp :prepared-data data chart)
+                (. js/c3 generate chart)))))
+      :reagent-render (fn [_] [:div#pie_problems (count @problems)])})))
 
 (defn home-panel []
   (let [location (re-frame/subscribe [:location])]
