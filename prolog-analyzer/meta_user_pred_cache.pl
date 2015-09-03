@@ -186,7 +186,7 @@ meta_user_pred(if_option_set(_33661,_33663,_33665),user,'.'(meta_arg(2,0),'.'(me
 meta_user_pred(if_option_set_loaded(_33661,_33663,_33665),user,'.'(meta_arg(3,0),[])).
 meta_user_pred(timeout_call(_33661,_33663),user,'.'(meta_arg(1,0),[])).
 meta_user_pred(call_probcli_option(_33661),user,'.'(meta_arg(1,0),[])).
-meta_user_pred(smt_solver_interface_call(_33661,_33663),solver_dispatcher,'.'(meta_arg(2,0),[])).
+%meta_user_pred(smt_solver_interface_call(_33661,_33663),solver_dispatcher,'.'(meta_arg(2,0),[])).
 meta_user_pred(if_options_set(_33661,_33663),user,'.'(meta_arg(2,0),[])).
 meta_user_pred(ifm_option_set(_33661,_33663),user,'.'(meta_arg(2,0),[])).
 meta_user_pred(ifm_option_set_loaded(_33661,_33663,_33665),user,'.'(meta_arg(3,0),[])).
