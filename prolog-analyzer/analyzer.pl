@@ -740,7 +740,8 @@ assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,I
     (DCG = dcg -> ExtraArgs2 is ExtraArgs+2 ; ExtraArgs2=ExtraArgs),
     assert_if_new(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
-    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]).
+    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]),
+    get_position(Layout, StartLine, EndLine), format('*** LINES: ~w-~w~n',[StartLine,EndLine]).
 
      % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
