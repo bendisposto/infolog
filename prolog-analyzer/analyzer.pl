@@ -56,7 +56,7 @@ export(S,P/Arity) :-
 export(S,_P/_Arity) :- format(S,'~n ]~n',[]).
 
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
-write_arg(S,N) :- format(S,'"~w" ',[N]).
+write_arg(S,N) :- escape_argument(N,EN),format(S,'"~w" ',[EN]).
 
 
 % =========================================

@@ -1,4 +1,4 @@
-:- module(escaper,[escaping_format/3, escape_single_argument/2, escaping_format/2]).
+:- module(escaper,[escaping_format/3, escaping_format/2, escape_argument/2]).
 
 :- use_module(library(lists)).
 :- use_module(library(codesio)).
