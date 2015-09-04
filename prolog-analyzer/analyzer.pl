@@ -188,6 +188,9 @@ info(_).
 
 infolog_problem(infolog_internal_error,error,P,Loc) :- infolog_internal_error(P,Loc).
 infolog_problem(analysis_problem,error,string(P),Loc) :- problem(P,Loc).
+infolog_problem(multiple_meta_predicates,error,informat('Multiple meta_predicate declarations for ~w:~w/~w.',[Module,F,N]),module_loc(Module)) :-
+        meta_user_pred(Head1,Module,MetaArgList1), functor(Head1,F,N), functor(Head2,F,N),
+        meta_user_pred(Head2,Module,MetaArgList2), MetaArgList1 @> MetaArgList2.
 infolog_problem(missing_import,warning,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
         missing_imports(M1,M2,Calls).
 infolog_problem(export_undefined,error,informat('Exporting undefined predicate ~w in module ~w.',[P,M]),module_loc(M)) :-
@@ -737,7 +740,8 @@ assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,I
     (DCG = dcg -> ExtraArgs2 is ExtraArgs+2 ; ExtraArgs2=ExtraArgs),
     assert_if_new(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
-    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]).
+    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]),
+    get_position(Layout, StartLine, EndLine), format('*** LINES: ~w-~w~n',[StartLine,EndLine]).
 
      % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
@@ -942,7 +946,7 @@ meta_built_in_pred(retract(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(retractall(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(call_cleanup(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(call_residue_vars(_,_),built_in,[meta_arg(1,0)]).
-meta_built_in_pred(call(_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
+meta_built_in_pred(call(_),built_in,[meta_arg(1,0)]).
 meta_built_in_pred(call(_,_),built_in,[meta_arg(1,1)]).
 meta_built_in_pred(call(_,_,_),built_in,[meta_arg(1,2)]).
 meta_built_in_pred(call(_,_,_,_),built_in,[meta_arg(1,3)]).
