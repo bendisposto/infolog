@@ -23,6 +23,17 @@
    (reaction (:directory @db))))
 
 (re-frame/register-sub
+ :modules
+ (fn [db]
+   (reaction (:modules @db))))
+
+(re-frame/register-sub
+ :dependencies
+ (fn [db]
+   (reaction (:dependencies @db))))
+
+(re-frame/register-sub
  :histo-by-module-selected
  (fn [db]
    (reaction (get-in @db [:histo-by-module :show] #{}))))
+

@@ -39,24 +39,24 @@ portray_message(informational, _).
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
 
-is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
+%is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
+
 export_to_clj_file(File) :- open(File,write,S),
     call_cleanup((format(S,'{~n',[]),
-					maplist(export(S), [ is_dynamic3/3, is_meta/2]), 
+					maplist(export(S), [ depends_on/2, defined_module/2, infolog_problem_flat/9]),
 					format(S,'}~n',[])),close(S)).
 export(S,P/Arity) :-
      format(S,':~w~n [',[P]),
      functor(Call,P,Arity), Call =.. [_|Args],
      call(Call),
      format(S,'[',[]),
-     print(args(Args)),nl,
      maplist(write_arg(S),Args),
      format(S,']~n',[]),
      fail.
 export(S,_P/_Arity) :- format(S,'~n ]~n',[]).
 
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
-write_arg(S,N) :- escape_argument(N,EN),format(S,'"~w" ',[EN]).
+write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
 
 % =========================================

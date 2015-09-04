@@ -22,27 +22,29 @@ all: prolog-analyzer/tcltk_calls.pl
 	@echo "analyzing ProB Tcl/Tk and probcli together"
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl')."
 
-infolog_data:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
-	@echo "Analyzing and generating output files"
-	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv'), export_to_clj_file('database.edn'), halt."
+infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
+	@echo "Generating CSV FIle"
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
+
+
+infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
+	@echo "Generating Data for website"
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
+
 clean:
 	rm infolog_problems*.csv
+	rm resources/public/infolog.edn
 
 ui:
 	@echo "Compiling User Interface"
 	lein clean
 	lein cljsbuild once min
 
-infolog: infolog_data
-	@echo "Copying files"
-	cp infolog_problems.csv ./resources/public/infolog_problems.csv
-	cp database.edn ./resources/public/database.edn
-
 run_server:
 	@echo "Starting Python Simpleserver"
 	pushd resources/public; python -m SimpleHTTPServer; popd
 
-server: ui infolog run_server
+server: ui infolog.edn run_server
 
 prolog-analyzer/tcltk_calls.ack:
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl

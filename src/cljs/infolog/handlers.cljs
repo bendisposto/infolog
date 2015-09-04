@@ -2,7 +2,7 @@
   (:require [re-frame.core :as re-frame]
             [infolog.db :as db]
             [ajax.core :as ajax]
-            [cljsjs.csv]
+            [cljs.reader :as reader]
             [taoensso.encore :as enc  :refer (logf log logp)]))
 
 (re-frame/register-handler
@@ -41,16 +41,24 @@
            :file
            (clojure.string/replace file prefix "."))))
 
+(defn transform-problems [problems]
+  (let [pm (map problem->map problems)
+        prefix (file-prefix pm)
+        pm' (map (remove-file-prefix (js/RegExp. prefix)) pm)]
+    [prefix pm']))
+
+
+
 (re-frame/register-handler
  :process-infolog-problems
  (fn [db [_ result]]
-   (let [raw-data (rest (js->clj (. js/CSV parse result)))
-         data-map (mapv problem->map raw-data)
-         prefix (file-prefix data-map)
-         data (map (remove-file-prefix (js/RegExp. prefix)) data-map)]
+   (let [[prefix problems] (transform-problems (:infolog_problem_flat result))
+         ]
      (assoc db
-            :infolog-problems data
-            :directory prefix))))
+            :infolog-problems problems
+            :directory prefix
+            :modules (into {} (:defined_module result))
+            :dependencies (into {} (map (fn [[k v]] [k (map second v)]) (group-by first (:depends_on result))))))))
 
 (re-frame/register-handler
  :bad-response
@@ -64,8 +72,8 @@
  (fn [db [_ problem-type on?]]
    (let [x (get-in db [:histo-by-module :show] #{})
          db' (if on?
-           (assoc-in db [:histo-by-module :show] (conj x problem-type))
-           (assoc-in db [:histo-by-module :show] (disj x problem-type)))]
+               (assoc-in db [:histo-by-module :show] (conj x problem-type))
+               (assoc-in db [:histo-by-module :show] (disj x problem-type)))]
      (logp (:histo-by-module db'))
      db')))
 
@@ -73,7 +81,7 @@
  :request-problems-csv
  (fn [db _]
    (ajax/GET
-    "infolog_problems.csv"
+    "infolog.edn"
     {:handler       #(re-frame/dispatch [:process-infolog-problems %1])
      :error-handler #(re-frame/dispatch [:bad-response %1])})
    (assoc db :loading-problems-csv? true)))

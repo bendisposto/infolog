@@ -82,6 +82,7 @@
            (let [problems (re-frame/subscribe [:problems])]
              (c3-component update-doh render-doh))))
 
+
 (defn main-panel []
   (let [location (re-frame/subscribe [:location])]
     (fn [_]

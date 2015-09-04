@@ -26,3 +26,4 @@ infolog_cli
 resources/public/js/compiled
 figwheel_server.log
 database.edn
+infolog.edn
