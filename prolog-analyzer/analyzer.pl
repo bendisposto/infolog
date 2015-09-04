@@ -4,7 +4,7 @@ portray_message(informational, _).
 
 :- use_module(escaper).
 :- use_module(infolog_tools).
-:- use_module(clojure_exporter,[export_to_clj_file/1, export/1]).
+%:- use_module(clojure_exporter,[export_to_clj_file/1, export/1]).
 :- use_module(library_modules).
 
 :- use_module(library(lists)).
@@ -38,6 +38,26 @@ portray_message(informational, _).
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
+
+is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
+export_to_clj_file(File) :- open(File,write,S),
+    call_cleanup((format(S,'{~n',[]),
+					maplist(export(S), [ is_dynamic3/3, is_meta/2]), 
+					format(S,'}~n',[])),close(S)).
+export(S,P/Arity) :-
+     format(S,':~w~n [',[P]),
+     functor(Call,P,Arity), Call =.. [_|Args],
+     call(Call),
+     format(S,'[',[]),
+     print(args(Args)),nl,
+     maplist(write_arg(S),Args),
+     format(S,']~n',[]),
+     fail.
+export(S,_P/_Arity) :- format(S,'~n ]~n',[]).
+
+write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
+write_arg(S,N) :- format(S,'"~w" ',[N]).
+
 
 % =========================================
 
