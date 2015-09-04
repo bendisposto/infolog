@@ -25,3 +25,4 @@ infolog_cli
 *.csv
 resources/public/js/compiled
 figwheel_server.log
+database.edn

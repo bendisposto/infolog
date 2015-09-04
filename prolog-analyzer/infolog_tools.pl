@@ -80,3 +80,8 @@ git_revision(Sha) :-
    process_create(Shell, ['-c','cd $PROB_HOME && git rev-parse HEAD && cd - >/dev/null'],[stdout(pipe(F)), process(P)]),
    process_wait(P,_ExitCode),
    stream2code(F,Sha).
+
+% read all characters from a stream
+   stream2code(S,Atom) :-
+   read_line(S,Text),
+   atom_codes(Atom,Text).   

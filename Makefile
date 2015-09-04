@@ -22,9 +22,9 @@ all: prolog-analyzer/tcltk_calls.pl
 	@echo "analyzing ProB Tcl/Tk and probcli together"
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl')."
 
-infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
-	@echo "Generating CSV FIle"
-	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
+infolog_data:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
+	@echo "Analyzing and generating output files"
+	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv'), export_to_clj_file('database.edn'), halt."
 clean:
 	rm infolog_problems*.csv
 
@@ -33,9 +33,10 @@ ui:
 	lein clean
 	lein cljsbuild once min
 
-infolog: infolog_problems.csv
-	@echo "Copying csv file"
+infolog: infolog_data
+	@echo "Copying files"
 	cp infolog_problems.csv ./resources/public/infolog_problems.csv
+	cp database.edn ./resources/public/database.edn
 
 run_server:
 	@echo "Starting Python Simpleserver"
@@ -65,8 +66,5 @@ test_cli: infolog_cli
 	@echo "compiled infolog_cli DOES NOT WORK yet !!!"
 	export PROB_HOME=$(PROBPATH) ; infolog_cli $(PROBPATH)/src/prob_tcltk.pl
 
-databse.clj:
-	export PROB_HOME=$(PROB_PATH)
-	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/prob_tcltk.pl', 'database.clj')."
 prolog-analyzer/meta_preds.pl: prolog-analyzer/meta_pred_generator.pl
 	sicstus -l prolog-analyzer/meta_pred_generator.pl --goal "tell('prolog-analyzer/meta_preds.pl'),gen,told,halt."

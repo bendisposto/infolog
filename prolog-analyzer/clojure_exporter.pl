@@ -16,13 +16,6 @@ export_to_clj_file(OutputFile) :-
 export(Stream) :-
  export_all(Stream).
 
-% read all characters from a stream
-stream2code(S,Atom) :-
-  read_line(S,Text),
-  atom_codes(Atom,Text).
-
-
-
 export_all(S) :-
  git_revision(Sha),
 
@@ -72,7 +65,7 @@ export_operator(S) :-
     ; true).
 
 export_calling(S) :-
-  (calling(M,P/A, CM,CP/CA, Start, End), 
+  (calling(M,P/A, CM,CP/CA, Start, End),
    write_clojure(S,call,[M,string, P,string, A, number,
             CM, string, CP, string, CA, number, Start, number, End, number]), fail
     ; true).
