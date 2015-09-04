@@ -59,6 +59,17 @@
    db))
 
 (re-frame/register-handler
+ :histo-by-module-switch
+ re-frame/debug
+ (fn [db [_ problem-type on?]]
+   (let [x (get-in db [:histo-by-module :show] #{})
+         db' (if on?
+           (assoc-in db [:histo-by-module :show] (conj x problem-type))
+           (assoc-in db [:histo-by-module :show] (disj x problem-type)))]
+     (logp (:histo-by-module db'))
+     db')))
+
+(re-frame/register-handler
  :request-problems-csv
  (fn [db _]
    (ajax/GET

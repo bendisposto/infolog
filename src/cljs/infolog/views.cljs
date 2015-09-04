@@ -2,7 +2,9 @@
   (:require [re-frame.core :as re-frame]
             [reagent.core :as r]
             [taoensso.encore :as enc  :refer (logf log logp)]
-            [cljsjs.c3]))
+            [infolog.components.problem-by-module :refer [histogram]]
+            [cljsjs.c3]
+            [cljsjs.d3]))
 
 ;; --------------------
 
@@ -13,7 +15,9 @@
     [:h1 (str "Infolog Problems")]))
 
 (defn fix-wrap [entry]
-  (clojure.string/replace entry #"," ", "))
+  (-> entry
+      (clojure.string/replace #"," ", ")
+      (clojure.string/replace #":" ": ")))
 
 (defn render-row [{:keys [hash problem-type] :as m}]
   [:tr {:id (str "hash_" hash)
@@ -47,45 +51,44 @@
                       [:th "End Line"]]]]
             (into [:tbody] (mapv render-row (sort-by (comp {"error" 0 "warning" 1 "info" 2} :problem-type) @problems)))))))
 
+(defn c3-component [update-function render-function]
+  (r/create-class {:component-did-mount update-function
+                   :component-did-update update-function
+                   :reagent-render render-function}))
+
 (defn pie-problems [_]
   (let [problems (re-frame/subscribe [:problems])]
-    (r/create-class
-     {:component-did-mount
-      (fn [e]
-        (when @problems
-          (do (logp :problems-found)
-              (let [data (frequencies (map :problem-type @problems))
-                    chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
-                                                                   :type "pie"}})]
-                (logp :prepared-data data chart)
-                (. js/c3 generate chart)))))
-      :component-did-update
-      (fn [e]
-        (when @problems
-          (do (logp :problems-found)
-              (let [data (frequencies (map :problem-type @problems))
-                    chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
-                                                                   :type "pie"}})]
-                (logp :prepared-data data chart)
-                (. js/c3 generate chart)))))
-      :reagent-render (fn [_] [:div#pie_problems (count @problems)])})))
+    (c3-component
+     (fn [e] (when @problems
+              (do (let [data (frequencies (map :problem-type @problems))
+                        chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
+                                                                       :type "pie"}})]
+                    (logp :prepared-data data chart)
+                    (. js/c3 generate chart)))))
+     (fn [_] [:div#pie_problems (count @problems)]))))
 
-(defn home-panel []
+
+(comment (defn update-doh [_]
+           (.. js/d3
+               (select "#doh")
+               (append "svg")
+               (attr "width" 500)
+               (attr "height" 500)
+               (append "g")
+               ))
+         (defn render-doh [_] [:div#doh])
+
+         (defn doh []
+           (let [problems (re-frame/subscribe [:problems])]
+             (c3-component update-doh render-doh))))
+
+(defn main-panel []
   (let [location (re-frame/subscribe [:location])]
     (fn [_]
       [:div
        [home-title]
        [:div "Directory: " @location]
        [pie-problems]
+       #_[doh]
+       [histogram]
        [problem-table]])))
-
-
-;; --------------------
-(defmulti panels identity)
-(defmethod panels :home-panel [] [home-panel])
-(defmethod panels :default [] [:div])
-
-(defn main-panel []
-  (let [active-panel (re-frame/subscribe [:active-panel])]
-    (fn []
-      (panels @active-panel))))
