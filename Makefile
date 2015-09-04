@@ -33,9 +33,9 @@ ui:
 	lein clean
 	lein cljsbuild once min
 
-infolog: prolog-analyzer/*.pl
-	@echo "Generationg csv file"
-	export PROB_HOME=$(PROBPATH) ;sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']), lint_to_csv_file('resources/public/infolog_problems.csv'), halt."
+infolog: infolog_problems.csv
+	@echo "Copying csv file"
+	cp infolog_problems.csv ./resources/public/infolog_problems.csv
 
 run_server:
 	@echo "Starting Python Simpleserver"
