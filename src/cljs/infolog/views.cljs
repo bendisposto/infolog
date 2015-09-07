@@ -62,7 +62,10 @@
      (fn [e] (when @problems
               (do (let [data (frequencies (map :problem-type @problems))
                         chart (clj->js {:bindto "#pie_problems" :data {:columns (seq data)
-                                                                       :type "pie"}})]
+                                                                       :type "pie"
+                                                                       :colors {"error" "#cc0000"
+                                                                                "warning" "#F3F781"
+                                                                                "info" "#5882FA"}}})]
                     (logp :prepared-data data chart)
                     (. js/c3 generate chart)))))
      (fn [_] [:div#pie_problems (count @problems)]))))
