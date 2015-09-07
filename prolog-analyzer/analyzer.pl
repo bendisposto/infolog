@@ -19,7 +19,7 @@ portray_message(informational, _).
 % THE DYNAMIC PREDICATES WHICH ARE PART OF THE ANALYSIS
 
 :-  dynamic
-    defined_module/2,% module(name,file)
+    defined_module/2,% module(name,file) : there exists a :- module(Name, [...]). declaration
     predicate/2,     % predicate(module,name/arity)
     is_dynamic/2,    % is_dynamic(module,name/arity)
     is_public/2,     % is_public(module,name/arity)
@@ -33,7 +33,7 @@ portray_message(informational, _).
     declared_mode/2, % declared_mode(module:name/arity, mode_arguments)
     is_exported/2,   % is_exported(module,name/arity)
     is_imported/3,   % is_imported(from_module,imported_module,imported_name/arity)
-    depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module
+    depends_on/2,    % depends_on(local_module, imported_module) ;; local_module uses imported_module with use_module
     is_multifile/2,  % is_multifile(module,name/arity)
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
@@ -223,6 +223,8 @@ infolog_problem(export_multiple,info,informat('Predicate ~w exported by modules 
         is_exported(M1,P), is_exported(M2,P), M2 @>M1.
 infolog_problem(vacuous_modules,warning,informat('Vacuous module dependence ~w -> ~w',[M1,M2]),module_loc(M1)) :-
         vacuous_module_dependency(M1,M2).
+infolog_problem(dead_modules,warning,informat('Dead module ~w',[M1]),module_loc(M1)) :-
+        defined_module(M1,_), \+ (calling_with_ext(M2,_,M1,_,_,_), M1 \= M2).
 infolog_problem(uncovered_calls,error,informat('Uncovered Call in module ~w :: ~w:~w',[FromModule,ToModule,Call]),
                                 module_pred_lines(FromModule,FromQ,L1,L2)) :-
         uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2),
