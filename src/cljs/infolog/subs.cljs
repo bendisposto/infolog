@@ -26,7 +26,7 @@
 (def sicstus-module #{"lists" "avl" "file_systems" "codesio" "ordsets" "timeout"
                       "chr" "clpfd" "system" "between" "samsort" "random" "atts"
                       "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
-                      "aggregate" "tcltk" "heaps" })
+                      "aggregate" "tcltk" "heaps" "fastrw" "sockets"})
 
 (re-frame/register-sub
  :modules
