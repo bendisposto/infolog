@@ -41,9 +41,11 @@ portray_message(informational, _).
 
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
+calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
+
 export_to_clj_file(File) :- open(File,write,S),
     call_cleanup((format(S,'{~n',[]),
-					maplist(export(S), [ depends_on/2, defined_module/2, infolog_problem_flat/9]),
+					maplist(export(S), [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9]),
 					format(S,'}~n',[])),close(S)).
 export(S,P/Arity) :-
      format(S,':~w~n [',[P]),
