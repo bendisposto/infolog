@@ -58,7 +58,7 @@
             :infolog-problems problems
             :directory prefix
             :modules (into {} (:defined_module result))
-            :dependencies (into {} (map (fn [[k v]] [k (map second v)]) (group-by first (:depends_on result))))))))
+            :dependencies (:depends_on result)))))
 
 (re-frame/register-handler
  :bad-response

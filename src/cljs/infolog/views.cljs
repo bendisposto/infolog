@@ -3,6 +3,7 @@
             [reagent.core :as r]
             [taoensso.encore :as enc  :refer (logf log logp)]
             [infolog.components.problem-by-module :refer [histogram]]
+            [infolog.components.module-dependencies :refer [dependency-graph]]
             [cljsjs.c3]
             [cljsjs.d3]))
 
@@ -90,9 +91,11 @@
   (let [location (re-frame/subscribe [:location])]
     (fn [_]
       [:div
-       [home-title]
+       [:h1 "Infolog"]
        [:div "Directory: " @location]
+       [:h1 "Dependency Analysis"]
+       [dependency-graph]
+       [:h1 "Problems"]
        [pie-problems]
-       #_[doh]
        [histogram]
        [problem-table]])))

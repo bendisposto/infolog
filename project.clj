@@ -25,6 +25,7 @@
                                    :output-to "resources/public/js/compiled/app.js"
                                    :output-dir "resources/public/js/compiled/out"
                                    :asset-path "js/compiled/out"
+                                   :libs ["src/js/deps_d3.js"]
                                    :source-map-timestamp true}}
 
                        {:id "min"
@@ -32,4 +33,5 @@
                         :compiler {:main infolog.core
                                    :output-to "resources/public/js/compiled/app.js"
                                    :optimizations :simple
+                                   :libs ["src/js/deps_d3.js"]
                                    :pretty-print false}}]})
