@@ -24,7 +24,20 @@
 
 (defn dep-row [index]
   (fn  [[k vs]]
-    (into [:tr [:td k]] (mapv (dep-cell vs) index))))
+    (let [u (:uses vs)
+          ub (:used-by vs)
+          circ (count (clojure.set/intersection u ub))
+          uc (- (count u) circ)
+          ubc (-  (count ub) circ)]
+      (into [:tr
+             [:td
+              [:span k " ("]
+              [:span.tuses uc]
+              [:span "/"]
+              [:span.tused-by ubc]
+              [:span "/"]
+              [:span.tcircular circ]
+              [:span ")"]]] (mapv (dep-cell vs) index)))))
 
 (defn dependency-graph []
   (let [modules (re-frame/subscribe [:modules])
@@ -33,8 +46,8 @@
         merged' (reaction (merge-with (fn [v1 v2] {:uses (into #{} v1) :used-by (into #{} v2)}) @deps @inv-deps))
         user (reaction (get @merged' "user"))
         merged (if (map? @user)
-                  merged'
-                  (reaction (assoc @merged' "user" {:uses @user :used_by #{}})))
+                 merged'
+                 (reaction (assoc @merged' "user" {:uses @user :used-by #{}})))
         index (reaction (conj (map first @modules) "user"))
         ]
     [:div

@@ -47,15 +47,27 @@
 }
 
 .used-by {
- background-color: lightblue
+  background-color: #AAA
 }
 
 .circular {
   background-color: red
 }
 
+.tuses {
+  color: green
+}
+
+.tused-by {
+  color: #AAA
+}
+
+.tcircular {
+  color: red
+}
+
 .no-dep {
-  
+
 }
 
 .dep-table td:hover {

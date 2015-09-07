@@ -26,12 +26,13 @@
                                    :output-dir "resources/public/js/compiled/out"
                                    :asset-path "js/compiled/out"
                                    :libs ["src/js/deps_d3.js"]
+                                   :optimizations :none
                                    :source-map-timestamp true}}
 
                        {:id "min"
                         :source-paths ["src/cljs"]
                         :compiler {:main infolog.core
                                    :output-to "resources/public/js/compiled/app.js"
-                                   :optimizations :simple
+                                   :optimizations :whitespace
                                    :libs ["src/js/deps_d3.js"]
                                    :pretty-print false}}]})
