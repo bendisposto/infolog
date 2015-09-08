@@ -26,7 +26,7 @@
 (def sicstus-module #{"lists" "avl" "file_systems" "codesio" "ordsets" "timeout"
                       "chr" "clpfd" "system" "between" "samsort" "random" "atts"
                       "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
-                      "aggregate" "tcltk" "heaps" "fastrw" "sockets"})
+                      "aggregate" "tcltk" "heaps" "fastrw" "sockets" "wgraphs" "ugraphs"})
 
 (re-frame/register-sub
  :modules
@@ -34,6 +34,9 @@
    (reaction (let [mods (conj (map first (remove (fn [[m f]] (sicstus-module m)) (:modules @db))) "user")]
                (if sort-fn (sort-by sort-fn mods) mods)))))
 
+(re-frame/register-sub
+ :dep-sort-modules
+ (fn [db [_]](reaction (:dep-sort-modules @db))))
 
 (re-frame/register-sub
  :dependencies

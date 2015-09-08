@@ -101,6 +101,11 @@
      db')))
 
 (re-frame/register-handler
+ :switch-dep-module-sort
+ (fn [db [_ sorting]]
+   (assoc db :dep-sort-modules sorting)))
+
+(re-frame/register-handler
  :request-problems-csv
  (fn [db _]
    (ajax/GET
