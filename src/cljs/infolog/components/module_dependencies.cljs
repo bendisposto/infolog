@@ -5,7 +5,8 @@
             [taoensso.encore :as enc  :refer (logf log logp)]
             [depsd3]))
 
-(def cz 4)
+(def cz 10)
+(def offset 200)
 
 (defn compute-color [deps modules x y]
   (let [m1 (get modules x)
@@ -19,13 +20,28 @@
 (defn dependency-graph []
   (let [deps (re-frame/subscribe [:dependencies])
         modules (reaction (into [] @(re-frame/subscribe [:modules identity])))
-        size (reaction (count @modules))]
-    [:svg {:height (* @size cz) :width (* @size cz)}
-     (doall (for [x (range 0 @size) y (range 0 @size)]
-              [:rect {:key (str x "," y)
-                      :x (* x cz)
-                      :y (* y cz)
-                      :width cz
-                      :height cz
-                      :fill (compute-color @deps @modules x y)}]))]
+        size (reaction (count @modules))
+        mx (re-frame/subscribe [:modules count])]
+    [:div
+     #_[:svg {:height 200 :with 1000}
+        [:text {:class "dep-label"
+                :x 3
+                :y -20
+                :stroke "black"
+                :transform "rotate(90)"} (last @mx)]]
+     [:svg {:height (+ (* @size cz) offset) :width (+ (* @size cz) offset)}
+      (doall (for [x (range 0 @size) y (range 0 @size)]
+               [:rect {:key (str x "," y)
+                       :x (+ (* x cz) offset)
+                       :y (+ (* y cz) 0)
+                       :stroke-width "0.1px"
+                       :stroke "black"
+                       :width cz
+                       :height cz
+                       :on-click (fn [] (js/alert (str (get @modules x) ":" (get @modules y))))
+                       :fill (compute-color @deps @modules x y)}]))
+      (doall (for [y (range 0 @size)]
+               [:text {:class "dep-label" :x 0 :y (+ 10 (* cz y))} (get @modules y)]))
+      (doall (for [y (range 0 @size)]
+               [:text {:class "dep-label" :x (* @size cz) :y (- (+ 200 (* cz y))) :transform "rotate(90)"} (get @modules y)]  ))]]
     ))

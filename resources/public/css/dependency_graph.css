@@ -70,6 +70,10 @@
 
 }
 
+.dep-label {
+  font: 8px sans-serif;
+}
+
 .dep-table td:hover {
   border: 2px solid black;
 }
