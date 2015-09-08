@@ -19,10 +19,13 @@
   ;; --------------------
   ;; define routes here
   (defroute "/" []
-    (re-frame/dispatch [:set-active-panel :home-panel]))
+    (re-frame/dispatch [:set-active-page :Problems]))
 
-  (defroute "/about" []
-    (re-frame/dispatch [:set-active-panel :about-panel]))
+  (defroute "/Problems" []
+    (re-frame/dispatch [:set-active-page :Problems]))
+
+  (defroute "/Dependencies" []
+    (re-frame/dispatch [:set-active-page :Dependencies]))
 
 
   ;; --------------------

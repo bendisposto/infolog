@@ -9,9 +9,9 @@
    (reaction (:name @db))))
 
 (re-frame/register-sub
- :active-panel
+ :active-page
  (fn [db _]
-   (reaction (:active-panel @db))))
+   (reaction (:active-page @db))))
 
 (re-frame/register-sub
  :problems
@@ -30,35 +30,13 @@
 
 (re-frame/register-sub
  :modules
- (fn [db]
-   (reaction (remove (fn [[m f]] (sicstus-module m)) (:modules @db)))))
+ (fn [db [_ sort-fn]]
+   (reaction (let [mods (conj (map first (remove (fn [[m f]] (sicstus-module m)) (:modules @db))) "user")]
+               (if sort-fn (sort-by sort-fn mods) mods)))))
 
 
 (re-frame/register-sub
  :dependencies
- (fn [db]
-   (let [modules (re-frame/subscribe [:modules])]
-     (reaction (->> (:dependencies @db)
-                    (remove (fn [[m d]] (or (sicstus-module m) (sicstus-module d))))
-                    (group-by first)
-                    (map (fn [[k v]] [k (map second v)]))
-                    (into {})
-                    (merge (into {} (map vector (map first @modules) (repeat [])))))))))
-
-(re-frame/register-sub
- :inverse-dependencies
- (fn [db]
-   (let [modules (re-frame/subscribe [:modules])]
-     (reaction (->> (:dependencies @db)
-                    (map (fn [[k v]] [v k]))
-                    (remove (fn [[m d]] (or (sicstus-module m) (sicstus-module d))))
-                    (group-by first)
-                    (map (fn [[k v]] [k (map second v)]))
-                    (into {})
-                    (merge (into {} (map vector (map first @modules) (repeat [])))))))))
-
-(re-frame/register-sub
- :raw-dependencies
  (fn [db]
    (reaction (:dependencies @db))))
 

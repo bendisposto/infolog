@@ -13,14 +13,18 @@
 
 (defn common-prefix [sep paths]
   (let [parts-per-path (map #(clojure.string/split % (re-pattern sep)) paths)
-        parts-per-position (apply map vector parts-per-path)]
-    (clojure.string/join sep
-                         (for [parts parts-per-position :while (apply = parts)]
-                           (first parts)))))
+        parts-per-position (apply map vector parts-per-path)
+        pathparts (for [parts parts-per-position :while (apply = parts)] (first parts))]
+    (logp :path (str pathparts))
+    (clojure.string/join sep pathparts)))
 
 (defn file-prefix [data]
-  (let [files (remove #{"unknown"} (map :file data))]
-    (common-prefix "/" files)))
+  (let [files (->> data
+                   (map :file)
+                   (remove #{"unknown"})
+                   (remove #(.startsWith % "sicstus")))
+        prefix (common-prefix "/" (into [] files))]
+    prefix))
 
 (defn problem->map
   [[category problem-type message module
@@ -38,27 +42,42 @@
 (defn remove-file-prefix [prefix]
   (fn [{:keys [file] :as entry}]
     (assoc entry
-           :file
-           (clojure.string/replace file prefix "."))))
+           :file file
+           (clojure.string/replace-first file prefix "."))))
 
 (defn transform-problems [problems]
   (let [pm (map problem->map problems)
         prefix (file-prefix pm)
-        pm' (map (remove-file-prefix (js/RegExp. prefix)) pm)]
+        pm' (map (remove-file-prefix (js/RegExp. prefix)) pm)
+        ]
     [prefix pm']))
 
 
+(defn call->map [[cm cp ca m p a sl el]]
+  {:caller-module cm
+   :caller-predicate cp
+   :caller-arity ca
+   :callee-module m
+   :callee-predicate p
+   :callee-arity a
+   :start sl
+   :end el})
+
+(defn transform-calls [calls]
+  (map call->map calls))
 
 (re-frame/register-handler
  :process-infolog-problems
- (fn [db [_ result]]
-   (let [[prefix problems] (transform-problems (:infolog_problem_flat result))
-         ]
+ (fn [db [_ r]]
+   (let [result (cljs.reader/read-string r)
+         [prefix problems] (transform-problems (:infolog_problem_flat result))
+         calling (transform-calls (:calling result))
+         deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))]
      (assoc db
             :infolog-problems problems
             :directory prefix
             :modules (into {} (:defined_module result))
-            :dependencies (:depends_on result)))))
+            :dependencies deps))))
 
 (re-frame/register-handler
  :bad-response
@@ -87,6 +106,7 @@
    (assoc db :loading-problems-csv? true)))
 
 (re-frame/register-handler
- :set-active-panel
+ :set-active-page
+ re-frame/debug
  (fn [db [_ active-panel]]
-   (assoc db :active-panel active-panel)))
+   (assoc db :active-page active-panel)))

@@ -39,6 +39,7 @@
 (defn problem-table [data]
   (let [problems (re-frame/subscribe [:problems])]
     (fn [_]
+;;      (logp @problems)
       (conj [:table {:id "problem-table"
                      :class "table"}
              [:thead [:tr
@@ -67,7 +68,7 @@
                                                                        :colors {"error" "#cc0000"
                                                                                 "warning" "#F3F781"
                                                                                 "info" "#5882FA"}}})]
-                    (logp :prepared-data data chart)
+                    (logp :prepared-data @problems data chart)
                     (. js/c3 generate chart)))))
      (fn [_] [:div#pie_problems (count @problems)]))))
 
@@ -87,15 +88,37 @@
              (c3-component update-doh render-doh))))
 
 
+
+(defn problems-view []
+  (fn [_]
+    [:div
+     
+     [pie-problems]
+     [histogram]
+     [problem-table]]))
+
+(defn dependencies-view []
+  [dependency-graph])
+
+(def pages ["Problems" "Dependencies"])
+
+(defmulti page identity)
+(defmethod page :Problems [] [problems-view])
+(defmethod page :Dependencies [] [dependencies-view])
+(defmethod page :default [] [:h1 "Unknown page"])
+
 (defn main-panel []
-  (let [location (re-frame/subscribe [:location])]
-    (fn [_]
-      [:div
-       [:h1 "Infolog"]
-       [:div "Directory: " @location]
-       [:h1 "Dependency Analysis"]
-       [dependency-graph]
-       [:h1 "Problems"]
-       [pie-problems]
-       [histogram]
-       [problem-table]])))
+  (fn []  (let [location (re-frame/subscribe [:location])
+               active (re-frame/subscribe [:active-page])]
+           [:div
+            [:nav.navbar.navbar-inverse.navbar-fixed-top
+             [:div.container
+              (into  [:ul.nav.navbar-nav]
+                     (for [t pages]
+                       [:li (when (= @active (keyword t)) {:class "active"})
+                        [:a {:href (str "#/" t)} t]]))]]
+            [:div.content
+             [:h1 (name @active)]
+             [:div (str "Directory: " @location)]
+             (page @active)]])))
+

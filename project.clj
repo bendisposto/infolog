@@ -35,4 +35,4 @@
                                    :output-to "resources/public/js/compiled/app.js"
                                    :optimizations :whitespace
                                    :libs ["src/js/deps_d3.js"]
-                                   :pretty-print false}}]})
+                                   :pretty-print true}}]})
