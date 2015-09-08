@@ -15,14 +15,14 @@
   (let [parts-per-path (map #(clojure.string/split % (re-pattern sep)) paths)
         parts-per-position (apply map vector parts-per-path)
         pathparts (for [parts parts-per-position :while (apply = parts)] (first parts))]
-    (logp :path (str pathparts))
+
     (clojure.string/join sep pathparts)))
 
 (defn file-prefix [data]
   (let [files (->> data
                    (map :file)
                    (remove #{"unknown"})
-                   (remove #(.startsWith % "sicstus")))
+                   (remove #(goog.string.startsWith % "sicstus")))
         prefix (common-prefix "/" (into [] files))]
     prefix))
 
@@ -42,7 +42,7 @@
 (defn remove-file-prefix [prefix]
   (fn [{:keys [file] :as entry}]
     (assoc entry
-           :file file
+           :file
            (clojure.string/replace-first file prefix "."))))
 
 (defn transform-problems [problems]
@@ -69,15 +69,20 @@
 (re-frame/register-handler
  :process-infolog-problems
  (fn [db [_ r]]
-   (let [result (cljs.reader/read-string r)
+   (let [;;start (goog.date.DateTime.)
+         result (cljs.reader/read-string r)
          [prefix problems] (transform-problems (:infolog_problem_flat result))
          calling (transform-calls (:calling result))
-         deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))]
-     (assoc db
-            :infolog-problems problems
-            :directory prefix
-            :modules (into {} (:defined_module result))
-            :dependencies deps))))
+         deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))
+         db' (assoc db
+                    :infolog-problems problems
+                    :directory prefix
+                    :modules (into {} (:defined_module result))
+                    :dependencies deps)
+         ;;end (goog.date.DateTime.)
+         ]
+     ;;(logp :time-process-input start end)
+     db')))
 
 (re-frame/register-handler
  :bad-response
@@ -93,7 +98,6 @@
          db' (if on?
                (assoc-in db [:histo-by-module :show] (conj x problem-type))
                (assoc-in db [:histo-by-module :show] (disj x problem-type)))]
-     (logp (:histo-by-module db'))
      db')))
 
 (re-frame/register-handler

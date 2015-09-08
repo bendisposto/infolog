@@ -68,7 +68,6 @@
                                                                        :colors {"error" "#cc0000"
                                                                                 "warning" "#F3F781"
                                                                                 "info" "#5882FA"}}})]
-                    (logp :prepared-data @problems data chart)
                     (. js/c3 generate chart)))))
      (fn [_] [:div#pie_problems (count @problems)]))))
 
@@ -118,7 +117,7 @@
                        [:li (when (= @active (keyword t)) {:class "active"})
                         [:a {:href (str "#/" t)} t]]))]]
             [:div.content
-             [:h1 (name @active)]
+             [:h1 (if (keyword @active) (name @active) "Unknown Page")]
              [:div (str "Directory: " @location)]
              (page @active)]])))
 

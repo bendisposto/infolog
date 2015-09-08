@@ -33,6 +33,6 @@
                         :source-paths ["src/cljs"]
                         :compiler {:main infolog.core
                                    :output-to "resources/public/js/compiled/app.js"
-                                   :optimizations :whitespace
+                                   :optimizations :advanced
                                    :libs ["src/js/deps_d3.js"]
                                    :pretty-print true}}]})
