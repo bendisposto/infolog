@@ -43,5 +43,5 @@
       (doall (for [y (range 0 @size)]
                [:text {:class "dep-label" :x 0 :y (+ 10 (* cz y))} (get @modules y)]))
       (doall (for [y (range 0 @size)]
-               [:text {:class "dep-label" :x (* @size cz) :y (- (+ 200 (* cz y))) :transform "rotate(90)"} (get @modules y)]  ))]]
+               [:text {:class "dep-label" :x (* @size cz) :y (- (+ 201 (* cz y))) :transform "rotate(90)"} (get @modules y)]  ))]]
     ))
