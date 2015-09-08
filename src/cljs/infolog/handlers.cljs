@@ -70,7 +70,7 @@
  :process-infolog-problems
  (fn [db [_ r]]
    (let [;;start (goog.date.DateTime.)
-         result (cljs.reader/read-string r)
+         result (if (map? r) r (cljs.reader/read-string r))
          [prefix problems] (transform-problems (:infolog_problem_flat result))
          calling (transform-calls (:calling result))
          deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))
