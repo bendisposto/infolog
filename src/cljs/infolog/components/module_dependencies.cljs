@@ -6,6 +6,8 @@
 
 (def cz 10)
 (def offset 210)
+(def details-height 200)
+(def details-width 300)
 
 (defn sort-modules-by-deps [deps in out]
   (let [a (when out (frequencies (map first deps)))
@@ -55,6 +57,15 @@
             :height cz
             :fill col}]))
 
+(defn compute-overlay [s cx cy]
+  (let [x1 (+ 15 offset cx)
+        x2 (+ x1 details-width)
+        y1 (+ 15 cy)
+        y2 (+ y1 details-height)
+        x1 (if (<= x2 (* cz s)) x1 (- x1 details-width))
+        y1 (if (<= y2 (* cz s)) y1 (- y1 details-height))]
+    [x1 y1]))
+
 (defn sparse-dependency-matrix []
   (let [deps (re-frame/subscribe [:dependencies])
         module-sorting (re-frame/subscribe [:dep-sort-modules])
@@ -62,28 +73,49 @@
         mv (reaction (vec @modules))
         size (reaction (count @modules))
         modules (reaction (into {} (map vector @modules (range))))
-        dz (reaction (group-by :pos (extract-deps @deps @modules)))]
-    [:div
-     [:svg
-      {:height (+ (* @size cz) offset)
-       :width (+ (* @size cz) offset)}
-      [:g
-       [grid @mv @size]
-       (for [[[x y] e] @dz] (mk-cell x y e))
-       [:rect {:x 0
-               :y 0
-               :width (+ (* @size cz) offset)
-               :height (+ (* @size cz) offset)
-               :opacity 0
-               :on-click (fn [e] (let [t (.-target e)
-                                      box (.getBoundingClientRect t)
-                                      cx (- (.-clientX e) (.-left box) offset)
-                                      cy (- (.-clientY e) (.-top box))
-                                      x (int (/ cx cz))
-                                      y (int (/ cy cz))
-                                      m1 (@mv x)
-                                      m2 (@mv y)]
-                                  (logp :click [x y] m1 m2 )))}]]]]))
+        dz (reaction (group-by :pos (extract-deps @deps @modules)))
+        selected-dep (r/atom nil)]
+    (fn [] [:div
+           [:svg
+            {:height (+ (* @size cz) offset)
+             :width (+ (* @size cz) offset)}
+            [:g
+             [grid @mv @size]
+             (for [[[x y] e] @dz] (mk-cell x y e))
+             (when @selected-dep
+               (let [[sx sy m1 m2] @selected-dep
+                     [ox oy] (compute-overlay @size sx sy)]
+                 [:g
+                  [:rect {:x ox
+                          :y oy
+                          :width details-width
+                          :height details-height
+                          :stroke "black"
+                          :stroke-width "1px"
+                          :fill "#ffffcc"}]
+                  [:text {:x (+ 20 ox)
+                          :y (+ 20 oy)} (str m1)]
+                  [:text {:x (+ 20 ox)
+                          :y (+ 40 oy)} (str m2)]]))
+             [:rect {:x 0
+                     :y 0
+                     :width (+ (* @size cz) offset)
+                     :height (+ (* @size cz) offset)
+                     :opacity 0
+                     :on-click
+                     (fn [e]
+                       (let [t (.-target e)
+                             box (.getBoundingClientRect t)
+                             cx (- (.-clientX e) (.-left box) offset)
+                             cy (- (.-clientY e) (.-top box))
+                             x (int (/ cx cz))
+                             y (int (/ cy cz))
+                             m1 (@mv x)
+                             m2 (@mv y)]
+                         (swap! selected-dep
+                                (fn [x] (when-not x
+                                         [cx cy
+                                          m1 m2])))))}]]]])))
 
 (defn mk-label [c k l]
   [:label.radio-inline
