@@ -2,8 +2,7 @@
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [re-frame.core :as re-frame]
             [reagent.core :as r]
-            [taoensso.encore :as enc  :refer (logf log logp)]
-            [depsd3]))
+            [taoensso.encore :as enc  :refer (logf log logp)]))
 
 (def cz 10)
 (def offset 210)
@@ -59,15 +58,32 @@
 (defn sparse-dependency-matrix []
   (let [deps (re-frame/subscribe [:dependencies])
         module-sorting (re-frame/subscribe [:dep-sort-modules])
-        moduless (re-frame/subscribe [:modules (sort-modules @module-sorting @deps)])
-        size (reaction (count @moduless))
-        modules (reaction (into {} (map vector @moduless (range))))
+        modules (re-frame/subscribe [:modules (sort-modules @module-sorting @deps)])
+        mv (reaction (vec @modules))
+        size (reaction (count @modules))
+        modules (reaction (into {} (map vector @modules (range))))
         dz (reaction (group-by :pos (extract-deps @deps @modules)))]
     [:div
-     [:svg {:height (+ (* @size cz) offset) :width (+ (* @size cz) offset)}
-      [grid (vec @moduless) @size]
-      (for [[[x y] e] @dz] (mk-cell x y e))]]))
-
+     [:svg
+      {:height (+ (* @size cz) offset)
+       :width (+ (* @size cz) offset)}
+      [:g
+       [grid @mv @size]
+       (for [[[x y] e] @dz] (mk-cell x y e))
+       [:rect {:x 0
+               :y 0
+               :width (+ (* @size cz) offset)
+               :height (+ (* @size cz) offset)
+               :opacity 0
+               :on-click (fn [e] (let [t (.-target e)
+                                      box (.getBoundingClientRect t)
+                                      cx (- (.-clientX e) (.-left box) offset)
+                                      cy (- (.-clientY e) (.-top box))
+                                      x (int (/ cx cz))
+                                      y (int (/ cy cz))
+                                      m1 (@mv x)
+                                      m2 (@mv y)]
+                                  (logp :click [x y] m1 m2 )))}]]]]))
 
 (defn mk-label [c k l]
   [:label.radio-inline
