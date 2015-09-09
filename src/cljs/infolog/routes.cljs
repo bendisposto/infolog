@@ -14,6 +14,10 @@
        (secretary/dispatch! (.-token event))))
     (.setEnabled true)))
 
+(def pages ["Problems" "Dependencies" "Complexity"])
+
+(defmulti page identity)
+
 (defn app-routes []
   (secretary/set-config! :prefix "#")
   ;; --------------------
@@ -21,12 +25,9 @@
   (defroute "/" []
     (re-frame/dispatch [:set-active-page :Problems]))
 
-  (defroute "/Problems" []
-    (re-frame/dispatch [:set-active-page :Problems]))
-
-  (defroute "/Dependencies" []
-    (re-frame/dispatch [:set-active-page :Dependencies]))
-
-
+  (doseq [p pages]
+    (defroute (str "/" p) []
+      (re-frame/dispatch [:set-active-page (keyword p)])))
+  
   ;; --------------------
   (hook-browser-navigation!))

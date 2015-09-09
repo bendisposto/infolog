@@ -35,6 +35,12 @@
                (if sort-fn (sort-by sort-fn mods) mods)))))
 
 (re-frame/register-sub
+ :module-lookup
+ (fn [db]
+   (reaction (clojure.set/map-invert (:modules @db)))))
+
+
+(re-frame/register-sub
  :dep-sort-modules
  (fn [db [_]](reaction (:dep-sort-modules @db))))
 
@@ -52,3 +58,8 @@
  :selected-dependency
  (fn [db]
    (reaction (:selected-dependency @db))))
+
+(re-frame/register-sub
+ :complexity
+ (fn [db]
+   (reaction (:complexity @db))))

@@ -4,11 +4,12 @@
             [taoensso.encore :as enc  :refer (logf log logp)]
             [infolog.components.problem-by-module :refer [histogram]]
             [infolog.components.module-dependencies :refer [dependency-graph]]
+            [infolog.components.complexity :refer [complexity-viz]]
+            [infolog.routes :refer [page pages]]
             [cljsjs.c3]
             [cljsjs.d3]))
 
 ;; --------------------
-
 
 
 (defn home-title []
@@ -39,7 +40,7 @@
 (defn problem-table [data]
   (let [problems (re-frame/subscribe [:problems])]
     (fn [_]
-;;      (logp @problems)
+      ;;      (logp @problems)
       (conj [:table {:id "problem-table"
                      :class "table"}
              [:thead [:tr
@@ -91,7 +92,7 @@
 (defn problems-view []
   (fn [_]
     [:div
-     
+
      [pie-problems]
      [histogram]
      [problem-table]]))
@@ -99,25 +100,29 @@
 (defn dependencies-view []
   [dependency-graph])
 
-(def pages ["Problems" "Dependencies"])
+(defn complexity-view []
+  [complexity-viz])
 
-(defmulti page identity)
+
+;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
+(defmethod page :Complexity [] [complexity-view])
 (defmethod page :default [] [:h1 "Unknown page"])
 
-(defn main-panel []
-  (fn []  (let [location (re-frame/subscribe [:location])
-               active (re-frame/subscribe [:active-page])]
-           [:div
-            [:nav.navbar.navbar-inverse.navbar-fixed-top
-             [:div.container
-              (into  [:ul.nav.navbar-nav]
-                     (for [t pages]
-                       [:li (when (= @active (keyword t)) {:class "active"})
-                        [:a {:href (str "#/" t)} t]]))]]
-            [:div.content
-             [:h1 (if (keyword @active) (name @active) "Unknown Page")]
-             [:div (str "Directory: " @location)]
-             (page @active)]])))
 
+(defn main-panel []
+  (fn []
+    (let [location (re-frame/subscribe [:location])
+          active (re-frame/subscribe [:active-page])]
+      [:div
+       [:nav.navbar.navbar-inverse.navbar-fixed-top
+        [:div.container
+         (into  [:ul.nav.navbar-nav]
+                (for [t pages]
+                  [:li (when (= @active (keyword t)) {:class "active"})
+                   [:a {:href (str "#/" t)} t]]))]]
+       [:div.content
+        [:h1 (if (keyword @active) (name @active) "Unknown Page")]
+        [:div (str "Directory: " @location)]
+        (page @active)]])))

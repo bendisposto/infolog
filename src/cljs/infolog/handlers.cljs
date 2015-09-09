@@ -8,7 +8,9 @@
 (re-frame/register-handler
  :initialize-db
  (fn  [_ _]
-   (re-frame/dispatch [:request-problems-csv])
+   (logp :init-db)
+   (re-frame/dispatch [:request-infolog-edn])
+   (re-frame/dispatch [:request-complexity-edn])
    db/default-db))
 
 (defn common-prefix [sep paths]
@@ -67,10 +69,9 @@
   (map call->map calls))
 
 (re-frame/register-handler
- :process-infolog-problems
+ :process-infolog-edn
  (fn [db [_ r]]
-   (let [;;start (goog.date.DateTime.)
-         result (if (map? r) r (cljs.reader/read-string r))
+   (let [result (if (map? r) r (cljs.reader/read-string r))
          [prefix problems] (transform-problems (:infolog_problem_flat result))
          calling (transform-calls (:calling result))
          deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))
@@ -78,15 +79,21 @@
                     :infolog-problems problems
                     :directory prefix
                     :modules (into {} (:defined_module result))
-                    :dependencies deps)
-         ;;end (goog.date.DateTime.)
-         ]
-     ;;(logp :time-process-input start end)
+                    :dependencies deps)]
      db')))
+
+(re-frame/register-handler
+ :process-complexity-edn
+ (fn [db [_ r]]
+   (logp :received  (map? r) (count r))
+   (let [result (if (map? r) r (cljs.reader/read-string r))
+         complexity (:complexity result)]
+     (assoc db :complexity complexity))))
 
 (re-frame/register-handler
  :bad-response
  (fn [db [_ result]]
+   (js/alert "Download failed. See console for details.")
    (logp :error result)
    db))
 
@@ -104,14 +111,24 @@
  (fn [db [_ sorting]]
    (assoc db :dep-sort-modules sorting)))
 
+(defn request-file [url ok-dispatch error-dispatch]
+  (logp :requesting url)
+  (ajax/GET
+   url
+   {:handler       #(re-frame/dispatch [ok-dispatch %1])
+    :error-handler #(re-frame/dispatch [error-dispatch %1])}))
+
 (re-frame/register-handler
- :request-problems-csv
+ :request-infolog-edn
  (fn [db _]
-   (ajax/GET
-    "infolog.edn"
-    {:handler       #(re-frame/dispatch [:process-infolog-problems %1])
-     :error-handler #(re-frame/dispatch [:bad-response %1])})
-   (assoc db :loading-problems-csv? true)))
+   (request-file "infolog.edn" :process-infolog-edn :bad-response)
+   db))
+
+(re-frame/register-handler
+ :request-complexity-edn
+ (fn [db _]
+   (request-file "indy.edn" :process-complexity-edn :bad-response)
+   db))
 
 (re-frame/register-handler
  :set-active-page

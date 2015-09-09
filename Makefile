@@ -26,14 +26,23 @@ infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache
 	@echo "Generating CSV FIle"
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
 
-
 infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
 	@echo "Generating Data for website"
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
 
+indy.edn:
+	@echo "Generating indentation analysis"
+	rm -f resources/public/indy.edn
+	touch resources/public/indy.edn
+	@echo "{:complexity [" >> resources/public/indy.edn
+	time find $(PROBPATH) -name *.pl -exec java -jar analyzers/indy.jar {} + >> resources/public/indy.edn
+	@echo "]}" >> resources/public/indy.edn
+
 clean:
 	rm infolog_problems*.csv
 	rm resources/public/infolog.edn
+	rm resources/public/indy.edn
+
 
 ui:
 	@echo "Compiling User Interface"
@@ -44,7 +53,7 @@ run_server:
 	@echo "Starting Python Simpleserver"
 	pushd resources/public; python -m SimpleHTTPServer; popd
 
-server: ui infolog.edn run_server
+server: ui infolog.edn indy.edn run_server
 
 prolog-analyzer/tcltk_calls.ack:
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
