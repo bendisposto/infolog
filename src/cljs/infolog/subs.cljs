@@ -47,3 +47,8 @@
  :histo-by-module-selected
  (fn [db]
    (reaction (get-in @db [:histo-by-module :show] #{}))))
+
+(re-frame/register-sub
+ :selected-dependency
+ (fn [db]
+   (reaction (:selected-dependency @db))))

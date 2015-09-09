@@ -92,7 +92,6 @@
 
 (re-frame/register-handler
  :histo-by-module-switch
- re-frame/debug
  (fn [db [_ problem-type on?]]
    (let [x (get-in db [:histo-by-module :show] #{})
          db' (if on?
@@ -119,3 +118,9 @@
  re-frame/debug
  (fn [db [_ active-panel]]
    (assoc db :active-page active-panel)))
+
+(re-frame/register-handler
+ :set-selected-dependency
+ re-frame/debug
+ (fn [db [_ v]]
+   (assoc db :selected-dependency v)))
