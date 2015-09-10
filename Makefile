@@ -39,9 +39,9 @@ indy.edn:
 	@echo "]}" >> resources/public/indy.edn
 
 clean:
-	rm infolog_problems*.csv
-	rm resources/public/infolog.edn
-	rm resources/public/indy.edn
+	rm -f infolog_problems*.csv
+	rm -f resources/public/infolog.edn
+	rm -f resources/public/indy.edn
 
 
 ui:
