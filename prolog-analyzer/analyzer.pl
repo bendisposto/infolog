@@ -43,19 +43,46 @@ portray_message(informational, _).
 
 calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
 
-export_to_clj_file(File) :- open(File,write,S),
-    call_cleanup((format(S,'{~n',[]),
-					maplist(export(S), [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9]),
-					format(S,'}~n',[])),close(S)).
-export(S,P/Arity) :-
-     format(S,':~w~n [',[P]),
+export_to_clj_file(File) :- export_to_file(clj,File).
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9],
+   export_to_file(Format,File,List).
+export_to_file(Format,File,List) :- start_analysis_timer(TT),
+   open(File,write,S),
+    call_cleanup((start_file(Format,S,List),
+					maplist(export(Format,S), List),
+					end_file(Format,S)),close(S)), stop_analysis_timer(TT).
+export(Format,S,P/Arity) :-
+     start_pred(Format,S,P),
      functor(Call,P,Arity), Call =.. [_|Args],
      call(Call),
-     format(S,'[',[]),
-     maplist(write_arg(S),Args),
-     format(S,']~n',[]),
+     start_tuple(Format,S),
+     write_args(Args,Format,S),
+     end_tuple(Format,S),
      fail.
-export(S,_P/_Arity) :- format(S,'~n ]~n',[]).
+export(Format,S,P/_Arity) :- end_pred(Format,S,P).
+:- dynamic first_tuple/0.
+func(F/_,F).
+start_file(clj,S,_) :- format(S,'{~n',[]).
+start_file(b,S,L) :- maplist(func,L,PredList),
+   format(S,'MACHINE Infolog~nCONSTANTS ~w~nPROPERTIES~n',[PredList]).
+end_file(clj,S) :- format(S,'}~n',[]).
+end_file(b,S) :- format(S,' 1=1~nEND~n',[]).
+start_pred(clj,S,P) :- format(S,':~w~n [',[P]).
+start_pred(b,S,P) :- format(S,' ~w = ~n {',[P]), assert(first_tuple).
+end_pred(clj,S,_P) :- format(S,'~n ]~n',[]).
+end_pred(b,S,_P) :- format(S,'~n } & ~n',[]), retractall(first_tuple).
+start_tuple(clj,S) :- format(S,'[',[]).
+start_tuple(b,S) :- (retract(first_tuple) -> format(S,'  (',[]) ; format(S,',  (',[])).
+end_tuple(clj,S) :- format(S,']~n',[]).
+end_tuple(b,S) :- format(S,')~n',[]).
+write_sep(clj,_).
+write_sep(b,S) :- format(S,', ',[]).
+
+write_args([],_,_).
+write_args([H|T],Format,S) :- write_arg(S,H), write_args2(T,Format,S).
+write_args2([],_,_).
+write_args2([H|T],Format,S) :-  write_sep(Format,S),write_arg(S,H), write_args2(T,Format,S).
+
 
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
 write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
