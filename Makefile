@@ -45,9 +45,10 @@ clean:
 
 
 ui:
+  chmod + x lein
 	@echo "Compiling User Interface"
-	lein clean
-	lein cljsbuild once min
+	./lein clean
+	./lein cljsbuild once min
 
 run_server:
 	@echo "Starting Python Simpleserver"
