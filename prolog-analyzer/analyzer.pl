@@ -142,7 +142,7 @@ is_imported_from(M,Other,Pred) :-
 is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
 
 calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
-calling(M1,C1,M2,C2) :- calling(M1,C1,M2,C2,_,_).
+calling(M1,C1,M2,C2) :- calling(M1,C1,M2,C2,L1,_), \+ (calling(M1,C1,M2,C2,L2,_),L2<L1). % try succeed just once
 calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
 calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
 
