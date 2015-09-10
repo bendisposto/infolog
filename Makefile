@@ -45,8 +45,8 @@ clean:
 
 
 ui:
-  chmod + x lein
 	@echo "Compiling User Interface"
+	chmod +x lein
 	./lein clean
 	./lein cljsbuild once min
 
