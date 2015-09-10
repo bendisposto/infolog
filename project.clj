@@ -6,6 +6,7 @@
                  [com.taoensso/encore "2.5.0"]
                  [cljs-ajax "0.3.14"]
                  [cljsjs/c3 "0.4.10-0"]
+                 [cljsjs/dimple "2.1.2-0"]
                  [cljsjs/bootstrap "3.3.5-0"]
                  [secretary "1.2.3"]]
 

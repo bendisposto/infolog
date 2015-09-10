@@ -79,6 +79,7 @@
                     :infolog-problems problems
                     :directory prefix
                     :modules (into {} (:defined_module result))
+                    :use-modules (:depends_on result)
                     :dependencies deps)]
      db')))
 
