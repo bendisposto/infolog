@@ -43,6 +43,7 @@ portray_message(informational, _).
 
 calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
 
+export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
 export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9],
    export_to_file(Format,File,List).
@@ -141,6 +142,7 @@ is_imported_from(M,Other,Pred) :-
 is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
 
 calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
+calling(M1,C1,M2,C2) :- calling(M1,C1,M2,C2,_,_).
 calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
 calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
 
