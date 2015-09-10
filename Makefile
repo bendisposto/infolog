@@ -3,16 +3,16 @@ PROLOG_FLAGS=
 #PROBPATH=$(PROB_HOME)
 #PROBPATH=/Users/leuschel/git_root/prob_prolog
 test:
-	export PROB_HOME=$(PROB_PATH)
+	export PROB_HOME=$(PROBPATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl')."
 test-verbose:
-	export PROB_HOME=$(PROB_PATH)
+	export PROB_HOME=$(PROBPATH)
 	sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl'),export(user_output)."
 test2:
-	export PROB_HOME=$(PROB_PATH)
+	export PROB_HOME=$(PROBPATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/b_interpreter_check.pl')."
 test3:
-	export PROB_HOME=$(PROB_PATH)
+	export PROB_HOME=$(PROBPATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/kernel_ordering.pl')."
 alltk: prolog-analyzer/tcltk_calls.pl
 	export PROB_HOME=$(PROBPATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl'])."
