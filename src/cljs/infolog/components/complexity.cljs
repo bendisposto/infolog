@@ -8,31 +8,54 @@
 
 
 
-(defn bar-chart [data-map]
-  (let [id (gensym "chart")
-        sel (str "#" id)]
-    (r/create-class
-     {:reagent-render (fn [_]
-                        [:div {:id id}])
-      :component-did-mount (fn [e]
-                             (let [node (.getDOMNode e)] (log node)))}
-     )))
+(defn- draw-chart [data div {:keys [id chart]}]
+  (let [{:keys [width height]}    div
+        {:keys [bounds plot
+                x-axis y-axis]}   chart
+                Chart                     (.-chart js/dimple)
+                svg                       (.newSvg js/dimple (str "#" id) width height)
+                dimple-chart              (.setBounds (Chart. svg) (:x bounds) (:y bounds) (:width bounds) (:height bounds))
+                x                         (.addCategoryAxis dimple-chart "x" x-axis)
+                y                         (.addMeasureAxis dimple-chart "y" y-axis)
+                s                         (.addSeries dimple-chart nil plot (clj->js [x y]))]
+    (aset s "data" (clj->js data))
+    (.draw dimple-chart)))
 
-#_(defn bar-chart [data-map]
-  (let [id (gensym "chart")
-        sel (str "#" id)]
+
+(def data2 [{:value 240000 :timestamp "2014-01-01"}
+             {:value 260000 :timestamp "2014-02-01"}
+             {:value 290000 :timestamp "2014-03-01"}
+             {:value 70000  :timestamp "2014-04-01"}
+             {:value 100000 :timestamp "2014-05-01"}
+             {:value 120000 :timestamp "2014-06-01"}
+             {:value 240000 :timestamp "2014-07-01"}
+             {:value 220000 :timestamp "2014-08-01"}
+             {:value 360000 :timestamp "2014-09-01"}
+             {:value 260000 :timestamp "2014-10-01"}
+             {:value 250000 :timestamp "2014-11-01"}
+             {:value 190000 :timestamp "2014-12-01"}])
+
+
+(defn bar-chart [data]
+  (let [width 300
+        height 150
+        id (gensym "chart")]
     (r/create-class
-     {:component-did-mount (fn [_]
-                              (.. js/d3
-                                  (select sel)
-                                  (selectAll "div")
-                                  (data (clj->js (seq data-map)))
-                                  (enter)
-                                  (append "div")
-                                  (style "width" (fn [[_ d]] (str (* 10 d) "px")))
-                                  (text first)))
-      
-      :reagent-render (fn [_] [:div {:id id}])})))
+     {:reagent-render (fn [_] [:div {:id id :width width :height height}])
+      :component-did-mount (fn [e]
+                             (let [node (.getDOMNode e)]
+                               (draw-chart data node {:id id
+                                                       :chart {:bounds {:x "20%"
+                                                                        :y "15%"
+                                                                        :width "70%"
+                                                                        :height "60%"}
+                                                               :plot js/dimple.plot.bar
+                                                               :x-axis "indentation"
+                                                               :y-axis "occurrences"}})
+                                    ))})))
+
+(defn transform-freq [[k v]]
+  {:indentation k :occurrences v})
 
 
 (defn complex-row [mods {:keys [avg max file freqs] :as x}]
@@ -41,7 +64,7 @@
      [:td (.toFixed avg 2)]
      [:td max]
      [:td (get mods f f)]
-     [:td [bar-chart freqs]]]))
+     [:td [bar-chart (map transform-freq freqs)]]]))
 
 (defn complexity-viz []
   (let [modules (re-frame/subscribe [:module-lookup])
