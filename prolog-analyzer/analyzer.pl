@@ -61,10 +61,11 @@ export(Format,S,P/Arity) :-
      fail.
 export(Format,S,P/_Arity) :- end_pred(Format,S,P).
 :- dynamic first_tuple/0.
-func(F/_,F).
+prfunc(S,F/_) :- format(S,' ~w',[F]).
 start_file(clj,S,_) :- format(S,'{~n',[]).
-start_file(b,S,L) :- maplist(func,L,PredList),
-   format(S,'MACHINE Infolog~nCONSTANTS ~w~nPROPERTIES~n',[PredList]).
+start_file(b,S,L) :- 
+   format(S,'MACHINE Infolog~nCONSTANTS ',[]),mapseplist(prfunc(S),write_sep(b,S),L),
+   format(S,'~nPROPERTIES~n',[]).
 end_file(clj,S) :- format(S,'}~n',[]).
 end_file(b,S) :- format(S,' 1=1~nEND~n',[]).
 start_pred(clj,S,P) :- format(S,':~w~n [',[P]).
@@ -78,10 +79,14 @@ end_tuple(b,S) :- format(S,')~n',[]).
 write_sep(clj,_).
 write_sep(b,S) :- format(S,', ',[]).
 
-write_args([],_,_).
-write_args([H|T],Format,S) :- write_arg(S,H), write_args2(T,Format,S).
-write_args2([],_,_).
-write_args2([H|T],Format,S) :-  write_sep(Format,S),write_arg(S,H), write_args2(T,Format,S).
+:- meta_predicate mapseplist(1,0,-), mapseplist2(-,1,0).
+% mapseplist(Pred, SepPred,List)
+mapseplist(_,_,[]).
+mapseplist(P1,Sep,[H|T]) :- call(P1,H), mapseplist2(T,P1,Sep).
+mapseplist2([],_,_).
+mapseplist2([H|T],P1,Sep) :- call(Sep),call(P1,H), mapseplist2(T,P1,Sep).
+
+write_args(Args,Format,S) :- mapseplist(write_arg(S), write_sep(Format,S),Args).
 
 
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
