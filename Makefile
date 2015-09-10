@@ -43,9 +43,8 @@ clean:
 	rm -f resources/public/infolog.edn
 	rm -f resources/public/indy.edn
 
-
 ui:
-	@echo "Compiling User Interface"
+	@echo "Compiling UI"
 	chmod +x lein
 	./lein clean
 	./lein cljsbuild once min
