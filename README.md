@@ -2,21 +2,19 @@
 
 [![Build Status](https://travis-ci.org/bendisposto/infolog.svg?branch=master)](https://travis-ci.org/bendisposto/infolog)
 
-# Running
-To run the system you need Leiningen. The simplest way is to download [this script](https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein) to a location in your path (e.g. /usr/local/bin) and make it executable.
+# Building the Infolog System
 
-Running the analyzer to produce a "database" can be done from the Clojure REPL
+Infolog is a set of tools that can be used to extract and visualize information about the ProB Sourcecode. The make file contains a number of build targets that can be used to trigger the analyzers. 
 
-     $> touch database.clj
-     $> lein repl
+Here are some of the important build targets
 
-     infolog.core=> (run-prolog-analyzer "path/to/prob" "raw-data.clj") ;; run analyzer
-     nil
-     infolog.core=> (make-db "raw-data.clj" "database.clj") ;; indexing
-     nil  
+- infolog_problems.csv Checks the prolog code for problems (missing imports, etc.). The problems are exported as a csv file.
+- infolog.edn Checks the prolog code for problems and extracts information abot dependencies between modules etc. This creates a Clojure file for consumption by the visualizer
+- indy.edn Runs a indentation complexity analyzer, the output is a clojure file used in the visualizer
+- server Builds and runs the visualizer. It requires the Clojure build tool leiningen and a python installation. 
 
-As a result you will get a file "database.clj", that can be used for the visualization.
+For all goals it is required to set PROBPATH to the location of your ProB source repository.
 
-The database can be used to visualize the module dependencies. We assume that the file "database.clj" is present.
+# The Infolog System 
+A version of Infolog containing the latests state of the repository is located at http://www3.hhu.de/stups/infolog
 
-    $> lein ring server
