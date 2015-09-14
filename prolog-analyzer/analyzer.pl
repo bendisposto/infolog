@@ -195,7 +195,9 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 println(X) :- print(X),nl.
-complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),clause_complexity(M,P,NestingLevel,Calls,SL,EL),List),
+complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),
+                      (clause_complexity(M,P,NestingLevel,Calls,SL,EL), (NestingLevel>3 ; Calls>15)),
+                      List),
   sort(List,SortedList), maplist(println,SortedList).
 
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
@@ -1262,17 +1264,34 @@ body_complexity((A,B)) --> !,  enter_scope(0),
    body_complexity(A), body_complexity(B), exit_scope(0).
 body_complexity((A;B)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), exit_scope(1).
-body_complexity((A->B ; C)) --> !,  enter_scope(1),
+body_complexity(if(A,B,C)) --> !,  enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
+body_complexity((A -> BC)) -->  {nonvar(BC), BC=(B ; C)}, !,  enter_scope(1),
    body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
 % Should we treat (Case1 -> B ; Case2 -> C ; .... ) specially as a case-construct ?
-body_complexity((A->B)) --> !,  enter_scope(1),
-   body_complexity(A), body_complexity(B), exit_scope(1).
+body_complexity((A->B)) --> !,  ({A==otherwise} -> body_complexity(B) % do not count otherwise -> as nesting
+   ; enter_scope(1),
+     body_complexity(A), body_complexity(B), exit_scope(1)).
 body_complexity(\+ A) --> !,  enter_scope(1),
    body_complexity(A), exit_scope(1).
-body_complexity(when(W,A)) --> !, add_call(W),enter_scope(1),
-   body_complexity(W),
+body_complexity(Meta) --> {unary_meta_built_in(Meta,A)},!, enter_scope(1),
    body_complexity(A), exit_scope(1).
+body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!, enter_scope(1),
+   body_complexity(A),
+   body_complexity(B), exit_scope(1).
 body_complexity(C) --> add_call(C).
+
+
+binary_meta_built_in(when(W,A),W,A).
+binary_meta_built_in(call_cleanup(A,B),A,B).
+binary_meta_built_in(on_exception(_,A,B),A,B).
+binary_meta_built_in(catch(A,_,B),A,B).
+unary_meta_built_in(findall(_,A,_),A).
+unary_meta_built_in(findall(_,A,_,_),A).
+unary_meta_built_in(bagof(_,A,_),A).
+unary_meta_built_in(setof(_,A,_),A).
+unary_meta_built_in(once(A),A).
+%unary_meta_built_in(call(A),A).
 
 enter_scope(Inc,cacc(Level,Max,Calls),cacc(L1,M1,Calls)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
 exit_scope(Inc,cacc(Level,Max,Calls),cacc(L1,Max,Calls)) :- L1 is Level-Inc.
