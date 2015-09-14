@@ -38,6 +38,8 @@ portray_message(informational, _).
     is_blocking/2,   % is_blocking(module:name/arity, block_arguments)
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
+:- dynamic
+    clause_complexity/5.  % clause_complexity(Module,Name/Arity, NestingLevel, StartLine, EndLine)
 
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
@@ -191,7 +193,10 @@ instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
 instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
-
+println(X) :- print(X),nl.
+complexity :- findall(complexity(NestingLevel,M,P,SL,EL),clause_complexity(M,P,NestingLevel,SL,EL),List),
+  sort(List,SortedList), maplist(println,SortedList).
+  
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
 lint(Type) :- lint(_,Type,_).
 lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
@@ -1218,7 +1223,8 @@ analyze_clause((Head :- Body), Layout, Module, _File) :-
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
     % (Name=force_non_empty -> trace ; true),
-    safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]).
+    safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]),
+    analyze_clause_complexity(Module,Predicate,Head,Body,Layout).
 
 analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
@@ -1228,7 +1234,8 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
-    safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
+    safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]), % TO DO: add two args to Head ?
+    analyze_clause_complexity(Module,Predicate,Head,Body,Layout).
 
 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
@@ -1240,6 +1247,32 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     functor(Fact,Name,Arity),
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
+
+% analyze_clause_complexity
+analyze_clause_complexity(Module,Predicate,Head,Body,Layout) :- 
+   get_position(Layout,StartLine,EndLine),
+   (body_complexity(Body,acc(0,0),acc(_,NestingLevel))
+     -> %format('Clause Complexity: ~w  (~w:~w)~n',[NestingLevel,Module,Predicate]),
+        assert(clause_complexity(Module,Predicate,NestingLevel,StartLine,EndLine))
+     ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
+
+body_complexity(V) --> {var(V)},!.
+body_complexity((A,B)) --> !,  enter_scope(0),
+   body_complexity(A), body_complexity(B), exit_scope(0).
+body_complexity((A;B)) --> !,  enter_scope(1),
+   body_complexity(A), body_complexity(B), exit_scope(1).
+body_complexity((A->B ; C)) --> !,  enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
+body_complexity((A->B)) --> !,  enter_scope(1),
+   body_complexity(A), body_complexity(B), exit_scope(1).
+body_complexity(\+ A) --> !,  enter_scope(1),
+   body_complexity(A), exit_scope(1).
+body_complexity(when(_,A)) --> !, enter_scope(1),
+   body_complexity(A), exit_scope(1).
+body_complexity(_) --> [].
+   
+enter_scope(Inc,acc(Level,Max),acc(L1,M1)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
+exit_scope(Inc,acc(Level,Max),acc(L1,Max)) :- L1 is Level-Inc.
 
 
 % analyzef/5
