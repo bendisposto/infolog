@@ -14,7 +14,7 @@
        (secretary/dispatch! (.-token event))))
     (.setEnabled true)))
 
-(def pages ["Problems" "Dependencies" "Complexity"])
+(def pages ["Problems" "Dependencies" "Indentation" "AST-Nesting"])
 
 (defmulti page identity)
 

@@ -4,7 +4,7 @@
             [taoensso.encore :as enc  :refer (logf log logp)]
             [infolog.components.problem-by-module :refer [histogram]]
             [infolog.components.module-dependencies :refer [dependency-graph]]
-            [infolog.components.complexity :refer [complexity-viz]]
+            [infolog.components.indentation-analysis :refer [complexity-viz]]
             [infolog.routes :refer [page pages]]
             [cljsjs.c3]
             [cljsjs.d3]))
@@ -100,14 +100,38 @@
 (defn dependencies-view []
   [dependency-graph])
 
-(defn complexity-view []
+(defn indentation-view []
   [complexity-viz])
 
+(defn nesting-row [{:keys [module predicate arity depth calls-in-body]}]
+  [:tr
+   [:td module]
+   [:td predicate]
+   [:td arity]
+   [:td depth]
+   [:td calls-in-body]])
+
+(defn nesting-view []
+  (let [nesting (re-frame/subscribe [:nesting])]
+    [:table.table
+     [:thead
+      [:tr
+       [:th "Module"]
+       [:th "Predicate"]
+       [:th "Arity"]
+       [:th "Nesting-Depth"]
+       [:th "Calls in Body"]]]
+     (into [:tbody]
+           (mapv nesting-row (reverse (sort-by :depth
+                                               (sort-by :calls-in-body (remove (fn [row]
+                                                                                 (and (< (:depth row) 5)
+                                                                                      (< (:calls-in-body row) 25))) @nesting))))))]))
 
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
-(defmethod page :Complexity [] [complexity-view])
+(defmethod page :Indentation [] [indentation-view])
+(defmethod page :AST-Nesting [] [nesting-view])
 (defmethod page :default [] [:h1 "Unknown page"])
 
 
@@ -126,3 +150,15 @@
         [:h1 (if (keyword @active) (name @active) "Unknown Page")]
         [:div (str "Directory: " @location)]
         (page @active)]])))
+
+
+#_(defn main-panel []
+    (fn []
+      (let [compl (re-frame/subscribe [:call-complexity])
+            modcompl (group-by ffirst @compl)]
+        [:div
+         (into [:ul]
+               (map (fn [[m x]]
+                      [:li (str m)
+                       (into [:ul]
+                             (map (fn [[[_ p a] ct]] [:li (str p "/" a " -> " ct)]) x))]) modcompl))])))
