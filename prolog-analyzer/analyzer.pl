@@ -195,7 +195,9 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 println(X) :- print(X),nl.
-complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),clause_complexity(M,P,NestingLevel,Calls,SL,EL),List),
+complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),
+                      (clause_complexity(M,P,NestingLevel,Calls,SL,EL), (NestingLevel>3 ; Calls>15)),
+                      List),
   sort(List,SortedList), maplist(println,SortedList).
 
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
