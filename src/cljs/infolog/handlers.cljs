@@ -65,22 +65,46 @@
    :start sl
    :end el})
 
+(defn nesting->map [[m p a d cib sl el]]
+  {:module m
+   :predicate p
+   :arity a
+   :depth d
+   :calls-in-body cib
+   :start sl
+   :end el})
+
 (defn transform-calls [calls]
   (map call->map calls))
+
+(defn call-complexity [calls]
+  (->> calls
+       (remove (fn [[m1 _ _ m2 _ _ _ _]] (= m1 m2)))
+       (group-by (partial take 3))
+       (map (fn [[k vs]] [k (count vs)]))
+       (remove (fn [[[_ p a] b]] (= [p a] [":-" 1])))
+       (sort-by second)
+       reverse))
+
+
 
 (re-frame/register-handler
  :process-infolog-edn
  (fn [db [_ r]]
    (let [result (if (map? r) r (cljs.reader/read-string r))
          [prefix problems] (transform-problems (:infolog_problem_flat result))
-         calling (transform-calls (:calling result))
+         raw-call (:calling result)
+         calling (transform-calls raw-call)
          deps (into #{} (map (fn [{:keys [caller-module callee-module]}] [caller-module callee-module]) calling))
          db' (assoc db
                     :infolog-problems problems
                     :directory prefix
                     :modules (into {} (:defined_module result))
                     :use-modules (:depends_on result)
-                    :dependencies deps)]
+                    :dependencies deps
+                    :call-complexity (call-complexity raw-call)
+                    :nesting (map nesting->map (:clause_complexity result))
+                    :raw-calls raw-call)]
      db')))
 
 (re-frame/register-handler

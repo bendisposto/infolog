@@ -44,10 +44,11 @@ portray_message(informational, _).
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
 calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
+clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLine) :- clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine).
 
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/6],
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/7],
    export_to_file(Format,File,List).
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),
@@ -66,7 +67,7 @@ export(Format,S,P/_Arity) :- end_pred(Format,S,P).
 :- dynamic first_tuple/0.
 prfunc(S,F/_) :- format(S,' ~w',[F]).
 start_file(clj,S,_) :- format(S,'{~n',[]).
-start_file(b,S,L) :- 
+start_file(b,S,L) :-
    format(S,'MACHINE Infolog~nCONSTANTS ',[]),mapseplist(prfunc(S),write_sep(b,S),L),
    format(S,'~nPROPERTIES~n',[]).
 end_file(clj,S) :- format(S,'}~n',[]).
@@ -196,7 +197,7 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 println(X) :- print(X),nl.
 complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),clause_complexity(M,P,NestingLevel,Calls,SL,EL),List),
   sort(List,SortedList), maplist(println,SortedList).
-  
+
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
 lint(Type) :- lint(_,Type,_).
 lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
@@ -1249,7 +1250,7 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     assert_head(Predicate, Layout).
 
 % analyze_clause_complexity
-analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :- 
+analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
    (body_complexity(Body,cacc(0,0,0),cacc(_,NestingLevel,Calls))
      -> %format('Clause Complexity: ~w  (~w:~w)~n',[NestingLevel,Module,Predicate]),
@@ -1278,6 +1279,7 @@ body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!, enter_scope(1),
    body_complexity(B), exit_scope(1).
 body_complexity(C) --> add_call(C).
 
+
 binary_meta_built_in(when(W,A),W,A).
 binary_meta_built_in(call_cleanup(A,B),A,B).
 binary_meta_built_in(on_exception(_,A,B),A,B).
@@ -1288,7 +1290,7 @@ unary_meta_built_in(bagof(_,A,_),A).
 unary_meta_built_in(setof(_,A,_),A).
 unary_meta_built_in(once(A),A).
 %unary_meta_built_in(call(A),A).
-   
+
 enter_scope(Inc,cacc(Level,Max,Calls),cacc(L1,M1,Calls)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
 exit_scope(Inc,cacc(Level,Max,Calls),cacc(L1,Max,Calls)) :- L1 is Level-Inc.
 add_call(otherwise) --> !,[].

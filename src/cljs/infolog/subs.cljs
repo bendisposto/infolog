@@ -45,6 +45,16 @@
  (fn [db [_]](reaction (:dep-sort-modules @db))))
 
 (re-frame/register-sub
+ :call-complexity
+ (fn [db]
+   (reaction (:call-complexity @db))))
+
+(re-frame/register-sub
+ :nesting
+ (fn [db]
+   (reaction (:nesting @db))))
+
+(re-frame/register-sub
  :dependencies
  (fn [db]
    (reaction (:dependencies @db))))
