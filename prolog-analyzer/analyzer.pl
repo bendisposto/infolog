@@ -1224,7 +1224,7 @@ analyze_clause((Head :- Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]),
-    analyze_clause_complexity(Module,Predicate,Head,Body,Layout).
+    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout).
 
 analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
@@ -1235,7 +1235,7 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]), % TO DO: add two args to Head ?
-    analyze_clause_complexity(Module,Predicate,Head,Body,Layout).
+    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout).
 
 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
