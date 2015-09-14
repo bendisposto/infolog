@@ -39,7 +39,7 @@ portray_message(informational, _).
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
 :- dynamic
-    clause_complexity/5.  % clause_complexity(Module,Name/Arity, NestingLevel, StartLine, EndLine)
+    clause_complexity/6.  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine)
 
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
@@ -47,7 +47,7 @@ calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
 
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9],
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/6],
    export_to_file(Format,File,List).
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),
@@ -194,7 +194,7 @@ instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B
 % TO DO: probably also analyse :- directives
 
 println(X) :- print(X),nl.
-complexity :- findall(complexity(NestingLevel,M,P,SL,EL),clause_complexity(M,P,NestingLevel,SL,EL),List),
+complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),clause_complexity(M,P,NestingLevel,Calls,SL,EL),List),
   sort(List,SortedList), maplist(println,SortedList).
   
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
@@ -1249,11 +1249,11 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     assert_head(Predicate, Layout).
 
 % analyze_clause_complexity
-analyze_clause_complexity(Module,Predicate,Head,Body,Layout) :- 
+analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :- 
    get_position(Layout,StartLine,EndLine),
-   (body_complexity(Body,acc(0,0),acc(_,NestingLevel))
+   (body_complexity(Body,cacc(0,0,0),cacc(_,NestingLevel,Calls))
      -> %format('Clause Complexity: ~w  (~w:~w)~n',[NestingLevel,Module,Predicate]),
-        assert(clause_complexity(Module,Predicate,NestingLevel,StartLine,EndLine))
+        assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine))
      ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
 
 body_complexity(V) --> {var(V)},!.
@@ -1263,17 +1263,22 @@ body_complexity((A;B)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), exit_scope(1).
 body_complexity((A->B ; C)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
+% Should we treat (Case1 -> B ; Case2 -> C ; .... ) specially as a case-construct ?
 body_complexity((A->B)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), exit_scope(1).
 body_complexity(\+ A) --> !,  enter_scope(1),
    body_complexity(A), exit_scope(1).
-body_complexity(when(_,A)) --> !, enter_scope(1),
+body_complexity(when(W,A)) --> !, add_call(W),enter_scope(1),
+   body_complexity(W),
    body_complexity(A), exit_scope(1).
-body_complexity(_) --> [].
+body_complexity(C) --> add_call(C).
    
-enter_scope(Inc,acc(Level,Max),acc(L1,M1)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
-exit_scope(Inc,acc(Level,Max),acc(L1,Max)) :- L1 is Level-Inc.
-
+enter_scope(Inc,cacc(Level,Max,Calls),cacc(L1,M1,Calls)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
+exit_scope(Inc,cacc(Level,Max,Calls),cacc(L1,Max,Calls)) :- L1 is Level-Inc.
+add_call(otherwise) --> !,[].
+add_call(fail) --> !,[].
+add_call(true) --> !,[].
+add_call(_,cacc(L,M,Calls),cacc(L,M,C1)) :- C1 is Calls+1.
 
 % analyzef/5
 % analyze foreign declarations
