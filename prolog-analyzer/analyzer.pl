@@ -1128,8 +1128,8 @@ x_remove_path(L,L2) :-
     sublist(LR, LR2, 0, N, _),
     reverse(LR2,L2).
 
-
-analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
+% analyze clauses via Term Expansion
+analyze_clause((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     !,
     x_unwrap_module(File,UnwrappedName),
     (Name = UnwrappedName -> true; mk_problem(wrong_filename(Module,Name,File))),
@@ -1138,28 +1138,28 @@ analyze((:- module(Name, ListOfExported)), _Layout, Module, File) :-
     assert_if_new(defined_module(Name,File)),
     maplist(add_fact2(is_exported, Name),ListOfExported).
 
-analyze((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
+analyze_clause((:- use_module(UsedModule, ListOfImported)), _Layout,Module, _File) :- % IMPORTS
     !, dependency(Module,UsedModule),
     x_unwrap_module(UsedModule,UnwrappedUsedName),
     x_unwrap_module(Module,UnwrappedName),
     maplist(add_fact3(is_imported,UnwrappedName,UnwrappedUsedName),ListOfImported). % TO DO: add source location
 
-analyze((:- use_module(X)), _Layout, Module, _File) :-
+analyze_clause((:- use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
-analyze((:- prob_use_module(X)), _Layout, Module, _File) :-
+analyze_clause((:- prob_use_module(X)), _Layout, Module, _File) :-
     (is_list(X) -> maplist(dependency(Module),X); dependency(Module,X)).
 
-analyze((:- dynamic(X)), _Layout,Module,_File) :-
+analyze_clause((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_dynamic, Module),L).
 
-analyze((:- public(X)), _Layout,Module,_File) :-
+analyze_clause((:- public(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_public, Module),L).
 
-analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
+analyze_clause((:- meta_predicate(X)), _Layout,Module, _File) :-
     !,
     pairs_to_list(X,L),
     maplist(add_fact(is_meta, Module), L),
@@ -1167,49 +1167,49 @@ analyze((:- meta_predicate(X)), _Layout,Module, _File) :-
 
 %blocking, operator declarations, volatile, multifile, 	mode
 
-analyze((:- mode(X)), _Layout, Module, _File) :-
+analyze_clause((:- mode(X)), _Layout, Module, _File) :-
     !,
     pairs_to_list(X,L),
     maplist(add_fact(declared_mode, Module), L).
 
-analyze((:- block(X)), _Layout, Module, _File) :-
+analyze_clause((:- block(X)), _Layout, Module, _File) :-
     !,
     pairs_to_list(X,L),
     maplist(add_fact(is_blocking, Module), L).
 
-analyze((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
+analyze_clause((:- op(Priority,FixityTerm,Name)), _Layout,Module, _File) :-
   fixity(FixityTerm, Fixity, Associativity, Arity),
   assert_if_new(predicate(Module,Name/Arity)),
   assert_if_new( operator(Module:Name/Arity,Priority,Fixity,Associativity) ).
 
-analyze((:- volatile(X)), _Layout,Module, _File) :-
+analyze_clause((:- volatile(X)), _Layout,Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_volatile, Module),L).
 
-analyze((:- chr_constraint(X)), _Layout,Module, _File) :-
+analyze_clause((:- chr_constraint(X)), _Layout,Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_chr_constraint, Module),L).
 
-analyze((:- attribute(X)), _Layout,Module, _File) :- depends_on(Module,atts),
+analyze_clause((:- attribute(X)), _Layout,Module, _File) :- depends_on(Module,atts),
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_attribute, Module),L).
 
-analyze((:- chr_option(_,_)), _Layout, _Module, _File). % just ignore for analysis
+analyze_clause((:- chr_option(_,_)), _Layout, _Module, _File). % just ignore for analysis
 
-analyze((:- multifile(X)), _Layout, Module, _File) :-
+analyze_clause((:- multifile(X)), _Layout, Module, _File) :-
        !,
        pairs_to_list(X,L),
        maplist(add_fact2(is_multifile, Module),L).
 
-analyze(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
+analyze_clause(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
     !,
     layout_sub_term(Layout,2,LayoutSub),
     safe_analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
 
-analyze((Head :- Body), Layout, Module, _File) :-
+analyze_clause((Head :- Body), Layout, Module, _File) :-
     !, %portray_clause((Head :- Body)),
     functor(Head,Name,Arity),
     % nl,nl,print(layout_clause(Name/Arity,Head,Body)),nl,
@@ -1220,7 +1220,7 @@ analyze((Head :- Body), Layout, Module, _File) :-
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]).
 
-analyze((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
+analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
@@ -1231,10 +1231,10 @@ analyze((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Bod
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]). % TO DO: add two args to Head ?
 
 
-analyze(runtime_entry(_), _L, _M, _F) :- !.
-analyze(end_of_file, _L, _M, _F) :- !.
+analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
+analyze_clause(end_of_file, _L, _M, _F) :- !.
 
-analyze(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
+analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     !,
     %nl,print(fact(Fact)),nl,
     functor(Fact,Name,Arity),
@@ -1243,6 +1243,7 @@ analyze(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
 
 
 % analyzef/5
+% analyze foreign declarations
 analyzef(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
     !,
     functor(PredSpec,_,Arity),
@@ -1314,7 +1315,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %(seen_token -> member(rm_debug_calls,Tokens) ; true), % I am not sure what the purpose of this is ? It certainly removes certain clauses from the analysis
   % print(expand(Module,Term)),nl,
     (  analyzef(Term, Layout, Module, File, TermOut)
-     ; analyze(Term, Layout, Module, File), (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
+     ; analyze_clause(Term, Layout, Module, File), (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
     !.
 
 %% KNOWN ISSUES
