@@ -140,7 +140,8 @@
   (logp :requesting url)
   (ajax/GET
    url
-   {:handler       #(re-frame/dispatch [ok-dispatch %1])
+   {:params {:time (.getTime (js/Date.))}
+    :handler       #(re-frame/dispatch [ok-dispatch %1])
     :error-handler #(re-frame/dispatch [error-dispatch %1])}))
 
 (re-frame/register-handler
