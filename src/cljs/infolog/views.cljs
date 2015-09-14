@@ -5,7 +5,7 @@
             [infolog.components.problem-by-module :refer [histogram]]
             [infolog.components.module-dependencies :refer [dependency-graph]]
             [infolog.components.indentation-analysis :refer [complexity-viz]]
-            [infolog.routes :refer [page pages]]
+            [infolog.routes :refer [page navigation]]
             [cljsjs.c3]
             [cljsjs.d3]))
 
@@ -135,6 +135,19 @@
 (defmethod page :default [] [:h1 "Unknown page"])
 
 
+
+(defn render-navigation [active navigation]
+  (for [t navigation]
+    (if (keyword? t)
+      [:li (when (= active t) {:class "active"})
+       [:a {:href (str "#/" (name t))} (name  t)]]
+      (let [[section & content] t]
+        [:li.dropdown
+         [:a.dropdown-toggle {:href="#" :data-toggle "dropdown" :role "button"} section [:span.caret]]
+         (into [:ul.dropdown-menu] (render-navigation active content))
+         ]))))
+
+
 (defn main-panel []
   (fn []
     (let [location (re-frame/subscribe [:location])
@@ -143,9 +156,7 @@
        [:nav.navbar.navbar-inverse.navbar-fixed-top
         [:div.container
          (into  [:ul.nav.navbar-nav]
-                (for [t pages]
-                  [:li (when (= @active (keyword t)) {:class "active"})
-                   [:a {:href (str "#/" t)} t]]))]]
+                (render-navigation active navigation))]]
        [:div.content
         [:h1 (if (keyword @active) (name @active) "Unknown Page")]
         [:div (str "Directory: " @location)]

@@ -4,7 +4,8 @@
     (:require [secretary.core :as secretary]
               [goog.events :as events]
               [goog.history.EventType :as EventType]
-              [re-frame.core :as re-frame]))
+              [re-frame.core :as re-frame]
+              [taoensso.encore :as enc  :refer (logf log logp)]))
 
 (defn hook-browser-navigation! []
   (doto (History.)
@@ -14,7 +15,11 @@
        (secretary/dispatch! (.-token event))))
     (.setEnabled true)))
 
-(def pages ["Problems" "Dependencies" "Indentation" "AST-Nesting"])
+
+(def navigation [:Problems :Dependencies ["Complexity" :Indentation :AST-Nesting]])
+
+(defn pages []
+  (doall (filter keyword? (flatten navigation))))
 
 (defmulti page identity)
 
@@ -25,9 +30,9 @@
   (defroute "/" []
     (re-frame/dispatch [:set-active-page :Problems]))
 
-  (doseq [p pages]
-    (defroute (str "/" p) []
-      (re-frame/dispatch [:set-active-page (keyword p)])))
+  (doseq [p (pages)]
+    (defroute (str "/" (name p)) []
+      (re-frame/dispatch [:set-active-page p])))
   
   ;; --------------------
   (hook-browser-navigation!))
