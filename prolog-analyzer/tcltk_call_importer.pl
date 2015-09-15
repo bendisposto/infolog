@@ -37,6 +37,8 @@ clever_codes_to_atom(Codes,Atom) :- atom_codes(Atom,Codes).
 ignore(32). % whitespace
 ignore(34). %'
 ignore(39). % "
+ignore(40). % (
+ignore(123). % {
 
 get_next_word([],_Sep,[],[]).
 get_next_word([H|T],Sep,Word,Tail) :-
