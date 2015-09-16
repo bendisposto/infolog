@@ -30,11 +30,11 @@ all: prolog-analyzer/tcltk_calls.pl
 	@echo "analyzing ProB Tcl/Tk and probcli together"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl')."
 
-infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
+infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl
 	@echo "Generating CSV FIle"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
 
-infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl
+infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl
 	@echo "Generating Data for website"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
 
@@ -63,10 +63,10 @@ run_server:
 
 server: ui infolog.edn indy.edn run_server
 
-prolog-analyzer/tcltk_calls.ack:
+prolog-analyzer/tcltk_calls.ack: Makefile
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
-	 ack -o '(?<=prolog)\s+("?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
-	 ack -o '(?<=prologmnf)\s+("?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
+	 ack -o    '(?<=prolog)\s+("?(\{|\()?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
+	 ack -o '(?<=prologmnf)\s+("?(\{|\()?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
 
 prolog-analyzer/tcltk_calls.pl: prolog-analyzer/tcltk_calls.ack prolog-analyzer/tcltk_call_importer.pl
 	@echo "Importing Calls from ProB Tcl/Tk interface"
