@@ -31,7 +31,7 @@
                                y (y-scale v)] y)))
         (attr "fill" (fn [d] (c-scale (aget d "module"))))
         (attr "x" (fn [d] (let [m (aget d "module")
-                                x (x-scale (clj->js m))] x))))))
+                               x (x-scale (clj->js m))] x))))))
 
 (defn create-d3 [el configuration data]
   (let [{:keys [width height inner-h inner-w left top]} @configuration
@@ -78,14 +78,14 @@
        [:div.panel-body
         [:h2 "Messages by module"]
         [:form.form-horizontal
-           [:label.checkbox-inline
-            [:input {:checked (when (@selected "error") "checked")
-                     :type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "error" (.. e -target -checked)]))}]
-            "Errors"]
-           [:label.checkbox-inline
-            [:input {:checked (when (@selected "warning") "checked") :type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "warning" (.. e -target -checked)]))}]
-            "Warnings"]
-           [:label.checkbox-inline
-            [:input {:checked (when (@selected "info") "checked"):type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "info" (.. e -target -checked)]))}]
-            "Infos"]]
+         [:label.checkbox-inline
+          [:input {:checked (when (@selected "error") "checked")
+                   :type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "error" (.. e -target -checked)]))}]
+          "Errors"]
+         [:label.checkbox-inline
+          [:input {:checked (when (@selected "warning") "checked") :type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "warning" (.. e -target -checked)]))}]
+          "Warnings"]
+         [:label.checkbox-inline
+          [:input {:checked (when (@selected "info") "checked"):type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "info" (.. e -target -checked)]))}]
+          "Infos"]]
         [histogram-chart]]])))
