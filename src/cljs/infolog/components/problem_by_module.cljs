@@ -7,30 +7,31 @@
 
 ;; --------------------
 
-(defn update-d3 [el configuration d]
+(defn update-d3 [el configuration ds]
   (let [{:keys [inner-h inner-w x-axis-g y-axis-g]} @configuration
         g (.. js/d3 (select ".g-container"))
-        point (.. g (selectAll ".module-info") (data (clj->js (:freqs d))))
+        point (.. g (selectAll ".module-info") (data (clj->js (:freqs ds))))
         c-scale (.. js/d3 -scale (category20c))
-        y-scale (.. js/d3 -scale (linear) (domain (clj->js[0 (:maxY d)])) (range (clj->js[inner-h 0])))
-        x-scale (.. js/d3 -scale (ordinal) (rangeBands (clj->js [0 inner-w]) 0.1) (domain (clj->js (map :module (:freqs d)))))
+        y-scale (.. js/d3 -scale (linear) (domain (clj->js[0 (:maxY ds)])) (range (clj->js[inner-h 0])))
+        x-scale (.. js/d3 -scale (ordinal) (rangeBands (clj->js [0 inner-w]) 0.1) (domain (clj->js (map :module (:freqs ds)))))
         x-axis (.. js/d3 -svg (axis) (scale x-scale) (orient "bottom"))
         y-axis (.. js/d3 -svg (axis) (scale y-scale) (orient "left"))]
     (.. x-axis-g (call x-axis) (selectAll "text") (attr "transform" "rotate(90) translate(60,-15)"))
     (.call y-axis-g y-axis)
-   ;; (.. point (exit) (remove))
+    (.. point (exit) (remove))
     (.. point
         (enter)
         (append "rect")
-        (attr "class" "module-info")
+        (attr "class" "module-info"))
+    (.. point
         (attr "width" (.rangeBand x-scale))
-        (attr "height" (fn [d] (let [v (.-problems  d)
+        (attr "height" (fn [d] (let [v (aget d "problems")
                                     y (y-scale v)] (- inner-h y))))
-        (attr "y" (fn [d] (let [v (.-problems  d)
+        (attr "y" (fn [d] (let [v (aget  d "problems")
                                y (y-scale v)] y)))
-        (attr "fill" (fn [d] (c-scale (.-module d))))
-        (attr "x" (fn [d] (let [m (.-module d)
-                               x (x-scale (clj->js m))] x))))))
+        (attr "fill" (fn [d] (c-scale (aget d "module"))))
+        (attr "x" (fn [d] (let [m (aget d "module")
+                                x (x-scale (clj->js m))] x))))))
 
 (defn create-d3 [el configuration data]
   (let [{:keys [width height inner-h inner-w left top]} @configuration
@@ -47,23 +48,23 @@
 (defn histogram-chart []
   (let [selected (re-frame/subscribe [:histo-by-module-selected])
         problems (re-frame/subscribe [:problems])
-        configuration (r/atom {:width 900 :height 450 :top 10 :bottom 150 :left 100 :right 10})
+        configuration (r/atom {:width 960 :height 450 :top 10 :bottom 150 :left 30 :right 10})
         data (reaction (let [freqs (map (fn [[k v]] {:module k :problems v})
                                         (frequencies
                                          (map :module
                                               (filter #(@selected (:problem-type %))
                                                       @problems))))
-                             minY (apply min (map :problems freqs))
                              maxY (apply max (map :problems freqs))]
-                         {:freqs freqs :minY minY :maxY maxY}))]
+                         {:freqs freqs :maxY maxY}))]
     (swap! configuration (fn [{:keys [width height left top right bottom] :as c}] (assoc c :inner-w (- width left right) :inner-h (- height top bottom))))
     (r/create-class
      {:component-did-mount
       (fn [rc] (let [el (.getDOMNode rc)]
+                (logp :mounting)
                 (create-d3 el configuration @data)))
       :component-did-update
       (fn [rc] (let [el (.getDOMNode rc)]
-                (logp :update @data)
+                (logp :update)
                 (update-d3 el configuration @data)))
       :reagent-render (fn [x]
                         [:div.histogram {:data-problems (count @problems)
@@ -76,7 +77,7 @@
       [:div.panel.panel-default
        [:div.panel-body
         [:h2 "Error messages by module"]
-        #_[:form.form-horizontal
+        [:form.form-horizontal
            [:label.checkbox-inline
             [:input {:checked (when (@selected "error") "checked")
                      :type "checkbox" :on-change (fn [e] (re-frame/dispatch [:histo-by-module-switch "error" (.. e -target -checked)]))}]
