@@ -76,7 +76,7 @@
     (let [selected (re-frame/subscribe [:histo-by-module-selected])]
       [:div.panel.panel-default
        [:div.panel-body
-        [:h2 "Error messages by module"]
+        [:h2 "Messages by module"]
         [:form.form-horizontal
            [:label.checkbox-inline
             [:input {:checked (when (@selected "error") "checked")
