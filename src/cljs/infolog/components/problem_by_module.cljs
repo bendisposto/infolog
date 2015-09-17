@@ -18,7 +18,7 @@
         y-axis (.. js/d3 -svg (axis) (scale y-scale) (orient "left"))]
     (.. x-axis-g (call x-axis) (selectAll "text") (attr "transform" "rotate(90) translate(60,-15)"))
     (.call y-axis-g y-axis)
-    (.. point (exit) (remove))
+   ;; (.. point (exit) (remove))
     (.. point
         (enter)
         (append "rect")
