@@ -110,7 +110,6 @@
 (re-frame/register-handler
  :process-complexity-edn
  (fn [db [_ r]]
-   (logp :received  (map? r) (count r))
    (let [result (if (map? r) r (cljs.reader/read-string r))
          complexity (:complexity result)]
      (assoc db :complexity complexity))))
