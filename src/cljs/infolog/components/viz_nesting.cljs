@@ -3,7 +3,6 @@
   (:require [re-frame.core :as re-frame]
             [reagent.core :as r]
             [cljsjs.d3]
-            [vizcomplexity]
             [taoensso.encore :as enc  :refer (logf log logp)]))
 
 (def diameter 960)
