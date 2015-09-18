@@ -28,11 +28,21 @@
                       "terms" "sets" "gauge" "trees" "assoc" "xml" "process"
                       "aggregate" "tcltk" "heaps" "fastrw" "sockets" "wgraphs" "ugraphs"})
 
+(defn remove-sicstus-modules [modules]
+  (remove #(sicstus-module (:name %)) modules))
+
 (re-frame/register-sub
  :modules
  (fn [db [_ sort-fn]]
-   (reaction (let [mods (conj (map first (remove (fn [[m f]] (sicstus-module m)) (:modules @db))) "user")]
-               (if sort-fn (sort-by sort-fn mods) mods)))))
+   (let [own (remove-sicstus-modules (:modules @db))
+         _ (logp :m (:modules @db) :own own)
+         names (conj (map :name own) "user")]
+     (reaction (if sort-fn (sort-by sort-fn names) names)))))
+
+(re-frame/register-sub
+ :raw-modules
+ (fn [db]
+   (reaction (remove (fn [{m :name}] (sicstus-module m)) (:modules @db)))))
 
 (re-frame/register-sub
  :module-lookup

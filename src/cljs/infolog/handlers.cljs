@@ -13,8 +13,12 @@
    (re-frame/dispatch [:request-complexity-edn])
    db/default-db))
 
+
+(defn split-path [sep path]
+  (clojure.string/split path (re-pattern sep)))
+
 (defn common-prefix [sep paths]
-  (let [parts-per-path (map #(clojure.string/split % (re-pattern sep)) paths)
+  (let [parts-per-path (map (partial split-path sep) paths)
         parts-per-position (apply map vector parts-per-path)
         pathparts (for [parts parts-per-position :while (apply = parts)] (first parts))]
 
@@ -27,6 +31,12 @@
                    (remove #(goog.string.startsWith % "sicstus")))
         prefix (common-prefix "/" (into [] files))]
     prefix))
+
+(defn extend-with-paths [prefix modules]
+  (for [[m f] modules]
+    (let [f' (clojure.string/replace-first f prefix "")
+          p (butlast (rest (split-path "/" f')))]
+      {:name m :file f' :path p})))
 
 (defn problem->map
   [[category problem-type message module
@@ -99,7 +109,7 @@
          db' (assoc db
                     :infolog-problems problems
                     :directory prefix
-                    :modules (into {} (:defined_module result))
+                    :modules (extend-with-paths prefix (:defined_module result))
                     :use-modules (:depends_on result)
                     :dependencies deps
                     :call-complexity (call-complexity raw-call)

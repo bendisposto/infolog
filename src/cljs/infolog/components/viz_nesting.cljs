@@ -30,20 +30,45 @@
    (str "translate(" a "," b ")")))
 
 
+(declare mk-inner-node)
+
+(defn create-structure [top content]
+  (let [leafs (filter #(empty? (:path %)) content)
+        inner-nodes (remove #(empty? (:path %)) content)
+        ign (group-by (fn [n] (first (:path n))) inner-nodes)]
+    {:name top :inner-node true :root (= top "root") :children (into leafs (map mk-inner-node ign))}))
+
+
+(defn mk-inner-node [[top nodes]]
+  (let [nodes (map (fn [e] (assoc e :path (rest (:path e)))) nodes)]
+    (create-structure top nodes)))
+
+(defn make-module-db [modules]
+  (into {} (map (fn [{:keys [name] :as e}] [name e]) modules)))
+
+(defn join-data [max-depth mods data]
+  (map (fn [[_ clauses]]
+         (let [size (reduce + (map :calls-in-body clauses))
+               depth (apply max (map :depth clauses))
+               weight (double (/ depth max-depth))
+               module-name (:module (first clauses))
+               module-path (conj (vec (:path (mods module-name))) module-name)]
+           {:module module-name
+            :path module-path
+            :name (:pa (first clauses))
+            :size size :weight weight :children []}))
+       (group-by :mpa data)))
+
 (defn mk-data [modules data]
-  (let [max-depth (apply max (map :depth @data))
-        joined (map (fn [[_ clauses]]
-                      (let [size (reduce + (map :calls-in-body clauses))
-                            depth (apply max (map :depth clauses))
-                            weight (double (/ depth max-depth))]
-                        {:module (:module (first clauses))
-                         :name (:pa (first clauses))
-                         :size size :weight weight :children []}))
-                    (group-by :mpa @data))
-        g (group-by :module joined)
-        x (map (fn [[module predicates]] {:name module :children predicates}) g)]
-    (reaction {:name "root"
-               :children x})))
+  (let [mods (make-module-db @modules) 
+        max-depth (apply max (map :depth @data))
+        joined (join-data max-depth mods @data)
+        nodes (create-structure "root" joined)
+        ;;g (group-by :module joined)
+        ;;x (map (fn [[module predicates]] {:name module :children predicates}) g)
+        ]
+    (logp nodes)
+    (reaction nodes)))
 
 
 (defn update-fn [d]
@@ -84,7 +109,7 @@
     (update-fn data)))
 
 (defn nesting-viz []
-  (let [modules (re-frame/subscribe [:modules])
+  (let [modules (re-frame/subscribe [:raw-modules])
         data (mk-data modules (re-frame/subscribe [:nesting]))
         focus (r/atom "root")]
     (r/create-class
