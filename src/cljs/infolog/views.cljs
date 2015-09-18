@@ -5,7 +5,8 @@
             [infolog.components.problem-by-module :refer [histogram]]
             [infolog.components.module-dependencies :refer [dependency-graph]]
             [infolog.components.indentation-analysis :refer [complexity-viz]]
-            [infolog.routes :refer [page navigation]]
+            [infolog.components.viz-nesting :refer [nesting-viz]]
+            [infolog.routes :refer [page navigation text]]
             [cljsjs.c3]
             [cljsjs.d3]))
 
@@ -73,26 +74,11 @@
      (fn [_] [:div#pie_problems (count @problems)]))))
 
 
-(comment (defn update-doh [_]
-           (.. js/d3
-               (select "#doh")
-               (append "svg")
-               (attr "width" 500)
-               (attr "height" 500)
-               (append "g")
-               ))
-         (defn render-doh [_] [:div#doh])
-
-         (defn doh []
-           (let [problems (re-frame/subscribe [:problems])]
-             (c3-component update-doh render-doh))))
-
 
 
 (defn problems-view []
   (fn [_]
     [:div
-
      [pie-problems]
      [histogram]
      [problem-table]]))
@@ -127,20 +113,22 @@
                                                                                  (and (< (:depth row) 5)
                                                                                       (< (:calls-in-body row) 25))) @nesting))))))]))
 
+
+
+
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
 (defmethod page :Indentation [] [indentation-view])
 (defmethod page :AST-Nesting [] [nesting-view])
+(defmethod page :Viz:Nesting [] [nesting-viz])
 (defmethod page :default [] [:h1 "Unknown page"])
-
-
 
 (defn render-navigation [active navigation]
   (for [t navigation]
     (if (keyword? t)
       [:li (when (= active t) {:class "active"})
-       [:a {:href (str "#/" (name t))} (name  t)]]
+       [:a {:href (str "#/" (name t))} (text  t)]]
       (let [[section & content] t]
         [:li.dropdown
          [:a.dropdown-toggle {:href="#" :data-toggle "dropdown" :role "button"} section [:span.caret]]
@@ -158,7 +146,7 @@
          (into  [:ul.nav.navbar-nav]
                 (render-navigation active navigation))]]
        [:div.content
-        [:h1 (if (keyword @active) (name @active) "Unknown Page")]
+        [:h1 (if (keyword @active) (text @active) "Unknown Page")]
         [:div (str "Directory: " @location)]
         (page @active)]])))
 

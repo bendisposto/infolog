@@ -71,6 +71,8 @@
    :arity a
    :depth d
    :calls-in-body cib
+   :mpa (str m ":" p "/" a)
+   :pa  (str p "/" a)
    :start sl
    :end el})
 
@@ -85,8 +87,6 @@
        (remove (fn [[[_ p a] b]] (= [p a] [":-" 1])))
        (sort-by second)
        reverse))
-
-
 
 (re-frame/register-handler
  :process-infolog-edn

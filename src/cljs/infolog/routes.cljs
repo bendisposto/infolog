@@ -15,8 +15,11 @@
        (secretary/dispatch! (.-token event))))
     (.setEnabled true)))
 
+(defn text [kw]
+  (or ({:Viz:Nesting "AST-Nesting"} kw)
+      (str (name kw))))
 
-(def navigation [:Problems :Dependencies ["Complexity" :Indentation :AST-Nesting]])
+(def navigation [:Problems :Dependencies ["Complexity" :Indentation :AST-Nesting] ["Visualizations" :Viz:Nesting]])
 
 (defn pages []
   (doall (filter keyword? (flatten navigation))))
@@ -33,6 +36,7 @@
   (doseq [p (pages)]
     (defroute (str "/" (name p)) []
       (re-frame/dispatch [:set-active-page p])))
+  
   
   ;; --------------------
   (hook-browser-navigation!))

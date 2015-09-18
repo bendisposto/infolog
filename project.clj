@@ -27,7 +27,8 @@
                                    :output-to "resources/public/js/compiled/app.js"
                                    :output-dir "resources/public/js/compiled/out"
                                    :asset-path "js/compiled/out"
-                                   :libs ["src/js/deps_d3.js"]
+                                   :libs ["src/js/deps_d3.js"
+                                          "src/js/viz_complex.js"]
                                    :optimizations :none
                                    :source-map-timestamp true}}
 
@@ -36,5 +37,5 @@
                         :compiler {:main infolog.core
                                    :output-to "resources/public/js/compiled/app.js"
                                    :optimizations :advanced
-                                   :libs ["src/js/deps_d3.js"]
+                                  ;; :libs ["src/js/deps_d3.js"]
                                    :pretty-print true}}]})
