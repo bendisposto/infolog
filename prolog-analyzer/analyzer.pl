@@ -134,7 +134,7 @@ gen_db_entries(S) :-  print('Updating problem database and displaying new proble
     git_revision(CurSha),
     datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
     format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
-    format(S, '% Original Creation: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    format(S, '% Updated: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
     (problem_db_creation(S,D) -> portray_clause(S,problem_db_creation(S,D))
       ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
     ),
