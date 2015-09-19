@@ -1,3 +1,25 @@
 #app {
   margin-top: 60px;
 }
+
+.nesting-node {
+  cursor: pointer;
+  stroke: #777;
+  stroke-width: 0.5px;
+}
+
+.nesting-inner-node:hover {
+  stroke: black;
+  stroke-width: 1.5px;
+}
+
+
+.nesting-label {
+  font: 12px "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-anchor: middle;
+  fill: black;
+}
+
+.nesting-label, .nesting-leaf, nesting-root {
+  pointer-events: none;
+}

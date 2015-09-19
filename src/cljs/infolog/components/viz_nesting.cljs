@@ -24,6 +24,8 @@
               (size #js [inner-diameter inner-diameter])
               (value (fn [d] (aget d "size")))))
 
+(def focus (r/atom "root"))
+
 (defn translate
   ([a] (translate a a))
   ([a b]
@@ -60,14 +62,10 @@
        (group-by :mpa data)))
 
 (defn mk-data [modules data]
-  (let [mods (make-module-db @modules) 
+  (let [mods (make-module-db @modules)
         max-depth (apply max (map :depth @data))
         joined (join-data max-depth mods @data)
-        nodes (create-structure "root" joined)
-        ;;g (group-by :module joined)
-        ;;x (map (fn [[module predicates]] {:name module :children predicates}) g)
-        ]
-    (logp nodes)
+        nodes (create-structure "root" joined)]
     (reaction nodes)))
 
 
@@ -75,14 +73,18 @@
   (logp :update-viz)
   (let [dse js/d3
         g (.select dse ".viz-g")
+        t (.select dse ".viz-t")
         nodes (.nodes pack (clj->js d))
         points (.. g
                    (selectAll "circle")
-                   (data nodes))]
+                   (data nodes))
+        texts (.. t
+                  (selectAll "text")
+                  (data nodes))]
     (.. points
         (enter)
         (append "circle")
-        (attr "class" (fn [d]  "node"))
+        (attr "class" (fn [d] (str "nesting-node" (when (aget d "inner-node") " nesting-inner-node"))))
         (attr "r" (fn [d] (aget d "r")))
         (attr "fill" (fn [d]
                        (let [w (aget d "weight")
@@ -93,27 +95,49 @@
                                :otherwise "WhiteSmoke"))))
         (attr "fill-opacity" (fn [d] (aget d "weight")))
         (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
-        )))
+        (on "click" (fn [d] (log d (if (aget d "inner-node") 1 2))
+                      (if (= d @focus)
+                        (reset! focus "root")
+                        
+                             (if (aget d "inner-node")
+                               (do (log "focus" d) (reset! focus d))
+                               (let [d (aget d "parent")] (log "focus" d) (reset! focus d)))))))
+    (.. texts
+        (enter)
+        (append "text")
+        (attr "class" "nesting-label")
+        (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
+        (text (fn [d]  (aget d "name"))))
+    (.. texts
+        (style "display" "none"
+               #_(fn [d] (let [p (aget d "parent")]
+                        (if (and p (= @focus p)) nil "none")))))))
 
 (defn mount-fn [rc data]
   (logp :mounting-viz)
   (let [el (.getDOMNode rc)
-        g (.. js/d3
-              (select el)
-              (append "svg")
-              (attr "width" diameter)
-              (attr "height" diameter)
-              (append "g")
-              (attr "class" "viz-g")
-              (attr "transform" (translate margin)))]
+        svg (.. js/d3
+                (select el)
+                (append "svg")
+                (attr "width" diameter)
+                (attr "height" diameter))]
+    (.. svg
+        (append "g")
+        (attr "class" "viz-g")
+        (attr "transform" (translate margin)))
+
+    (.. svg
+        (append "g")
+        (attr "class" "viz-t"))
+
     (update-fn data)))
 
 (defn nesting-viz []
   (let [modules (re-frame/subscribe [:raw-modules])
-        data (mk-data modules (re-frame/subscribe [:nesting]))
-        focus (r/atom "root")]
+        data (mk-data modules (re-frame/subscribe [:nesting]))]
     (r/create-class
      {:component-did-mount (fn [rc] (mount-fn rc @data))
       :component-did-update (fn [_] (update-fn @data))
       :reagent-render (fn [_]
-                        [:div.nesting-viz {:data-count (count @data)}])})))
+                        [:div
+                         [:div.nesting-viz {:data-focus @focus :data-count (count @data)}]])})))
