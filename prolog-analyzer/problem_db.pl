@@ -1,6 +1,6 @@
 :- dynamic problemd_db_entry/8, problem_db_creation/2.
-% Sha : d7d241915391c256f88363ee0a6f5d369a579af9, Date : datime(2015,9,19,7,44,22)
-problem_db_creation(d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,44,22)).
+% Sha : d7d241915391c256f88363ee0a6f5d369a579af9, Date : datime(2015,9,19,7,53,10)
+problem_db_creation(d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,53,10)).
 problem_db_entry(150847415, analysis_problem, error, string(could_not_infer_module(lub,1,b_abstract_mappings)), module_pred_lines(b_abstract_mappings,lub/3,81,81), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(105838943, analysis_problem, error, string(could_not_infer_module(glb,1,b_abstract_mappings)), module_pred_lines(b_abstract_mappings,glb/3,90,90), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(5366144, analysis_problem, error, string(could_not_infer_module(map_alpha,2,b_abstract_mappings)), module_pred_lines(b_abstract_mappings,call_alpha/4,101,101), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
@@ -1250,7 +1250,6 @@ problem_db_entry(90842542, dead_code(exported), warning, informat('Exported pred
 problem_db_entry(97835296, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[edge_labels/2]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(77144808, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[reset_enabling_analysis/0]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(68139692, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[tcltk_dot_cfg_analysis/1]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
-problem_db_entry(43754892, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[feasible_operation/4]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(20775624, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[infeasible_operation/1]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(68118317, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[parse_ltlfile/2]), module_loc(ltl_tools), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(84682396, dead_code(exported), warning, informat('Exported predicate not used anywhere else: ~w',[parse_and_pp_ltl_formula/2]), module_loc(ltl_tools), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
@@ -1436,9 +1435,6 @@ problem_db_entry(121446998, useless_import, warning, informat('Imported predicat
 problem_db_entry(90877787, useless_import, warning, informat('Imported predicate not used: ~w:~w',[b_interpreter_eventb,b_event_with_change_set/7]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(248527175, useless_import, warning, informat('Imported predicate not used: ~w:~w',[store,normalise_store/2]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(220192860, useless_import, warning, informat('Imported predicate not used: ~w:~w',[static_analysis,dependent_actions/5]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
-problem_db_entry(54203591, useless_import, warning, informat('Imported predicate not used: ~w:~w',[bmachine,b_get_invariant_from_machine/1]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
-problem_db_entry(157903288, useless_import, warning, informat('Imported predicate not used: ~w:~w',[bmachine,b_get_properties_from_machine/1]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
-problem_db_entry(217910248, useless_import, warning, informat('Imported predicate not used: ~w:~w',[tools,cputime/1]), module_loc(enabling_analysis), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(86097555, useless_import, warning, informat('Imported predicate not used: ~w:~w',[translate,print_bexpr/1]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(46301794, useless_import, warning, informat('Imported predicate not used: ~w:~w',[translate,print_bstate/1]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).
 problem_db_entry(215569732, useless_import, warning, informat('Imported predicate not used: ~w:~w',[preferences,get_preference/2]), module_loc(enable_graph), d7d241915391c256f88363ee0a6f5d369a579af9, datime(2015,9,19,7,29,13), active).

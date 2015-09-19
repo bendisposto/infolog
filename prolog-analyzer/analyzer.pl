@@ -109,6 +109,8 @@ update_problem_db(File) :- start_analysis_timer(T),
 :- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/5.
 % problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
 
+reviewed(Hash,Category,Type,ErrorInfo,Location) :-
+    problem_db_entry(Hash,Category,Type,ErrorInfo,Location,_,_,reviewed).
      
 :- use_module(library(system)).
 :- include(problem_db).
@@ -248,7 +250,7 @@ lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
 lint(Category,Type,Module) :-
      (nonvar(Module) -> dif(Location,unknown) ; true),
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
-     \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
+     \+ reviewed(Hash,Category,Type,ErrorInfo,Location),
      (nonvar(Module) -> location_affects_module(Location,Module) ; true),
      display_problem(ErrorInfo,Location,Hash),
      fail.
