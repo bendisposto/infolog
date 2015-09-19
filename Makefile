@@ -7,9 +7,11 @@ ifdef PROBPATH
 endif
 
 
-.PHONY: test all all_cli server
+.PHONY: test all all_cli all_tk server updatedb
 PROLOG_FLAGS=
 
+updatedb:
+	make all
 test:
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl')."
@@ -22,7 +24,7 @@ allcli:
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_cli.pl'])."
 all: prolog-analyzer/tcltk_calls.pl
 	@echo "analyzing ProB Tcl/Tk and probcli together"
-	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl')."
+	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), update_problem_db('$(PROBPATH)/src/infolog_problem_db.pl')."
 
 infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl
 	@echo "Generating CSV FIle"

@@ -102,28 +102,43 @@ write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
 update_problem_db :- 
    update_problem_db('prolog-analyzer/problem_db.pl').
-update_problem_db(File) :- start_analysis_timer(T),
+update_problem_db(File) :- 
+   start_analysis_timer(T1),
+   load_problem_db(File),
+   stop_analysis_timer(T1),
+   start_analysis_timer(T2),
    open(File,write,S), call_cleanup(gen_db_entries(S),close(S)),
-   stop_analysis_timer(T).
+   stop_analysis_timer(T2).
+
+load_problem_db(File) :- 
+   on_exception(error(existence_error(_,_),_),ensure_loaded(File), format('Problem DB does not yet exist: ~w~n',[File])),
+   (problem_db_creation(S,D) -> format('Loaded problem_db ~w (Sha:~w,  ~w)~n',[File,S,D]) ; format('File empty: ~w~n',[File])).
 
 :- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/5.
 % problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
+
+% avoid creating InfoLog warnings about those:
+infolog_predicate(Module,F/N) :- infolog_predicate(F,N,Module), print(excl(F,N,Module)),nl.
+infolog_predicate(problem_db_entry,8,user).
+infolog_predicate(problem_db_creation,2,user).
+infolog_predicate(problem_db_keep,5,user).
+
 
 reviewed(Hash,Category,Type,ErrorInfo,Location) :-
     problem_db_entry(Hash,Category,Type,ErrorInfo,Location,_,_,reviewed).
      
 :- use_module(library(system)).
-:- include(problem_db).
-:- (problem_db_creation(S,D) -> format('Loaded problem_db ~w  ~w~n',[S,D]) ; true).
+
 gen_db_entries(S) :-  print('Updating problem database and displaying new problems'),nl,
-    format(S,':- dynamic problemd_db_entry/8, problem_db_creation/2.~n',[]),
+    format(S,'% INFOLOG DATABASE OF PROBLEMS~n',[]),
     git_revision(CurSha),
     datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
     format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
-    format(S, '% Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    format(S, '% Original Creation: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
     (problem_db_creation(S,D) -> portray_clause(S,problem_db_creation(S,D))
       ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
     ),
+    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n',[]),
     print('----'),nl, print('The following problems were added:'),nl,
     infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
     (problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,OldStatus)
@@ -1200,7 +1215,8 @@ analyze_clause((:- prob_use_module(X)), _Layout, Module, _File) :-
 analyze_clause((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact2(is_dynamic, Module),L).
+       exclude(infolog_predicate(Module),L,L1),
+       maplist(add_fact2(is_dynamic, Module),L1).
 
 analyze_clause((:- public(X)), _Layout,Module,_File) :-
        !,
@@ -1284,6 +1300,8 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
 analyze_clause(end_of_file, _L, _M, _F) :- !.
 
+analyze_clause(Fact, _Layout, Module, _File) :-
+    functor(Fact,Name,Arity),infolog_predicate(Name,Arity,Module),!.
 analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     !,
     %nl,print(fact(Fact)),nl,
