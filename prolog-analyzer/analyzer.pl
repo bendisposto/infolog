@@ -114,14 +114,14 @@ load_problem_db(File) :-
    on_exception(error(existence_error(_,_),_),ensure_loaded(File), format('Problem DB does not yet exist: ~w~n',[File])),
    (problem_db_creation(S,D) -> format('Loaded problem_db ~w (Sha:~w,  ~w)~n',[File,S,D]) ; format('File empty: ~w~n',[File])).
 
-:- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/5.
+:- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/6.
 % problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
 
 % avoid creating InfoLog warnings about those:
 infolog_predicate(Module,F/N) :- infolog_predicate(F,N,Module), print(excl(F,N,Module)),nl.
 infolog_predicate(problem_db_entry,8,user).
 infolog_predicate(problem_db_creation,2,user).
-infolog_predicate(problem_db_keep,5,user).
+infolog_predicate(problem_db_keep,6,user).
 
 
 reviewed(Hash,Category,Type,ErrorInfo,Location) :-
@@ -135,15 +135,22 @@ gen_db_entries(S) :-  print('Updating problem database and displaying new proble
     datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
     format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
     format(S, '% Updated: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
-    (problem_db_creation(S,D) -> portray_clause(S,problem_db_creation(S,D))
+    (problem_db_creation(CrS,CrD) -> portray_clause(S,problem_db_creation(CrS,CrD))
       ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
     ),
-    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n',[]),
+    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n~n',[]),
     print('----'),nl, print('The following problems were added:'),nl,
     infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
     (problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,OldStatus)
-     -> Datime = OldDatime, NewSha = OldSha, Status = OldStatus, % error already exists
-        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,Location))
+     -> % error already exists
+        Datime = OldDatime, NewSha = OldSha, Status = OldStatus, 
+        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,Location,unchanged))
+     ; problem_db_entry(Hash, Category, Type, ErrorInfo,OldLocation, OldSha,OldDatime,OldStatus)
+     -> % error has moved
+        Datime = OldDatime, NewSha = OldSha, Status = moved,
+        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,OldLocation,moved)),
+        format('Problem location has moved : ~w ',[Hash]), 
+        print_location(OldLocation),print(' --> '), print_location(Location), nl
       ; Datime = datime(Yr,Mon,Day,Hr,Min,Sec), NewSha = CurSha, Status = active,
         display_problem(ErrorInfo,Location,Hash)
      ),
@@ -151,7 +158,7 @@ gen_db_entries(S) :-  print('Updating problem database and displaying new proble
     fail.
 gen_db_entries(_) :- print('----'),nl, print('The following problems were removed:'),nl,
     problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,_OldStatus),
-    \+ problem_db_keep(Hash,Category,Type,ErrorInfo,Location),
+    \+ problem_db_keep(Hash,Category,Type,ErrorInfo,Location,_),
     display_problem(ErrorInfo,Location,Hash), format('  ~w (~w)~n',[OldDatime,OldSha]),
     fail.
 gen_db_entries(_) :- print('----'),nl.
