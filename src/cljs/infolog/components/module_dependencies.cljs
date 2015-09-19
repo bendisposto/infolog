@@ -68,53 +68,54 @@
 
 (defn sparse-dependency-matrix []
   (let [deps (re-frame/subscribe [:dependencies])
-              module-sorting (re-frame/subscribe [:dep-sort-modules])
-              modules (re-frame/subscribe [:modules (sort-modules @module-sorting @deps)])
-              mv (reaction (into [] @modules))
-              size (reaction (count @modules))
-              modules (reaction (into {} (map vector @modules (range))))
-              dz (reaction (group-by :pos (extract-deps @deps @modules)))
-              selected-dep (re-frame/subscribe [:selected-dependency])]
-          [:div
-           [:svg
-            {:height (+ (* @size cz) offset)
-             :width (+ (* @size cz) offset)}
-            [:g
-             [grid @mv @size]
-             (for [[[x y] e] @dz] (mk-cell x y e))
-             (when @selected-dep
-               (let [[sx sy m1 m2] @selected-dep
-                     [ox oy] (compute-overlay @size sx sy)]
-                 [:g
-                  [:rect {:x ox
-                          :y oy
-                          :width details-width
-                          :height details-height
-                          :stroke "black"
-                          :stroke-width "1px"
-                          :fill "#ffffcc"}]
-                  [:text {:x (+ 20 ox)
-                          :y (+ 20 oy)} (str m1)]
-                  [:text {:x (+ 20 ox)
-                          :y (+ 40 oy)} (str m2)]]))
-             [:rect {:x 0
-                     :y 0
-                     :width (+ (* @size cz) offset)
-                     :height (+ (* @size cz) offset)
-                     :opacity 0
-                     :on-click
-                     (fn [e]
-                       (let [t (.-target e)
-                             box (.getBoundingClientRect t)
-                             cx (- (.-clientX e) (.-left box) offset)
-                             cy (- (.-clientY e) (.-top box))
-                             x (int (/ cx cz))
-                             y (int (/ cy cz))
-                             m1 (@mv x)
-                             m2 (@mv y)]
-                         (re-frame/dispatch [:set-selected-dependency (when-not @selected-dep
-                                                                [cx cy
-                                                                 m1 m2])])))}]]]]))
+        module-sorting (re-frame/subscribe [:dep-sort-modules])
+        modules (re-frame/subscribe [:modules (sort-modules @module-sorting @deps)])
+        mv (reaction (into [] @modules))
+        size (reaction (count @modules))
+        modules (reaction (into {} (map vector @modules (range))))
+        dz (reaction (group-by :pos (extract-deps @deps @modules)))
+        selected-dep (re-frame/subscribe [:selected-dependency])]
+    (logp :modules @modules)
+    [:div
+     [:svg
+      {:height (+ (* @size cz) offset)
+       :width (+ (* @size cz) offset)}
+      [:g
+       [grid @mv @size]
+       (for [[[x y] e] @dz] (mk-cell x y e))
+       (when @selected-dep
+         (let [[sx sy m1 m2] @selected-dep
+               [ox oy] (compute-overlay @size sx sy)]
+           [:g
+            [:rect {:x ox
+                    :y oy
+                    :width details-width
+                    :height details-height
+                    :stroke "black"
+                    :stroke-width "1px"
+                    :fill "#ffffcc"}]
+            [:text {:x (+ 20 ox)
+                    :y (+ 20 oy)} (str m1)]
+            [:text {:x (+ 20 ox)
+                    :y (+ 40 oy)} (str m2)]]))
+       [:rect {:x 0
+               :y 0
+               :width (+ (* @size cz) offset)
+               :height (+ (* @size cz) offset)
+               :opacity 0
+               :on-click
+               (fn [e]
+                 (let [t (.-target e)
+                       box (.getBoundingClientRect t)
+                       cx (- (.-clientX e) (.-left box) offset)
+                       cy (- (.-clientY e) (.-top box))
+                       x (int (/ cx cz))
+                       y (int (/ cy cz))
+                       m1 (@mv x)
+                       m2 (@mv y)]
+                   (re-frame/dispatch [:set-selected-dependency (when-not @selected-dep
+                                                                  [cx cy
+                                                                   m1 m2])])))}]]]]))
 
 (defn mk-label [c k l]
   [:label.radio-inline
