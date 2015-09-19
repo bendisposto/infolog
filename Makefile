@@ -16,12 +16,6 @@ test:
 test-verbose:
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH)
 	sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl'),export(user_output)."
-test2:
-	export PROB_HOME=$(ABSOLUTE_PROB_PATH)
-	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/b_interpreter_check.pl')."
-test3:
-	export PROB_HOME=$(ABSOLUTE_PROB_PATH)
-	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/kernel_ordering.pl')."
 alltk: prolog-analyzer/tcltk_calls.pl
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl'])."
 allcli:

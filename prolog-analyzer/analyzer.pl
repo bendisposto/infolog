@@ -96,6 +96,48 @@ write_args(Args,Format,S) :- mapseplist(write_arg(S), write_sep(Format,S),Args).
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
 write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
+% =========================================
+
+% problems database
+
+update_problem_db :- 
+   update_problem_db('prolog-analyzer/problem_db.pl').
+update_problem_db(File) :- start_analysis_timer(T),
+   open(File,write,S), call_cleanup(gen_db_entries(S),close(S)),
+   stop_analysis_timer(T).
+
+:- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/5.
+% problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
+
+     
+:- use_module(library(system)).
+:- include(problem_db).
+:- (problem_db_creation(S,D) -> format('Loaded problem_db ~w  ~w~n',[S,D]) ; true).
+gen_db_entries(S) :-  print('Updating problem database and displaying new problems'),nl,
+    format(S,':- dynamic problemd_db_entry/8, problem_db_creation/2.~n',[]),
+    git_revision(CurSha),
+    datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
+    format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    format(S, '% Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    (problem_db_creation(S,D) -> portray_clause(S,problem_db_creation(S,D))
+      ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
+    ),
+    print('----'),nl, print('The following problems were added:'),nl,
+    infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
+    (problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,OldStatus)
+     -> Datime = OldDatime, NewSha = OldSha, Status = OldStatus, % error already exists
+        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,Location))
+      ; Datime = datime(Yr,Mon,Day,Hr,Min,Sec), NewSha = CurSha, Status = active,
+        display_problem(ErrorInfo,Location,Hash)
+     ),
+     portray_clause(S, problem_db_entry(Hash, Category, Type, ErrorInfo,Location, NewSha,Datime,Status) ),
+    fail.
+gen_db_entries(_) :- print('----'),nl, print('The following problems were removed:'),nl,
+    problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,_OldStatus),
+    \+ problem_db_keep(Hash,Category,Type,ErrorInfo,Location),
+    display_problem(ErrorInfo,Location,Hash), format('  ~w (~w)~n',[OldDatime,OldSha]),
+    fail.
+gen_db_entries(_) :- print('----'),nl.
 
 % =========================================
 
@@ -208,12 +250,15 @@ lint(Category,Type,Module) :-
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
      (nonvar(Module) -> location_affects_module(Location,Module) ; true),
+     display_problem(ErrorInfo,Location,Hash),
+     fail.
+lint(_,_,_) :- print('Done checking'),nl.
+
+display_problem(ErrorInfo,Location,Hash) :-
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
-     format(' [[~w]]~n',[Hash]),
-     fail.
-lint(_,_,_) :- print('Done checking'),nl.
+     format(' [[~w]]~n',[Hash]).
 
 lint_for_pat(Pat) :- find_module(Pat,Module), lint_for_module(Module).
 find_module(Pat,Module) :- defined_module(Module,_), atom_matches(Pat,Module).
@@ -291,14 +336,7 @@ infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
      infolog_problem(Category,Type,ErrorInfo,Location),
      term_hash(infolog_problem(Category,ErrorInfo),Hash).
 
-:- dynamic reviewed/6.
-% reviewed(HashOfIssue,Category,ErrorInfo,Location,User,Sha)
-:- include(reviewed_db).
-gen_reviewed(Hash,Category,ErrorInfo) :- infolog_problem_hash(Category,_Type,ErrorInfo,Location,Hash),
-    git_revision(Sha),
-    portray_clause( reviewed(Hash, Category,ErrorInfo,Location, _User, Sha) ),
-    fail.
-gen_reviewed(_,_,_).
+
 
 % HERE WE DEFINE INFOLOG INFOS
 infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
