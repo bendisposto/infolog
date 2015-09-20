@@ -96,6 +96,72 @@ write_args(Args,Format,S) :- mapseplist(write_arg(S), write_sep(Format,S),Args).
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
 write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
+% =========================================
+
+% problems database
+
+update_problem_db :- 
+   update_problem_db('prolog-analyzer/problem_db.pl').
+update_problem_db(File) :- 
+   start_analysis_timer(T1),
+   load_problem_db(File),
+   stop_analysis_timer(T1),
+   start_analysis_timer(T2),
+   open(File,write,S), call_cleanup(gen_db_entries(S),close(S)),
+   stop_analysis_timer(T2).
+
+load_problem_db(File) :- 
+   on_exception(error(existence_error(_,_),_),ensure_loaded(File), format('Problem DB does not yet exist: ~w~n',[File])),
+   (problem_db_creation(S,D) -> format('Loaded problem_db ~w (Sha:~w,  ~w)~n',[File,S,D]) ; format('File empty: ~w~n',[File])).
+
+:- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/6.
+% problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
+
+% avoid creating InfoLog warnings about those:
+infolog_predicate(Module,F/N) :- infolog_predicate(F,N,Module), print(excl(F,N,Module)),nl.
+infolog_predicate(problem_db_entry,8,user).
+infolog_predicate(problem_db_creation,2,user).
+infolog_predicate(problem_db_keep,6,user).
+
+
+reviewed(Hash,Category,Type,ErrorInfo,Location) :-
+    problem_db_entry(Hash,Category,Type,ErrorInfo,Location,_,_,reviewed).
+     
+:- use_module(library(system)).
+
+gen_db_entries(S) :-  print('Updating problem database and displaying new problems'),nl,
+    format(S,'% INFOLOG DATABASE OF PROBLEMS~n',[]),
+    git_revision(CurSha),
+    datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
+    format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    format(S, '% Updated: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    (problem_db_creation(CrS,CrD) -> portray_clause(S,problem_db_creation(CrS,CrD))
+      ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
+    ),
+    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n~n',[]),
+    print('----'),nl, print('The following problems were added:'),nl,
+    infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
+    (problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,OldStatus)
+     -> % error already exists
+        Datime = OldDatime, NewSha = OldSha, Status = OldStatus, 
+        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,Location,unchanged))
+     ; problem_db_entry(Hash, Category, Type, ErrorInfo,OldLocation, OldSha,OldDatime,OldStatus)
+     -> % error has moved
+        Datime = OldDatime, NewSha = OldSha, Status = moved,
+        assert_if_new(problem_db_keep(Hash,Category,Type,ErrorInfo,OldLocation,moved)),
+        format('Problem location has moved : ~w ',[Hash]), 
+        print_location(OldLocation),print(' --> '), print_location(Location), nl
+      ; Datime = datime(Yr,Mon,Day,Hr,Min,Sec), NewSha = CurSha, Status = active,
+        display_problem(ErrorInfo,Location,Hash)
+     ),
+     portray_clause(S, problem_db_entry(Hash, Category, Type, ErrorInfo,Location, NewSha,Datime,Status) ),
+    fail.
+gen_db_entries(_) :- print('----'),nl, print('The following problems were removed:'),nl,
+    problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,_OldStatus),
+    \+ problem_db_keep(Hash,Category,Type,ErrorInfo,Location,_),
+    display_problem(ErrorInfo,Location,Hash), format('  ~w (~w)~n',[OldDatime,OldSha]),
+    fail.
+gen_db_entries(_) :- print('----'),nl.
 
 % =========================================
 
@@ -206,14 +272,17 @@ lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
 lint(Category,Type,Module) :-
      (nonvar(Module) -> dif(Location,unknown) ; true),
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
-     \+ reviewed(Hash,Category,ErrorInfo,Location,_,_),
+     \+ reviewed(Hash,Category,Type,ErrorInfo,Location),
      (nonvar(Module) -> location_affects_module(Location,Module) ; true),
+     display_problem(ErrorInfo,Location,Hash),
+     fail.
+lint(_,_,_) :- print('Done checking'),nl.
+
+display_problem(ErrorInfo,Location,Hash) :-
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
-     format(' [[~w]]~n',[Hash]),
-     fail.
-lint(_,_,_) :- print('Done checking'),nl.
+     format(' [[~w]]~n',[Hash]).
 
 lint_for_pat(Pat) :- find_module(Pat,Module), lint_for_module(Module).
 find_module(Pat,Module) :- defined_module(Module,_), atom_matches(Pat,Module).
@@ -291,14 +360,7 @@ infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
      infolog_problem(Category,Type,ErrorInfo,Location),
      term_hash(infolog_problem(Category,ErrorInfo),Hash).
 
-:- dynamic reviewed/6.
-% reviewed(HashOfIssue,Category,ErrorInfo,Location,User,Sha)
-:- include(reviewed_db).
-gen_reviewed(Hash,Category,ErrorInfo) :- infolog_problem_hash(Category,_Type,ErrorInfo,Location,Hash),
-    git_revision(Sha),
-    portray_clause( reviewed(Hash, Category,ErrorInfo,Location, _User, Sha) ),
-    fail.
-gen_reviewed(_,_,_).
+
 
 % HERE WE DEFINE INFOLOG INFOS
 infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
@@ -1160,7 +1222,8 @@ analyze_clause((:- prob_use_module(X)), _Layout, Module, _File) :-
 analyze_clause((:- dynamic(X)), _Layout,Module,_File) :-
        !,
        pairs_to_list(X,L),
-       maplist(add_fact2(is_dynamic, Module),L).
+       exclude(infolog_predicate(Module),L,L1),
+       maplist(add_fact2(is_dynamic, Module),L1).
 
 analyze_clause((:- public(X)), _Layout,Module,_File) :-
        !,
@@ -1244,6 +1307,8 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
 analyze_clause(end_of_file, _L, _M, _F) :- !.
 
+analyze_clause(Fact, _Layout, Module, _File) :-
+    functor(Fact,Name,Arity),infolog_predicate(Name,Arity,Module),!.
 analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     !,
     %nl,print(fact(Fact)),nl,
