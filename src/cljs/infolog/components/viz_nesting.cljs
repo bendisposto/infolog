@@ -69,8 +69,20 @@
         nodes (create-structure "root" joined)]
     (reaction nodes)))
 
-
-
+(defn zoom [node]
+  (let [r (aget node "r")
+        x (aget node "x")
+        y (aget node "y")
+        k (/ inner-diameter r 2)]
+    (.domain x-scale #js [(- x r) (+ x r)])
+    (.domain y-scale #js [(- y r) (+ y r)])
+    (.. js/d3 -event (stopPropagation))
+    (.. js/d3
+        (selectAll "circle")
+        (transition)
+        (duration 500)
+        (attr "r" (fn [d] (when d (let [r (aget d "r")] (* r k)))))
+        (attr "transform" (fn [d] (when d (let [x (aget d "x") y (aget d "y")] (translate (x-scale x) (y-scale y)))))))))
 
 (defn update-fn [d]
   (logp :update-viz)
@@ -80,13 +92,11 @@
         nodes (.nodes pack (clj->js d))
         points (.. g
                    (selectAll "circle")
-                   (data nodes))
-        texts (.. t
-                  (selectAll "text")
-                  (data nodes))]
+                   (data nodes))]
     (.. points
         (enter)
         (append "circle")
+        (attr "id" (fn [d] (aget d "name")))
         (attr "class" (fn [d] (str "nesting-node" (when (aget d "inner-node") " nesting-inner-node"))))
         (attr "r" (fn [d] (aget d "r")))
         (attr "fill" (fn [d]
@@ -98,12 +108,10 @@
                                :otherwise "WhiteSmoke"))))
         (attr "fill-opacity" (fn [d] (aget d "weight")))
         (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
-        (on "click" (fn [d] (log d (if (aget d "inner-node") 1 2))
-                      (if (= d @focus)
-                        (reset! focus "root")
-                        (if (aget d "inner-node")
-                               (do (log "focus" d) (reset! focus d))
-                               (let [d (aget d "parent")] (log "focus" d) (reset! focus d))))))
+        (on "click" (fn [d]
+                      (if (aget d "inner-node")
+                        (zoom d)
+                        (let [d (aget d "parent")] (zoom d)))))
         (on "mouseover" (fn [d]
                           (let [name (aget d "name")
                                 name (if (= "root" name) "" name)
