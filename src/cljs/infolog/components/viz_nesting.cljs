@@ -25,6 +25,7 @@
               (value (fn [d] (aget d "size")))))
 
 (def focus (r/atom "root"))
+(def hover-text (r/atom ""))
 
 (defn translate
   ([a] (translate a a))
@@ -69,6 +70,8 @@
     (reaction nodes)))
 
 
+
+
 (defn update-fn [d]
   (logp :update-viz)
   (let [dse js/d3
@@ -98,20 +101,17 @@
         (on "click" (fn [d] (log d (if (aget d "inner-node") 1 2))
                       (if (= d @focus)
                         (reset! focus "root")
-                        
-                             (if (aget d "inner-node")
+                        (if (aget d "inner-node")
                                (do (log "focus" d) (reset! focus d))
-                               (let [d (aget d "parent")] (log "focus" d) (reset! focus d)))))))
-    (.. texts
-        (enter)
-        (append "text")
-        (attr "class" "nesting-label")
-        (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
-        (text (fn [d]  (aget d "name"))))
-    (.. texts
-        (style "display" "none"
-               #_(fn [d] (let [p (aget d "parent")]
-                        (if (and p (= @focus p)) nil "none")))))))
+                               (let [d (aget d "parent")] (log "focus" d) (reset! focus d))))))
+        (on "mouseover" (fn [d]
+                          (let [name (aget d "name")
+                                name (if (= "root" name) "" name)
+                                module (aget d "module")
+                                x (aget d "x")
+                                y (aget d "y")]
+                            (reset! hover-text [(if module (str module ":" name) name) x y]))))
+        (on "mouseout" (fn [_] (reset! hover-text ["" 0 0]))))))
 
 (defn mount-fn [rc data]
   (logp :mounting-viz)
@@ -132,7 +132,7 @@
 
     (update-fn data)))
 
-(defn nesting-viz []
+(defn viz []
   (let [modules (re-frame/subscribe [:raw-modules])
         data (mk-data modules (re-frame/subscribe [:nesting]))]
     (r/create-class
@@ -141,3 +141,15 @@
       :reagent-render (fn [_]
                         [:div
                          [:div.nesting-viz {:data-focus @focus :data-count (count @data)}]])})))
+
+(defn hover []
+  (let [[text x y] @hover-text]
+    [:div#hover {:style {:position "absolute"
+                         :background  "rgba(238, 237, 217,0.75)"
+                         :left (str x "px")
+                         :top (str y "px")}} text]))
+
+(defn nesting-viz []
+  [:div
+   [hover]
+   [viz]])
