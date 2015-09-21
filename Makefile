@@ -59,7 +59,7 @@ run_server:
 
 server: ui infolog.edn indy.edn run_server
 
-java_calls:
+prolog-analyzer/java_calls.pl:
 	@echo "Extracting Prolog calls from ProB 2.0 Java API"
 	@echo ":- dynamic java_call/1." > java_calls.pl
 	find $(PROB2_PATH) -name *.java -exec perl -ne'print "java_call($$1).\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
