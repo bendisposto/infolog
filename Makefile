@@ -30,7 +30,7 @@ infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache
 	@echo "Generating CSV FIle"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
 
-infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl
+infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl
 	@echo "Generating Data for website"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
 
@@ -59,7 +59,7 @@ run_server:
 
 server: ui infolog.edn indy.edn run_server
 
-prolog-analyzer/java_calls.pl:
+prolog-analyzer/java_calls.pl: Makefile
 	@echo "Extracting Prolog calls from ProB 2.0 Java API"
 	@echo ":- dynamic java_call/1." > java_calls.pl
 	find $(PROB2_PATH) -name *.java -exec perl -ne'print "java_call($$1).\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
