@@ -61,8 +61,8 @@ server: ui infolog.edn indy.edn run_server
 
 prolog-analyzer/java_calls.pl: Makefile
 	@echo "Extracting Prolog calls from ProB 2.0 Java API"
-	@echo ":- dynamic java_call/1." > java_calls.pl
-	find $(PROB2_PATH) -name *.java -exec perl -ne'print "java_call($$1).\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
+	@echo ":- dynamic java_call/2." > prolog-analyzer/java_calls.pl
+	find $(PROB2_PATH) -type f \( -iname \*.java -o -iname \*.groovy \) -exec perl -ne'print "java_call($$1,\"'{}'\").\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
 
 prolog-analyzer/tcltk_calls.ack: Makefile
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
