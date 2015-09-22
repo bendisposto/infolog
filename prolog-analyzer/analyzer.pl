@@ -1290,7 +1290,8 @@ analyze_clause((Head :- Body), Layout, Module, _File) :-
     layout_sub_term(Layout,3,LayoutSub),
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]),
-    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout).
+    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout),
+    lint_body(Module,Name,Arity,Head,Body,Layout).
 
 analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
     !,
@@ -1301,7 +1302,8 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
     assert_head(Predicate, LayoutHead),
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]), % TO DO: add two args to Head ?
-    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout).
+    analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout),
+    lint_body(Module,Name,Arity,Head,Body,Layout).
 
 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
@@ -1316,6 +1318,7 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     Predicate = Module:Name/Arity,
     assert_head(Predicate, Layout).
 
+% --------------------------------
 % analyze_clause_complexity
 analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
@@ -1364,6 +1367,26 @@ add_call(otherwise) --> !,[].
 add_call(fail) --> !,[].
 add_call(true) --> !,[].
 add_call(_,cacc(L,M,Calls),cacc(L,M,C1)) :- C1 is Calls+1.
+
+% --------------------------------
+% detect some obvious anti-patterns, problems in a clause:
+lint_body(Module,Name,Arity,_Head,Body,Layout) :-
+    (dangerous_cut(Body,Layout,StartLine, EndLine)
+     -> Loc = module_pred_lines(Module,Name/Arity,StartLine,EndLine),
+        mk_problem(dangerous_cut(Name,Arity),Loc),
+        fail).
+lint_body(_,_,_,_,_,_).
+    
+% look for dangerous cuts  p(..) :- Test,!,   A ; B.
+dangerous_cut(';'(A,_),Layout,StartLine, EndLine) :-
+   layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine).
+contains_cut('!',Layout,StartLine, EndLine) :- get_position(Layout,StartLine,EndLine).
+% we could check if ! is not the last call; something like (p,q,! ; r,s) is possibly ok
+contains_cut((A,B),Layout,StartLine, EndLine) :- 
+    layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine)
+     ; layout_sub_term(Layout,2,LayoutB),contains_cut(B,LayoutB,StartLine, EndLine).
+
+
 
 % analyzef/5
 % analyze foreign declarations
