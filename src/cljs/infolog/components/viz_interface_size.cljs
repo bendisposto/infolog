@@ -115,7 +115,10 @@
                                 module (aget d "module")
                                 x (aget d "x")
                                 y (aget d "y")]
-                            (reset! hover-text [(if module (str module ":" name) name) x y]))))
+                            (reset! hover-text
+                                    [(if module
+                                       [:div [:div [:b name]] [:div "Exported: " (aget d "size")]]
+                                       [:div [:div [:b name]] [:div "Children: " (count (aget d "children"))]]) x y]))))
         (on "mouseout" (fn [_] (reset! hover-text ["" 0 0]))))))
 
 (defn mount-fn [rc data]
