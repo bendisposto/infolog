@@ -25,6 +25,8 @@
               (value (fn [d] (aget d "size")))))
 
 (def focus (r/atom "root"))
+(def focus-module (r/atom nil))
+
 (def hover-text (r/atom ""))
 
 (defn translate
@@ -108,10 +110,20 @@
                                :otherwise "WhiteSmoke"))))
         (attr "fill-opacity" (fn [d] (aget d "weight")))
         (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
+
         (on "click" (fn [d]
-                      (if (aget d "inner-node")
-                        (zoom d)
-                        (let [d (aget d "parent")] (zoom d)))))
+                      (let [fm @focus-module
+                            inode (aget d "inner-node")
+                            dz (if inode d (aget d "parent"))
+                            name (aget d "name")
+                            name (if (= "root" name) "" name)
+                            module (aget d "module")]
+                        (if inode
+                          (reset! focus "")
+                          (reset! focus (str module " " name)))
+                        (reset! focus-module dz)
+                        (when-not (= dz fm) (zoom dz)))))
+
         (on "mouseover" (fn [d]
                           (let [name (aget d "name")
                                 name (if (= "root" name) "" name)
@@ -157,7 +169,11 @@
                          :left (str x "px")
                          :top (str y "px")}} text]))
 
+(defn copyandpaste []
+  [:div "Selected: " @focus])
+
 (defn nesting-viz []
   [:div
    [hover]
-   [viz]])
+   [viz]
+   [copyandpaste]])
