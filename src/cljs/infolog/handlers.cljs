@@ -118,6 +118,7 @@
                     :modules (extend-with-paths prefix (:defined_module result))
                     :use-modules (:depends_on result)
                     :dependencies deps
+                    :predicates (:predicate result)
                     :module-size (module-size (:is_exported result))
                     :call-complexity (call-complexity raw-call)
                     :nesting (map nesting->map (:clause_complexity result))

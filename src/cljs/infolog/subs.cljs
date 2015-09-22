@@ -57,8 +57,7 @@
  :module-internal-size
  (fn [db]
    (let [r (->> @db
-                :nesting
-                (map (fn [{:keys [module pa]}] [module pa]))
+                :predicates
                 (group-by first)
                 (map (fn [[m g]] [m (count g)]))
                 (into {}))]
