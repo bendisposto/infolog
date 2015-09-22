@@ -53,6 +53,18 @@
  :module-size
  (fn [db] (reaction (:module-size @db))))
 
+(re-frame/register-sub
+ :module-internal-size
+ (fn [db]
+   (let [r (->> @db
+                :nesting
+                (map (fn [{:keys [module pa]}] [module pa]))
+                (group-by first)
+                (map (fn [[m g]] [m (count g)]))
+                (into {}))]
+     (logp r)
+     (reaction r))))
+
 
 (re-frame/register-sub
  :dep-sort-modules

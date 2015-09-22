@@ -49,20 +49,21 @@
 (defn make-module-db [modules]
   (into {} (map (fn [{:keys [name] :as e}] [name e]) modules)))
 
-(defn join-data [mods data]
-  (map (fn [[name size]]
-         (let [weight 0
+(defn join-data [mods data internal-size]
+  (map (fn [[name exported]]
+         (let [size (get internal-size name 1000)
+               weight (double (/ exported size))
                module-name name
                module-path (conj (vec (:path (mods module-name))) module-name)]
            {:module module-name
             :path module-path
             :name name
-            :size size :weight weight :children []}))
+            :size size :exported exported :weight weight :children []}))
        data))
 
-(defn mk-data [modules data]
+(defn mk-data [modules data internal-size]
   (let [mods (make-module-db @modules)
-        joined (join-data mods @data)
+        joined (join-data mods @data @internal-size)
         nodes (create-structure "root" joined)]
     (reaction nodes)))
 
@@ -117,7 +118,11 @@
                                 y (aget d "y")]
                             (reset! hover-text
                                     [(if module
-                                       [:div [:div [:b name]] [:div "Exported: " (aget d "size")]]
+                                       [:div
+                                        [:div [:b name]]
+                                        [:div "Predicates: " (aget d "size")]
+                                        [:div "Exported: " (aget d "exported")]
+                                        [:div "Ratio: " (.toFixed (* 100 (aget d "weight")) 1) "%"]]
                                        [:div [:div [:b name]] [:div "Children: " (count (aget d "children"))]]) x y]))))
         (on "mouseout" (fn [_] (reset! hover-text ["" 0 0]))))))
 
@@ -142,7 +147,7 @@
 
 (defn viz []
   (let [modules (re-frame/subscribe [:raw-modules])
-        data (mk-data modules (re-frame/subscribe [:module-size]))]
+        data (mk-data modules (re-frame/subscribe [:module-size]) (re-frame/subscribe [:module-internal-size]))]
     (r/create-class
      {:component-did-mount (fn [rc] (mount-fn rc @data))
       :component-did-update (fn [_] (update-fn @data))
