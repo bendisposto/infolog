@@ -49,6 +49,10 @@
  (fn [db]
    (reaction (clojure.set/map-invert (:modules @db)))))
 
+(re-frame/register-sub
+ :module-size
+ (fn [db] (reaction (:module-size @db))))
+
 
 (re-frame/register-sub
  :dep-sort-modules

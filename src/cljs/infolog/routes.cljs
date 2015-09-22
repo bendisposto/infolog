@@ -16,10 +16,15 @@
     (.setEnabled true)))
 
 (defn text [kw]
-  (or ({:Viz:Nesting "AST-Nesting"} kw)
+  (or ({:Viz-Nesting "AST-Nesting"
+        :Viz-InterfaceSize "Interface Size"} kw)
       (str (name kw))))
 
-(def navigation [:Problems :Dependencies ["Complexity" :Indentation :AST-Nesting] ["Visualizations" :Viz:Nesting]])
+(def navigation
+  [:Problems
+   :Dependencies
+   ["Complexity" :Indentation :AST-Nesting]
+   ["Visualizations" :Viz-Nesting :Viz-InterfaceSize]])
 
 (defn pages []
   (doall (filter keyword? (flatten navigation))))
@@ -33,6 +38,7 @@
   (defroute "/" []
     (re-frame/dispatch [:set-active-page :Problems]))
 
+  
   (doseq [p (pages)]
     (defroute (str "/" (name p)) []
       (re-frame/dispatch [:set-active-page p])))
