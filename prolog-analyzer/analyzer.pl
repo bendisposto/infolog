@@ -57,7 +57,7 @@ clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLi
 
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/7],
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/7, predicate/2, is_exported/2],
    export_to_file(Format,File,List).
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),

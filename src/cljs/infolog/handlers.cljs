@@ -98,6 +98,12 @@
        (sort-by second)
        reverse))
 
+(defn module-size [data]
+  (->> data
+       (group-by first)
+       (map (fn [[m g]] [m (count g)]))
+       (into {})))
+
 (re-frame/register-handler
  :process-infolog-edn
  (fn [db [_ r]]
@@ -112,6 +118,8 @@
                     :modules (extend-with-paths prefix (:defined_module result))
                     :use-modules (:depends_on result)
                     :dependencies deps
+                    :predicates (:predicate result)
+                    :module-size (module-size (:is_exported result))
                     :call-complexity (call-complexity raw-call)
                     :nesting (map nesting->map (:clause_complexity result))
                     :raw-calls raw-call)]

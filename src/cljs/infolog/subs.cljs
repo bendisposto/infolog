@@ -49,6 +49,21 @@
  (fn [db]
    (reaction (clojure.set/map-invert (:modules @db)))))
 
+(re-frame/register-sub
+ :module-size
+ (fn [db] (reaction (:module-size @db))))
+
+(re-frame/register-sub
+ :module-internal-size
+ (fn [db]
+   (let [r (->> @db
+                :predicates
+                (group-by first)
+                (map (fn [[m g]] [m (count g)]))
+                (into {}))]
+     (logp r)
+     (reaction r))))
+
 
 (re-frame/register-sub
  :dep-sort-modules

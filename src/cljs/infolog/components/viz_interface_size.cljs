@@ -1,4 +1,4 @@
-(ns infolog.components.viz-nesting
+(ns infolog.components.viz-interface-size
   (:require-macros [reagent.ratom :refer [reaction]])
   (:require [re-frame.core :as re-frame]
             [reagent.core :as r]
@@ -25,8 +25,6 @@
               (value (fn [d] (aget d "size")))))
 
 (def focus (r/atom "root"))
-(def focus-module (r/atom nil))
-
 (def hover-text (r/atom ""))
 
 (defn translate
@@ -51,23 +49,21 @@
 (defn make-module-db [modules]
   (into {} (map (fn [{:keys [name] :as e}] [name e]) modules)))
 
-(defn join-data [max-depth mods data]
-  (map (fn [[_ clauses]]
-         (let [size (reduce + (map :calls-in-body clauses))
-               depth (apply max (map :depth clauses))
-               weight (double (/ depth max-depth))
-               module-name (:module (first clauses))
+(defn join-data [mods data internal-size]
+  (map (fn [[name exported]]
+         (let [size (get internal-size name 1000)
+               weight (double (/ exported size))
+               module-name name
                module-path (conj (vec (:path (mods module-name))) module-name)]
            {:module module-name
             :path module-path
-            :name (:pa (first clauses))
-            :size size :weight weight :children []}))
-       (group-by :mpa data)))
+            :name name
+            :size size :exported exported :weight weight :children []}))
+       data))
 
-(defn mk-data [modules data]
+(defn mk-data [modules data internal-size]
   (let [mods (make-module-db @modules)
-        max-depth (apply max (map :depth @data))
-        joined (join-data max-depth mods @data)
+        joined (join-data mods @data @internal-size)
         nodes (create-structure "root" joined)]
     (reaction nodes)))
 
@@ -110,27 +106,24 @@
                                :otherwise "WhiteSmoke"))))
         (attr "fill-opacity" (fn [d] (aget d "weight")))
         (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
-
         (on "click" (fn [d]
-                      (let [fm @focus-module
-                            inode (aget d "inner-node")
-                            dz (if inode d (aget d "parent"))
-                            name (aget d "name")
-                            name (if (= "root" name) "" name)
-                            module (aget d "module")]
-                        (if inode
-                          (reset! focus "")
-                          (reset! focus (str module " " name)))
-                        (reset! focus-module dz)
-                        (when-not (= dz fm) (zoom dz)))))
-
+                      (if (aget d "inner-node")
+                        (zoom d)
+                        (let [d (aget d "parent")] (zoom d)))))
         (on "mouseover" (fn [d]
                           (let [name (aget d "name")
                                 name (if (= "root" name) "" name)
                                 module (aget d "module")
                                 x (aget d "x")
                                 y (aget d "y")]
-                            (reset! hover-text [(if module (str module ":" name) name) x y]))))
+                            (reset! hover-text
+                                    [(if module
+                                       [:div
+                                        [:div [:b name]]
+                                        [:div "Predicates: " (aget d "size")]
+                                        [:div "Exported: " (aget d "exported")]
+                                        [:div "Ratio: " (.toFixed (* 100 (aget d "weight")) 1) "%"]]
+                                       [:div [:div [:b name]] [:div "Children: " (count (aget d "children"))]]) x y]))))
         (on "mouseout" (fn [_] (reset! hover-text ["" 0 0]))))))
 
 (defn mount-fn [rc data]
@@ -154,7 +147,7 @@
 
 (defn viz []
   (let [modules (re-frame/subscribe [:raw-modules])
-        data (mk-data modules (re-frame/subscribe [:nesting]))]
+        data (mk-data modules (re-frame/subscribe [:module-size]) (re-frame/subscribe [:module-internal-size]))]
     (r/create-class
      {:component-did-mount (fn [rc] (mount-fn rc @data))
       :component-did-update (fn [_] (update-fn @data))
@@ -169,11 +162,7 @@
                          :left (str x "px")
                          :top (str y "px")}} text]))
 
-(defn copyandpaste []
-  [:div "Selected: " @focus])
-
-(defn nesting-viz []
+(defn interface-size-viz []
   [:div
    [hover]
-   [viz]
-   [copyandpaste]])
+   [viz]])

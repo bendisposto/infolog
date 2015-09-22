@@ -6,6 +6,7 @@
             [infolog.components.module-dependencies :refer [dependency-graph]]
             [infolog.components.indentation-analysis :refer [complexity-viz]]
             [infolog.components.viz-nesting :refer [nesting-viz]]
+            [infolog.components.viz-interface-size :refer [interface-size-viz]]
             [infolog.routes :refer [page navigation text]]
             [cljsjs.c3]
             [cljsjs.d3]))
@@ -114,14 +115,13 @@
                                                                                       (< (:calls-in-body row) 25))) @nesting))))))]))
 
 
-
-
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
 (defmethod page :Indentation [] [indentation-view])
 (defmethod page :AST-Nesting [] [nesting-view])
-(defmethod page :Viz:Nesting [] [nesting-viz])
+(defmethod page :Viz-Nesting [] [nesting-viz])
+(defmethod page :Viz-InterfaceSize [] [interface-size-viz])
 (defmethod page :default [] [:h1 "Unknown page"])
 
 (defn render-navigation [active navigation]
@@ -151,13 +151,4 @@
         (page @active)]])))
 
 
-#_(defn main-panel []
-    (fn []
-      (let [compl (re-frame/subscribe [:call-complexity])
-            modcompl (group-by ffirst @compl)]
-        [:div
-         (into [:ul]
-               (map (fn [[m x]]
-                      [:li (str m)
-                       (into [:ul]
-                             (map (fn [[[_ p a] ct]] [:li (str p "/" a " -> " ct)]) x))]) modcompl))])))
+
