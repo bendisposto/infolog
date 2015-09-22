@@ -26,6 +26,7 @@ portray_message(informational, _).
     is_volatile/2,   % is_volatile(module,name/arity)
     is_chr_constraint/2,   % is_chr_constraint(module,name/arity)
     is_attribute/2,  % is_attribute(module,name/arity)
+    is_foreign/2,    % is_foreign(module,name/arity)
     is_meta/2,       % is_meta(module:name/arity, meta_arguments)
     klaus/4,         % klaus(module,name/arity,  startline, endline)
     calling/6,       % calling(callingmodule,callingpredicate/callingarity, module,name/arity, startline, endline)
@@ -40,6 +41,14 @@ portray_message(informational, _).
     problem/2.       % problem(details,Loc)
 :- dynamic
     clause_complexity/6.  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine)
+
+% optionally the following can also be stored:
+:- dynamic
+   next_stored_clause_nr/1, % nr of clauses stored
+   stored_clause/4,  % stored_clause(Module,Head,Body,Layout)
+   stored_call/4.    % stored_call(Module,Call,FromModule,Layout)
+% The following line needs to be commented in so that these facts are generated
+%% next_stored_clause_nr(0). %% 
 
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
@@ -221,14 +230,17 @@ vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
 
 % check various way a module:call can be defined:
 is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
-is_defined(ToModule,Call) :- is_dynamic(ToModule,Call).
-is_defined(ToModule,Call) :- is_chr_constraint(ToModule,Call).
-is_defined(ToModule,Call) :- is_attribute(ToModule,Call).
-is_defined(ToModule,Call) :-  is_library_module(ToModule),
+is_defined(ToModule,Call) :- has_no_clauses(ToModule,Call).
+
+has_no_clauses(ToModule,Call) :- is_dynamic(ToModule,Call).
+has_no_clauses(ToModule,Call) :- is_chr_constraint(ToModule,Call).
+has_no_clauses(ToModule,Call) :- is_attribute(ToModule,Call).
+has_no_clauses(ToModule,Call) :- is_foreign(ToModule,Call).
+has_no_clauses(ToModule,Call) :-  is_library_module(ToModule),
   (library_export_list_available(ToModule)
    -> (is_exported_by_library(ToModule,Call) -> true ; private_library_predicate(ToModule,Call))
     ; true). % list not available, assume it is defined
-is_defined(ToModule,Call) :- depends_on(ToModule,OtherModule),
+has_no_clauses(ToModule,Call) :- depends_on(ToModule,OtherModule),
   is_exported(OtherModule,Call). % Assume it is ok; an error would be generated in the other module ?! TO DO: we could recursively check if we can reach a definition
 
 % ==========================================
@@ -354,6 +366,9 @@ infolog_problem(dead_code(exported),warning,informat('Exported predicate not use
 infolog_problem(useless_import,warning,informat('Imported predicate not used: ~w:~w',[M,P]),
                                         module_loc(From)) :- % TO DO: we could compute line info of first clause
         uia,useless_import(From,M,P).
+infolog_problem(non_unifying_call,warning,informat('Call unifies with no clause: ~w:~w',[M,Call]),
+                                        module_lines(FromModule,L1,L2)) :-
+        non_unifying_call(M,Call,FromModule,L1,L2).
 
 :- use_module(library(terms),[term_hash/2]).
 infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
@@ -601,6 +616,21 @@ dot_gen_dep(Module) :-
     il_gen_dot_graph('infolog.dot',user,dot_state_node,dot_state_trans,none,none).
 
 % -------------------------------------------
+
+% analyze stored clauses and detect obvious errors
+
+non_unifying_call(Module,Call,FromModule,SL,EL) :-
+   %next_stored_clause_nr(N), format('Analyzing clauses in Module: ~w (total clauses ~w)~n',[Module,N]),
+   stored_call(Module,Call,FromModule,Layout),
+   \+ stored_clause(Module,Call,_,_),
+   Module \= built_in,
+   Module \= undefined_module, % already reported as error
+   functor(Call,Pred,Arity),
+   \+ has_no_clauses(Module,Pred/Arity),
+   get_position(Layout,SL,EL),
+   numbervars(Call,0,_).
+   %format('No match for ~w in ~w:~w-~w~n',[Call,FromModule,SL,EL]).
+non_unifying_call(_,_,_,_,_).
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
@@ -999,6 +1029,7 @@ analyze_body(Module:Call,Layout, CallingPredicate, DCG, _Info) :-
 
 analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
   CallingPredicate = Module:N/A,
+  store_call(DCG,Call,Layout,Module), % optionally store actual call, not just arity
   (functor(Call,N,A) ->
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
@@ -1287,6 +1318,7 @@ analyze_clause((Head :- Body), Layout, Module, _File) :-
     Predicate = Module:Name/Arity,
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    store_clause(no_dcg,Module,Head,Body,Layout),
     layout_sub_term(Layout,3,LayoutSub),
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]),
@@ -1300,6 +1332,7 @@ analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head 
     Predicate = Module:Name/Arity,
     layout_sub_term(Layout,2,LayoutHead),
     assert_head(Predicate, LayoutHead),
+    store_clause(dcg,Module,Head,Body,Layout),
     layout_sub_term(Layout,3,LayoutSub),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]), % TO DO: add two args to Head ?
     analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout),
@@ -1316,7 +1349,8 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     %nl,print(fact(Fact)),nl,
     functor(Fact,Name,Arity),
     Predicate = Module:Name/Arity,
-    assert_head(Predicate, Layout).
+    assert_head(Predicate, Layout),
+    store_clause(no_dcg,Module,Fact,true,Layout).
 
 % --------------------------------
 % analyze_clause_complexity
@@ -1381,7 +1415,7 @@ lint_body(_,_,_,_,_,_).
 dangerous_cut(';'(A,_),Layout,StartLine, EndLine) :-
    layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine).
 contains_cut('!',Layout,StartLine, EndLine) :- get_position(Layout,StartLine,EndLine).
-% we could check if ! is not the last call; something like (p,q,! ; r,s) is possibly ok
+% we could check if ! is not the last call; something like (p,q,! ; r,s) is possibly oks
 contains_cut((A,B),Layout,StartLine, EndLine) :- 
     layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine)
      ; layout_sub_term(Layout,2,LayoutB),contains_cut(B,LayoutB,StartLine, EndLine).
@@ -1394,17 +1428,54 @@ analyzef(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity)
     !,
     functor(PredSpec,_,Arity),
     Predicate = Module:Name/Arity,
+    assert_if_new(is_foreign(Module,Name/Arity)),
     assert_head(Predicate, Layout).
 
 analyzef(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
     analyzef(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
 
-
+% assert the head of a newly found clause or fact:
 assert_head(Predicate, Layout) :-
     decompose_call(Predicate,M,P),
     assert_if_new(predicate(M,P)),
     get_position(Layout, StartLine, EndLine),
     assert(klaus(M,P,  StartLine, EndLine)).
+
+% optionally store clauses; will require much more time and memory
+%:- dynamic next_stored_clause_nr/1, stored_clause/4.
+store_clause(DCG,Module,Head,Body,Layout) :- retract(next_stored_clause_nr(N)),!,
+    adapt_call_for_dcg(DCG,Head,AHead),
+    assert(stored_clause(Module,AHead,Body,Layout)),
+    N1 is N+1, assert(next_stored_clause_nr(N1)).
+% TO DO: deal with DCG BODY
+store_clause(_,_,_,_,_).
+
+% optionally store actual calls; not just pred/arity
+store_call(_,_,_,_) :- \+ next_stored_clause_nr(_),!. % storing disabled
+store_call(no_dcg,Builtin,_,_) :- built_in_call(Builtin),!.
+store_call(DCG,Module:Call,Layout,FromModule) :- !,
+    adapt_call_for_dcg(DCG,Call,ACall),
+    assert(stored_call(Module,ACall,FromModule,Layout)).
+store_call(DCG,Call,Layout,FromModule) :- !,
+    adapt_call_for_dcg(DCG,Call,ACall),
+    assert(stored_call(module_yet_unknown,ACall,FromModule,Layout)).
+
+adapt_call_for_dcg(no_dcg,C,R) :- !, R=C.
+adapt_call_for_dcg(dcg,Call,NewCall) :- Call =.. [Pred|Args],
+    append(Args,[_,_],NewArgs),
+    NewCall =.. [Pred|NewArgs].
+
+built_in_call(otherwise).
+built_in_call(true).
+built_in_call(fail).
+built_in_call(append(_,_,_)).
+built_in_call(!).
+built_in_call(nl).
+built_in_call(print(_)).
+built_in_call(write(_)).
+built_in_call(format(_,_)).
+built_in_call(format(_,_,_)).
+% -------------------
 
 decompose_call(M:P,MR,PR) :- !,decompose_call2(P,M,MR,PR). % peel off all : module constructors
 decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
@@ -1440,6 +1511,11 @@ update :-
     get_module(Name, Arity, CallingModule, Module, module_pred_lines(CallingModule,CallingPred,Start,End)),
     assert_if_new(predicate(Module,Name/Arity)),
     assert_if_new(calling(CallingModule,CallingPred, Module,Name/Arity, Start, End)),
+    fail.
+update :- retract(stored_call(module_yet_unknown,Call,FromModule,Layout)),
+    functor(Call,Name,Arity),
+    get_module(Name, Arity, FromModule, Module, _),
+    assert_if_new(stored_call(Module,Call,FromModule,Layout)),
     fail.
 update.
 
