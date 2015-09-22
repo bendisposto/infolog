@@ -151,13 +151,4 @@
         (page @active)]])))
 
 
-#_(defn main-panel []
-    (fn []
-      (let [compl (re-frame/subscribe [:call-complexity])
-            modcompl (group-by ffirst @compl)]
-        [:div
-         (into [:ul]
-               (map (fn [[m x]]
-                      [:li (str m)
-                       (into [:ul]
-                             (map (fn [[[_ p a] ct]] [:li (str p "/" a " -> " ct)]) x))]) modcompl))])))
+
