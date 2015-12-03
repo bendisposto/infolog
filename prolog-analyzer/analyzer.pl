@@ -1207,6 +1207,7 @@ x_unwrap_module(probltlsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probpgesrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(smtlib_solver(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(symbolic_model_checker(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(prob_rewrite_rules(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(extension(E),Y) :- !, remove_opt_path(E,Y).
 x_unwrap_module(Path,X) :- atom(Path),
     atom_chars(Path,PathChars),
@@ -1514,7 +1515,8 @@ update :-
     fail.
 update :- retract(stored_call(module_yet_unknown,Call,FromModule,Layout)),
     functor(Call,Name,Arity),
-    get_module(Name, Arity, FromModule, Module, _),
+    get_position(Layout,SL,EL),
+    get_module(Name, Arity, FromModule, Module, module_lines(FromModule,SL,EL)),
     assert_if_new(stored_call(Module,Call,FromModule,Layout)),
     fail.
 update.
