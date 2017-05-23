@@ -65,13 +65,18 @@ prolog-analyzer/java_calls.pl: Makefile
 	find $(PROB2_PATH) -type f \( -iname \*.java -o -iname \*.groovy \) -exec perl -ne'print "java_call($$1,\"'{}'\").\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
 
 prolog-analyzer/tcltk_calls.ack: Makefile
-	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl
+	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl 
 	 ack -o    '(?<=prolog)\s+("?(\{|\()?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
 	 ack -o '(?<=prologmnf)\s+("?(\{|\()?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
+	 ack -o '(?<=prologmnfi)\s+("?(\{|\()?)([[a-zA-Z0-9_:]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
 
 prolog-analyzer/tcltk_calls.pl: prolog-analyzer/tcltk_calls.ack prolog-analyzer/tcltk_call_importer.pl
 	@echo "Importing Calls from ProB Tcl/Tk interface"
 	sicstus -l prolog-analyzer/tcltk_call_importer.pl --goal "process_file('prolog-analyzer/tcltk_calls.ack'),generate_prolog_file('prolog-analyzer/tcltk_calls.pl'),halt."
+
+cp_tcltk_calls: prolog-analyzer/tcltk_calls.pl
+	@echo "Copying tcltk_calls.pl to ProB src/tcltk directory (for BBEdit search)"
+	cp prolog-analyzer/tcltk_calls.pl $(ABSOLUTE_PROB_PATH)/src/tcltk/
 
 prolog-analyzer/meta_preds.pl: prolog-analyzer/meta_pred_generator.pl
 	sicstus -l prolog-analyzer/meta_pred_generator.pl --goal "tell('prolog-analyzer/meta_preds.pl'),gen,told,halt."
