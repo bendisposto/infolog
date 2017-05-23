@@ -48,7 +48,7 @@ portray_message(informational, _).
    stored_clause/4,  % stored_clause(Module,Head,Body,Layout)
    stored_call/4.    % stored_call(Module,Call,FromModule,Layout)
 % The following line needs to be commented in so that these facts are generated
-%% next_stored_clause_nr(0). %% 
+ next_stored_clause_nr(0). %% 
 
 %is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
 
@@ -613,7 +613,9 @@ dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ is_library_modu
 dot_gen_dep(Module) :-
     defined_module(Module,_),
     transitive_closure(depends_on(Module,_),depends_on,depends_on_transitive),
-    il_gen_dot_graph('infolog.dot',user,dot_state_node,dot_state_trans,none,none).
+    File = 'infolog.dot',
+    format('Generating depends_on graph for ~w into file ~w~n',[Module,File]),
+    il_gen_dot_graph(File,user,dot_state_node,dot_state_trans,none,none).
 
 % -------------------------------------------
 
@@ -683,13 +685,15 @@ assert2(Pred,X,Y) :- binop(Fact,Pred,X,Y), assert_if_new(Fact).
 compute_cycles :- retractall(depends_on_transitive(_,_)),
     start_analysis_timer(T1),
     transitive_closure(depends_on,depends_on_transitive),
-    stop_analysis_timer(T1).
+    stop_analysis_timer(T1),
+    (depends_on_transitive(A,A), format('Cyclic dependency: ~w~n',[A]),fail ; true).
 
 :- dynamic calling_transitive/2.
 compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
     transitive_closure(calling(From:Call,_),calling,calling_transitive),
-    stop_analysis_timer(T1).
+    stop_analysis_timer(T1),
+    (calling_transitive(A,B), format('Dependency: ~w -> ~w~n',[A,B]),fail ; true).
 
 % compute the predicates within a module that M:P depends on
 % helps in refactoring (deciding what else would need to move or be imported if we move M:P to another module)
@@ -773,7 +777,7 @@ il_foldl2([Elem|Rest],Pred,OldValue,NewValue) :-
 
 % ==========================================
 
-%% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
+%% Entry-point: analyze_clj("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
 analyze_clj(InputFile,OutputFile) :-
     analyze(InputFile),
@@ -782,24 +786,25 @@ analyze_clj(InputFile,OutputFile) :-
     export_to_clj_file(OutputFile),
     stop_analysis_timer(T3).
 
+%% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")
 analyze(InputFiles,CacheFile) :-
-    format('Loading meta_predicate cache file ~w~n',[CacheFile]),
+    format('~nINFOLOG: Loading meta_predicate cache file ~w~n',[CacheFile]),
     ensure_loaded(CacheFile),
     analyse_files(InputFiles),
-    (meta_user_pred_cache_needs_updating -> write_meta_user_pred_cache(CacheFile) ; format('meta_predicate cache up-to-date.~n',[])).
+    (meta_user_pred_cache_needs_updating -> write_meta_user_pred_cache(CacheFile) ; format('INFOLOG: meta_predicate cache up-to-date.~n',[])).
 analyze(InputFiles) :- analyze(InputFiles,'meta_user_pred_cache.pl').
 
 analyse_files(InputFiles) :-
     start_analysis_timer(T0),
-    print('precompiling'),nl,
+    print('INFOLOG: precompiling library_modules'),nl,
     precompile_library_modules,
     stop_analysis_timer(T0),
-    print('loading modules'),nl,
+    format('INFOLOG: loading modules: ~w~n',[InputFiles]),
     start_analysis_timer(T1),
     use_source_modules(InputFiles),
     nl,
     stop_analysis_timer(T1),
-    nl, print('updating calls'), nl,
+    nl, print('INFOLOG: updating calls'), nl,
     start_analysis_timer(T2),
     update,
     compute_indexing_facts,
@@ -808,7 +813,10 @@ analyse_files(InputFiles) :-
 
 % works with single file or multiple files:
 use_source_modules([]) :- !.
-use_source_modules([H|T]) :- !, use_module(H), use_source_modules(T).
+use_source_modules([H|T]) :- !, format('~nINFOLOG: loading module: ~w~n',[H]),
+                                use_module(H),
+                                format('~nINFOLOG: finished loading module: ~w~n',[H]),
+                                use_source_modules(T).
 use_source_modules(M) :- use_module(M).
 
 
@@ -816,7 +824,7 @@ start_analysis_timer(timer(R,T,W)) :- statistics(runtime,[R,_]),
    statistics(total_runtime,[T,_]),
    statistics(walltime,[W,_]).
 stop_analysis_timer(T) :- stop_analysis_timer(T,[runtime/RT,total_runtime/RTT,walltime/WT]),
-   format('% Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
+   format('% INFOLOG: Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
 stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!,
    statistics(runtime,[RE,_]),
    statistics(total_runtime,[TE,_]),
@@ -853,11 +861,12 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
-layout_sub_term([],N,[]) :- !, format('~n*** Could not obtain layout information (~w)~n',[N]).
-layout_sub_term([H|T],N,Res) :- !,
-    (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res)).
-layout_sub_term(Term,N,Res) :-
-    format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res)]), % can happen when add_args adds new positions which did not exist
+layout_sub_term(Layout,Position,Result) :- layout_sub_term(Layout,Position,Result,unknown).
+layout_sub_term([],N,[],Loc) :- !, format('~n*** Could not obtain layout information (~w) at ~w.~n',[N,Loc]).
+layout_sub_term([H|T],N,Res,Loc) :- !,
+    (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res,Loc)).
+layout_sub_term(Term,N,Res,Loc) :-
+    format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res,Loc)]), % can happen when add_args adds new positions which did not exist
     Res=Term.
 
 
@@ -950,7 +959,7 @@ analyze_body(X,Layout,CallingPredicate,dcg,_) :-
 
 % { ... } prevents DCGs from adding additional arguments
 analyze_body({X},Layout,CallingPredicate,_DCG, Info) :- !,
-    layout_sub_term(Layout,2,LayoutX),
+    layout_sub_term(Layout,2,LayoutX,body_of_calling_predicate(CallingPredicate,Info)),
     analyze_body(X,LayoutX,CallingPredicate,no_dcg, Info).
 
 %analyze_body(~~X,Layout,CallingPredicate,DCG) :- !,
@@ -969,44 +978,47 @@ analyze_body(X,_,_,dcg, _Info) :- is_list(X),!.
 analyze_body(\+(X),Layout, CallingPredicate, DCG, Info) :-
     !,
     assert_call(CallingPredicate, built_in:not(X), Layout, DCG),
-    layout_sub_term(Layout,2,LayoutX),
+    layout_sub_term(Layout,2,LayoutX,negation_in_body(CallingPredicate,Info)),
     safe_analyze_body(X,LayoutX,CallingPredicate,DCG, Info).
 
 analyze_body((A -> B ; C),Layout, CallingPredicate, DCG, Info) :-
     !,
     assert_call(CallingPredicate, built_in:'->'(_,_,_), Layout, DCG),
-    layout_sub_term(Layout,2,LayoutAB),
-    layout_sub_term(LayoutAB,2,LayoutA),
-    layout_sub_term(LayoutAB,3,LayoutB),
-    layout_sub_term(Layout,3,LayoutC),
+    layout_sub_term(Layout,2,LayoutAB,ifte_body(CallingPredicate,Info)),
+    layout_sub_term(LayoutAB,2,LayoutA,ifte_body(CallingPredicate,Info)),
+    layout_sub_term(LayoutAB,3,LayoutB,ifte_body(CallingPredicate,Info)),
+    layout_sub_term(Layout,3,LayoutC,ifte_body(CallingPredicate,Info)),
     safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
     safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info),
     safe_analyze_body(C,LayoutC, CallingPredicate, DCG, Info).
 
 analyze_body((A,B),Layout, CallingPredicate, DCG, Info) :-
   !,
-  layout_sub_term(Layout,2,LayoutA),
-  layout_sub_term(Layout,3,LayoutB),
+  layout_sub_term(Layout,2,LayoutA,conj1_body(CallingPredicate,Info)),
+  layout_sub_term(Layout,3,LayoutB,conj2_body(CallingPredicate,Info)),
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
 analyze_body((A;B),Layout, CallingPredicate, DCG, Info) :-
   !,
-  layout_sub_term(Layout,2,LayoutA),
-  layout_sub_term(Layout,3,LayoutB),
+  layout_sub_term(Layout,2,LayoutA,or1_body(CallingPredicate,Info)),
+  layout_sub_term(Layout,3,LayoutB,or2_body(CallingPredicate,Info)),
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
 analyze_body((A->B),Layout, CallingPredicate, DCG, Info) :-
   !,
-  layout_sub_term(Layout,2,LayoutA),
-  layout_sub_term(Layout,3,LayoutB),
+  layout_sub_term(Layout,2,LayoutA,body(CallingPredicate,Info)),
+  layout_sub_term(Layout,3,LayoutB,body(CallingPredicate,Info)),
   safe_analyze_body(A,LayoutA, CallingPredicate, DCG, Info),
   safe_analyze_body(B,LayoutB, CallingPredicate, DCG, Info).
 
-analyze_body(OrigMETA, Layout, CallingPredicate, DCG, Info) :-
-   (DCG=no_dcg -> META = OrigMETA
-     ; add_args(OrigMETA,2,META)
+analyze_body(OrigMETA, OrigLayout, CallingPredicate, DCG, Info) :-
+   (DCG=no_dcg
+    -> META = OrigMETA, Layout = OrigLayout
+     ; add_args(OrigMETA,2,META),
+       (OrigLayout = [L1|_] -> append(OrigLayout,[L1,L1],Layout)
+        ; Layout = [OrigLayout,OrigLayout,OrigLayout]) % does not seem to work
    ),
    meta_pred(META,MODULE,List),
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
@@ -1055,7 +1067,7 @@ gen_user(_).
 add_meta_predicate(Module,Pattern) :-
    translate_meta_predicate_pattern(Pattern,Head,MetaArgList),
    (meta_user_pred(Head,Module,MetaArgList) -> true
-     ; format('~nAdding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
+     ; format('~nINFOLOG: Adding meta_user_pred(~w,~w,~w)~n',[Head,Module,MetaArgList]),
        assert(meta_user_pred(Head,Module,MetaArgList)),
        (meta_user_pred_cache_needs_updating -> true
         ; assert(meta_user_pred_cache_needs_updating),
@@ -1119,10 +1131,10 @@ analyze_sub_arg(DModule:META,MODULE, Layout, CallingPredicate, Info, meta_arg(Nr
   (DModule=MODULE -> true /* user provided additional module prefix; peel it off */
     ; format('*** Module prefix mismatch: ~w:~w (expected ~w)~n',[DModule,META,MODULE])),
    % we need to peel off layout to get to META:
-   layout_sub_term(Layout,3,LayoutM),
+   layout_sub_term(Layout,3,LayoutM,analyze_sub_arg_meta(CallingPredicate,Info)),
    analyze_sub_arg(META, MODULE, LayoutM, CallingPredicate, Info, meta_arg(Nr,ADD) ).
 analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- Nr1 is Nr+1,
-  layout_sub_term(Layout,Nr1,LayoutA),
+  layout_sub_term(Layout,Nr1,LayoutA,analyze_sub_arg(CallingPredicate,Info)),
   arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
   add_args(SubArg,ADD,SubArgADD),
   %format(' Analyze Sub ~w -> ~w  [ ~w ] (from ~w)~n',[Nr,ADD,SubArgADD,CallingPredicate]),
@@ -1196,6 +1208,7 @@ x_unwrap_module(library(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(kodkodsrc(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(probcspsrc(X),Y) :- !, remove_opt_path(X,Y).
+x_unwrap_module(probpromela(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(bparser(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(plugins(X),Y) :- !, remove_opt_path(X,Y).
 x_unwrap_module(abstract_domains(X),Y) :- !, remove_opt_path(X,Y).
@@ -1307,37 +1320,37 @@ analyze_clause((:- multifile(X)), _Layout, Module, _File) :-
        pairs_to_list(X,L),
        maplist(add_fact2(is_multifile, Module),L).
 
-analyze_clause(':-'(Body), Layout, Module, _File) :- %portray_clause(query(Body,Layout)),
+analyze_clause(':-'(Body), Layout, Module, File) :- %portray_clause(query(Body,Layout)),
     !,
-    layout_sub_term(Layout,2,LayoutSub),
+    layout_sub_term(Layout,2,LayoutSub,query(Module,File)),
     safe_analyze_body(Body,LayoutSub,Module:':-'/1, no_dcg, [query]). % TO DO: check why this fails
 
-analyze_clause((Head :- Body), Layout, Module, _File) :-
+analyze_clause((Head :- Body), Layout, Module, File) :-
     !, %portray_clause((Head :- Body)),
     functor(Head,Name,Arity),
     % nl,nl,print(layout_clause(Name/Arity,Head,Body)),nl,
     Predicate = Module:Name/Arity,
-    layout_sub_term(Layout,2,LayoutHead),
+    layout_sub_term(Layout,2,LayoutHead,clause(Module,File)),
     assert_head(Predicate, LayoutHead),
     store_clause(no_dcg,Module,Head,Body,Layout),
-    layout_sub_term(Layout,3,LayoutSub),
+    layout_sub_term(Layout,3,LayoutSub,clause(Module,File)),
     % (Name=force_non_empty -> trace ; true),
     safe_analyze_body(Body,LayoutSub, Predicate, no_dcg,[head/Head]),
     analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout),
-    lint_body(Module,Name,Arity,Head,Body,Layout).
+    lint_body(Module,Name,Arity,Head,Body,LayoutSub).
 
-analyze_clause((Head --> Body), Layout, Module, _File) :- %portray_clause((Head --> Body)),
+analyze_clause((Head --> Body), Layout, Module, File) :- %portray_clause((Head --> Body)),
     !,
     functor(Head,Name,WrongArity),
     Arity is WrongArity + 2,
     Predicate = Module:Name/Arity,
-    layout_sub_term(Layout,2,LayoutHead),
+    layout_sub_term(Layout,2,LayoutHead,dcg(Module,File)),
     assert_head(Predicate, LayoutHead),
     store_clause(dcg,Module,Head,Body,Layout),
-    layout_sub_term(Layout,3,LayoutSub),
+    layout_sub_term(Layout,3,LayoutSub,dcg(Module,File)),
     safe_analyze_body(Body,LayoutSub, Predicate, dcg, [head/Head]), % TO DO: add two args to Head ?
     analyze_clause_complexity(Module,Name/Arity,Head,Body,Layout),
-    lint_body(Module,Name,Arity,Head,Body,Layout).
+    lint_body(Module,Name,Arity,Head,Body,LayoutSub).
 
 
 analyze_clause(runtime_entry(_), _L, _M, _F) :- !.
@@ -1405,21 +1418,26 @@ add_call(_,cacc(L,M,Calls),cacc(L,M,C1)) :- C1 is Calls+1.
 
 % --------------------------------
 % detect some obvious anti-patterns, problems in a clause:
-lint_body(Module,Name,Arity,_Head,Body,Layout) :-
-    (dangerous_cut(Body,Layout,StartLine, EndLine)
+lint_body(Module,Name,Arity,_Head,Body,BodyLayout) :-
+    (dangerous_cut(Body,BodyLayout,StartLine, EndLine)
      -> Loc = module_pred_lines(Module,Name/Arity,StartLine,EndLine),
         mk_problem(dangerous_cut(Name,Arity),Loc),
         fail).
 lint_body(_,_,_,_,_,_).
     
 % look for dangerous cuts  p(..) :- Test,!,   A ; B.
-dangerous_cut(';'(A,_),Layout,StartLine, EndLine) :-
-   layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine).
-contains_cut('!',Layout,StartLine, EndLine) :- get_position(Layout,StartLine,EndLine).
+dangerous_cut(';'(A,_B),Layout,StartLine, EndLine) :-
+   layout_sub_term(Layout,2,LayoutA,cut_or(A)),
+   contains_cut(A,LayoutA,StartLine, EndLine).
+contains_cut('!',Layout,StartLine, EndLine) :-
+   get_position(Layout,StartLine,EndLine).
 % we could check if ! is not the last call; something like (p,q,! ; r,s) is possibly oks
 contains_cut((A,B),Layout,StartLine, EndLine) :- 
-    layout_sub_term(Layout,2,LayoutA),contains_cut(A,LayoutA,StartLine, EndLine)
-     ; layout_sub_term(Layout,2,LayoutB),contains_cut(B,LayoutB,StartLine, EndLine).
+    (layout_sub_term(Layout,2,LayoutA,cut_and1(A)),
+     contains_cut(A,LayoutA,StartLine, EndLine)
+     ;
+     layout_sub_term(Layout,3,LayoutB,cut_and2(B)),
+     contains_cut(B,LayoutB,StartLine, EndLine)).
 
 
 
@@ -1552,3 +1570,14 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 %% TO DO:
 
 %% DETECT unnecessary unification foldl(Module:Pred,List,Start,Result) :- foldl2(List,Module:Pred,Start,Result).
+
+infolog_help :-
+  nl,
+  print('INFOLOG ENTRY: analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")'),nl,
+  print('INFOLOG ENTRY: dot_gen_dep(Module)'),nl,
+  print('INFOLOG ENTRY: rem(Module) - Equivalence classes of predicates in module'),nl,
+  print('INFOLOG ENTRY: compute_cycles - compute cyclic module dependencies'),nl,
+  print('INFOLOG ENTRY: compute_call_cycles(From,Call) - compute cyclic call dependencies'),nl,
+  print('INFOLOG ENTRY: pred_links(Module,Predicate) - compute cyclic call dependencies'),nl,
+  nl,nl.
+:- infolog_help.
