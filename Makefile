@@ -43,6 +43,7 @@ indy.edn:
 	@echo "]}" >> resources/public/indy.edn
 
 clean:
+	rm -f prolog-analyzer/meter_user_pred_cache.pl
 	rm -f infolog_problems*.csv
 	rm -f resources/public/infolog.edn
 	rm -f resources/public/indy.edn

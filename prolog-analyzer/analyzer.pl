@@ -510,6 +510,7 @@ uia :- retractall(useless_import(_,_,_)),
 uia :- calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
 uia.
 print_uia :- print('useless imports: '),nl,
+       uia,
        useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
 print_uia.
 
@@ -921,6 +922,10 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
     functor(Call, Name, SourceArity),
     adapt_arity(DCG,SourceArity,Arity),
     decompose_call(CallingPredicate,CM,CP),
+    (provide_debug_for_module(CM) ->
+       format('Call:         ~w ---> ~w~n',[CallingPredicate,Predicate]),
+       format('calling fact: ~w:~w ---> ~w:~w/~w on lines ~w-~w~n',[CM,CP,Module,Name,Arity,StartLine,EndLine])
+       ; true),
     assert_if_new(calling(CM,CP, Module,Name/Arity, StartLine, EndLine)).
 
 adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
@@ -1020,7 +1025,7 @@ analyze_body(OrigMETA, OrigLayout, CallingPredicate, DCG, Info) :-
        (OrigLayout = [L1|_] -> append(OrigLayout,[L1,L1],Layout)
         ; Layout = [OrigLayout,OrigLayout,OrigLayout]) % does not seem to work
    ),
-   meta_pred(META,MODULE,List),
+   find_meta_pred(META,MODULE,List,CallingPredicate),
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
    ((MODULE=built_in ; decompose_call(CallingPredicate,CallingModule,_), depends_on(CallingModule,MODULE))
      -> true
@@ -1046,6 +1051,15 @@ analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
+% give priority to finding meta_predicates of those predicates that are imported:
+find_meta_pred(META,MODULE,MetaList,From:_) :-
+    meta_pred(META,MODULE,MetaList),
+    functor(META,F,N),
+    is_imported(From,MODULE,F/N),
+    !,
+    true.
+find_meta_pred(META,MODULE,MetaList,_) :- 
+    meta_pred(META,MODULE,MetaList).
 
 % --------------------------
 % Manipulating cache of meta_predicate annotations
@@ -1566,10 +1580,14 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 %%% attribute usage is not checked
 %%% tcltk_call does not store arity
 %%% lint does not cache; lint_for_module computes almost all errors/warning
+%%% meta_pred_cache needs to be cleaned from old entries, when predicates move from one module to another
 
 %% TO DO:
 
 %% DETECT unnecessary unification foldl(Module:Pred,List,Start,Result) :- foldl2(List,Module:Pred,Start,Result).
+
+:- dynamic provide_debug_for_module/1.
+%provide_debug_for_module(junit_tests).
 
 infolog_help :-
   nl,
@@ -1579,5 +1597,8 @@ infolog_help :-
   print('INFOLOG ENTRY: compute_cycles - compute cyclic module dependencies'),nl,
   print('INFOLOG ENTRY: compute_call_cycles(From,Call) - compute cyclic call dependencies'),nl,
   print('INFOLOG ENTRY: pred_links(Module,Predicate) - compute cyclic call dependencies'),nl,
+  print('INFOLOG ENTRY: pu(Module) - print required use_module directives'),nl,
+  print('INFOLOG ENTRY: print_uia - print useless use_module directives'),nl,
+  print('INFOLOG ENTRY: dca - dead code analysis'),nl,
   nl,nl.
 :- infolog_help.
