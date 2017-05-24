@@ -1521,23 +1521,20 @@ decompose_call2(P,OuterModule,OuterModule,P).
 get_module(Name, Arity, CallingModule, built_in,_Loc) :-
    functor(Call, Name, Arity),
    predicate_property(CallingModule:Call,built_in),!.
-
 get_module(Name, Arity, CallingModule, Module,_Loc) :-
    functor(Call, Name, Arity),
    predicate_property(CallingModule:Call,imported_from(Module)),!.
-
-
 get_module(Name, Arity, CallingModule, CallingModule,_Loc) :-
    functor(Call, Name, Arity),
    (predicate_property(CallingModule:Call,interpreted); predicate_property(CallingModule:Call,compiled)),!.
-
 get_module(chr_constraint, 1, CallingModule, CallingModule, _Loc) :- depends_on(CallingModule,chr),!.
 get_module('#<=>', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
 get_module('#=', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
 get_module('#=>', 2, _CallingModule, clpfd, _Loc) :- defined_module(clpfd,_),!.
-
-get_module(Name, Arity, CallingModule, undefined_module, Loc) :-
-  mk_problem(could_not_infer_module(Name, Arity, CallingModule),Loc).
+get_module(Name, Arity, CallingModule, Module, Loc) :-
+   %functor(Call, Name, Arity), findall(Prop, predicate_property(CallingModule:Call,Prop), Ls), print(props(Name,Arity,CallingModule,Ls)),nl,nl,trace,
+   mk_problem(could_not_infer_module(Name, Arity, CallingModule),Loc),
+   Module = undefined_module.
 
 
 update :-
