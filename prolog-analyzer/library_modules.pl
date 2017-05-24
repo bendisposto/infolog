@@ -17,6 +17,7 @@ precompile_library_modules :- retractall(is_exported_by_library(_,_)),
    assert(is_exported_by_library(M,P)),fail.
 precompile_library_modules.
 
+% this does not include user on purpose!
 is_library_module(aggregate).
 is_library_module(assoc).
 is_library_module(avl).
@@ -27,6 +28,7 @@ is_library_module(clpfd).
 is_library_module(codesio).
 is_library_module(fastrw).
 is_library_module(file_systems).
+is_library_module(gauge).
 is_library_module(heaps).
 is_library_module(lists).
 is_library_module(ordsets).
@@ -55,8 +57,18 @@ private_library_predicate(avl,avl/6).
 private_library_predicate(avl,avl_del_max/5).
 private_library_predicate(clpfd,'$fd_delete'/3).
 
+%% some user module predicates/hooks:
+library_module(user, [
+	file_search_path/2,
+	library_directory/1,
+	portray/1,
+	portray_message/2,
+	runtime_entry/1,
+	unknown_predicate_handler/3,
+	term_expansion/6
+	% there are a few more hooks
+   ]).
 %% THE module headers from SICStus / Quintus Prolog libraries
-
 library_module(aggregate, [
 	forall/2,
 	foreach/2,
@@ -362,6 +374,8 @@ library_module(file_systems, [
 
 	% library(filename) has NOT been merged in
    ]).
+library_module(gauge, [
+	view/0]).		
 library_module(heaps, [
 	add_to_heap/4,		%   Heap x Key x Datum -> Heap
 	empty_heap/1,		%   -> Heap

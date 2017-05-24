@@ -236,7 +236,7 @@ has_no_clauses(ToModule,Call) :- is_dynamic(ToModule,Call).
 has_no_clauses(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 has_no_clauses(ToModule,Call) :- is_attribute(ToModule,Call).
 has_no_clauses(ToModule,Call) :- is_foreign(ToModule,Call).
-has_no_clauses(ToModule,Call) :-  is_library_module(ToModule),
+has_no_clauses(ToModule,Call) :-  (is_library_module(ToModule) ; ToModule=user),
   (library_export_list_available(ToModule)
    -> (is_exported_by_library(ToModule,Call) -> true ; private_library_predicate(ToModule,Call))
     ; true). % list not available, assume it is defined
@@ -334,7 +334,7 @@ info(_).
 
 infolog_problem(infolog_internal_error,error,P,Loc) :- infolog_internal_error(P,Loc).
 infolog_problem(analysis_problem,error,string(P),Loc) :- problem(P,Loc).
-infolog_problem(multiple_meta_predicates,error,informat('Multiple meta_predicate declarations for ~w:~w/~w.',[Module,F,N]),module_loc(Module)) :-
+infolog_problem(multiple_meta_predicates,error,informat('Multiple meta_predicate declarations for ~w:~w/~w (~w \\= ~w).',[Module,F,N,MetaArgList1,MetaArgList2]),module_loc(Module)) :-
         meta_user_pred(Head1,Module,MetaArgList1), functor(Head1,F,N), functor(Head2,F,N),
         meta_user_pred(Head2,Module,MetaArgList2), MetaArgList1 @> MetaArgList2.
 infolog_problem(missing_import,warning,informat('Missing import ~w -> :- use_module(~w,~w).',[M1,M2,Calls]),module_loc(M1)) :-
