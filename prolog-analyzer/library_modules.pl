@@ -43,6 +43,7 @@ is_library_module(tcltk).
 is_library_module(terms).
 is_library_module(timeout).
 is_library_module(trees).
+is_library_module(types).
 is_library_module(ugraphs).
 is_library_module(wgraphs).
 is_library_module(varnumbers).
@@ -717,6 +718,11 @@ library_module(trees, [
 	put_label/5,
 	tree_size/2,
 	tree_to_list/2
+   ]).
+library_module(types, [
+        must_be/4,
+        illarg/3,
+        illarg/4
    ]).
 library_module(ugraphs, [
 	vertices_edges_to_ugraph/3,
