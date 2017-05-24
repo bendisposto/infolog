@@ -276,7 +276,8 @@ println(X) :- print(X),nl.
 complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),
                       (clause_complexity(M,P,NestingLevel,Calls,SL,EL), (NestingLevel>3 ; Calls>15)),
                       List),
-  sort(List,SortedList), maplist(println,SortedList).
+  sort(List,SortedList), maplist(println,SortedList),
+  print(complexity('NestingLevel','Calls','Module','Pred','StartLine','EndLine')),nl.
 
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
 lint(Type) :- lint(_,Type,_).
@@ -1600,5 +1601,7 @@ infolog_help :-
   print('INFOLOG ENTRY: pu(Module) - print required use_module directives'),nl,
   print('INFOLOG ENTRY: print_uia - print useless use_module directives'),nl,
   print('INFOLOG ENTRY: dca - dead code analysis'),nl,
+  print('INFOLOG ENTRY: complexity - clause complexity analysis'),nl,
+  print('INFOLOG ENTRY: lint - find problems'),nl,
   nl,nl.
 :- infolog_help.
