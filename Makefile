@@ -12,6 +12,8 @@ PROLOG_FLAGS=
 
 updatedb:
 	make all
+infolog.pdf: infolog.dot
+	sfdp -Tpdf <infolog.dot >infolog.pdf
 test:
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH)
 	rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze('$(PROBPATH)/src/tools.pl')."
