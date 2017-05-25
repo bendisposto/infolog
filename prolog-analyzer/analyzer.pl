@@ -1173,6 +1173,9 @@ mk_problem(P) :- assert(problem(P,unknown)).
 %% analyzing Prolog Code
 
 % exporting as binary fact
+add_fact2(Fact, Module, OtherModule:NA) :- !,
+   print(switching_module_context(Fact,Module,OtherModule)),nl,  % happens e.g., for :-multifile user:term_expansion/6.
+   add_fact2(Fact,OtherModule,NA).
 add_fact2(Fact, Module, Name/Arity) :-
     assert_if_new(predicate(Module,Name/Arity)),
     binop(X,Fact,Module,Name/Arity), %X =..[Fact, Module, Name/Arity],
