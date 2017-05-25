@@ -144,10 +144,10 @@ gen_db_entries(S) :-  print('Updating problem database and displaying new proble
     datime(datime(Yr,Mon,Day,Hr,Min,Sec)),
     format('Sha : ~w, Date : ~w~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
     format(S, '% Updated: Sha : ~w, Date : ~w~n~n',[CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)]),
+    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n~n',[]),
     (problem_db_creation(CrS,CrD) -> portray_clause(S,problem_db_creation(CrS,CrD))
       ; portray_clause(S,problem_db_creation(CurSha,datime(Yr,Mon,Day,Hr,Min,Sec)))
     ),
-    format(S,':- dynamic problem_db_entry/8, problem_db_creation/2.~n~n~n',[]),
     print('----'),nl, print('The following problems were added:'),nl,
     infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
     (problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,OldStatus)
