@@ -1559,6 +1559,10 @@ update.
 %:- prolog_flag(profiling,_,on).
 :- prolog_flag(redefine_warnings,_,off).
 
+safe_analyze_clause(Term,Layout,Module,File) :-
+    if(analyze_clause(Term,Layout,Module,File),true,
+       format('~n*** Analyzing Clause for ~w Failed: ~w~n~n',[Module,Term])).
+
 user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
     %(Term = (atomic_eq_check(_,_,_) :- B) -> trace ; true),
@@ -1569,7 +1573,8 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %(seen_token -> member(rm_debug_calls,Tokens) ; true), % I am not sure what the purpose of this is ? It certainly removes certain clauses from the analysis
   % print(expand(Module,Term)),nl,
     (  analyzef(Term, Layout, Module, File, TermOut)
-     ; analyze_clause(Term, Layout, Module, File), (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
+     ; safe_analyze_clause(Term, Layout, Module, File), 
+      (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
     !.
 
 %% KNOWN ISSUES
