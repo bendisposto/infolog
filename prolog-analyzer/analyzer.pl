@@ -507,13 +507,21 @@ print_dca(_) :- nl.
 % Useless Import Analysis (Global)
 uia :- retractall(useless_import(_,_,_)),
    is_imported(FromModule,M,P),
+   \+ is_exported(FromModule,P), % we do not re-export the predicate
    assert(useless_import(FromModule,M,P)),fail.
-uia :- calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
+uia :- 
+   calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
 uia.
 print_uia :- print('useless imports: '),nl,
        uia,
        useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
 print_uia.
+
+print_reexports :- 
+   is_imported(FromModule,M,P),
+   is_exported(FromModule,P),
+   format('Module ~w re-exports predicate ~w from module ~w~n',[FromModule,P,M]),fail.
+print_reexports.
 
 % ------------------
 
@@ -1610,6 +1618,7 @@ infolog_help :-
   print('INFOLOG ENTRY: pred_links(Module,Predicate) - compute cyclic call dependencies'),nl,
   print('INFOLOG ENTRY: pu(Module) - print required use_module directives'),nl,
   print('INFOLOG ENTRY: print_uia - print useless use_module directives'),nl,
+  print('INFOLOG ENTRY: print_reexports - print predicates re-exported'),nl,
   print('INFOLOG ENTRY: dca - dead code analysis'),nl,
   print('INFOLOG ENTRY: complexity - clause complexity analysis'),nl,
   print('INFOLOG ENTRY: lint - find problems'),nl,
