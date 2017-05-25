@@ -1459,17 +1459,17 @@ contains_cut((A,B),Layout,StartLine, EndLine) :-
 
 
 
-% analyzef/5
+% analyze_foreign/5
 % analyze foreign declarations
-analyzef(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
+analyze_foreign(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name/Arity))) :-
     !,
     functor(PredSpec,_,Arity),
     Predicate = Module:Name/Arity,
     assert_if_new(is_foreign(Module,Name/Arity)),
     assert_head(Predicate, Layout).
 
-analyzef(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
-    analyzef(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
+analyze_foreign(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
+    analyze_foreign(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
 
 % assert the head of a newly found clause or fact:
 assert_head(Predicate, Layout) :-
@@ -1575,7 +1575,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     (member(rm_debug_calls,Tokens) -> assert_if_new(seen_token); true),
     %(seen_token -> member(rm_debug_calls,Tokens) ; true), % I am not sure what the purpose of this is ? It certainly removes certain clauses from the analysis
   % print(expand(Module,Term)),nl,
-    (  analyzef(Term, Layout, Module, File, TermOut)
+    (  analyze_foreign(Term, Layout, Module, File, TermOut)
      ; safe_analyze_clause(Term, Layout, Module, File), 
       (Term=portray_message(informational,_) -> TermOut = '$ignored'(Term) ; TermOut = Term)),
     !.
@@ -1608,5 +1608,6 @@ infolog_help :-
   print('INFOLOG ENTRY: dca - dead code analysis'),nl,
   print('INFOLOG ENTRY: complexity - clause complexity analysis'),nl,
   print('INFOLOG ENTRY: lint - find problems'),nl,
+  print('INFOLOG ENTRY: print_meta_calls(Module)'),nl,
   nl,nl.
 :- infolog_help.
