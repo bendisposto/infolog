@@ -70,7 +70,7 @@ unop(X,P,A1) :- functor(X,P,1), arg(1,X,A1).
 binop(X,P,A1,A2) :- functor(X,P,2), arg(1,X,A1), arg(2,X,A2).
 ternop(X,P,A1,A2,A3) :- functor(X,P,3), arg(1,X,A1), arg(2,X,A2), arg(3,X,A3).
 
-pairs_to_list((X,Y), [X|R]) :- pairs_to_list(Y,R).
+pairs_to_list((X,Y), [X|R]) :- !, pairs_to_list(Y,R).
 pairs_to_list(X, [X]).
 
 
