@@ -622,6 +622,7 @@ dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ is_library_modu
 
 dot_gen_dep(Module) :-
     defined_module(Module,_),
+    retractall(depends_on_transitive(_,_)),
     transitive_closure(depends_on(Module,_),depends_on,depends_on_transitive),
     File = 'infolog.dot',
     format('Generating depends_on graph for ~w into file ~w~n',[Module,File]),
