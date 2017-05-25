@@ -843,6 +843,10 @@ stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!
 :- meta_predicate assert_if_new(0).
 assert_if_new(P) :- (P -> true ; assert(P)).
 
+:- meta_predicate assert_if_new(0).
+assert_if_not_covered(P) :- copy_term(P,CP), numbervars(CP,0,_End),
+   (CP -> true ; assert(P)).
+
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
 flatten1([],L,L) :- !.
 flatten1([H|T],Tail,List) :- !, flatten1(H,FlatList,List), flatten1(T,Tail,FlatList).
@@ -907,7 +911,8 @@ assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,I
     get_position(Layout, StartLine, EndLine),
     !,
     (DCG = dcg -> ExtraArgs2 is ExtraArgs+2 ; ExtraArgs2=ExtraArgs),
-    assert_if_new(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
+    %format('**add meta_call: Head = ~w, ~n ~w~n',[ClauseHead,meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)]),
+    assert_if_not_covered(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
     format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]),
     get_position(Layout, StartLine, EndLine), format('*** LINES: ~w-~w~n',[StartLine,EndLine]).
