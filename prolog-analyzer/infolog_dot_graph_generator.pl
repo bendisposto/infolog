@@ -31,9 +31,9 @@ node_predicate_call(Module,P,TNodeID,SubGraph,NodeDesc,Shape,Style,Color) :-
    call(Module:P,NodeID,SubGraph,NodeDesc,Shape,Style,Color),
    translate_id(NodeID,TNodeID).
    
-trans_predicate_call(Module,P,TNodeID,Label,TSuccNodeID,Color,Style) :-
+trans_predicate_call(Module,P,TNodeID,Label,TSuccNodeID,Color,Style,PenWidth) :-
    %Call =.. [P,NodeID,Label,SuccNodeID,Color],
-   call(Module:P,NodeID,Label,SuccNodeID,Color,Style),
+   call(Module:P,NodeID,Label,SuccNodeID,Color,Style,PenWidth),
    translate_id(NodeID,TNodeID),
    translate_id(SuccNodeID,TSuccNodeID).
    
@@ -138,19 +138,23 @@ print_nodes2(FStream,SubGraph,Module,NodePredicate) :-
 print_nodes2(FStream,_Subgraph,_,_) :- nl(FStream).
 
 print_transitions(FStream,NodeID,Module,TransPredicate) :-
-	trans_predicate_call(Module,TransPredicate,NodeID,Label,SuccID,Color,Style),
+	trans_predicate_call(Module,TransPredicate,NodeID,Label,SuccID,Color,Style,PenWidth),
 	
     %(NodeID=root -> preference(dot_print_root,true) ; true),
     (true %preference(dot_print_leaves,true)
       -> true
       ; % check that we have at least one successor
-        (trans_predicate_call(Module,TransPredicate,SuccID,_,_,_,_)->true;fail)),
+        (trans_predicate_call(Module,TransPredicate,SuccID,_,_,_,_,_)->true;fail)),
 
 	%(NodeID \= SuccID -> true ; preference(dot_print_self_loops,true)),
 	
 	format(FStream,' ~w ->  ~w [',[NodeID,SuccID]),
 	(true %preference(dot_print_arc_colors,true) 
 	  -> format(FStream,'color="~w",',[Color])
+	  ;  true
+	),
+	(PenWidth \= 1
+	  -> format(FStream,'penwidth="~w",',[PenWidth])
 	  ;  true
 	),
 	% acceptable styles Style ::= solid, bold, dotted, dashed, invis,  arrowhead(none,Style)
