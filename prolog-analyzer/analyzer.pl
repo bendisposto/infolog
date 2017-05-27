@@ -1630,7 +1630,7 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 infolog_help :-
   nl,
   print('INFOLOG ENTRY: analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")'),nl,
-  print('INFOLOG ENTRY: dot_gen_dep(Module)'),nl,
+  print('INFOLOG ENTRY: dot_gen_dep(Module), dot_gen_dep(Module,0)'),nl,
   print('INFOLOG ENTRY: rem(Module) - Equivalence classes of predicates in module'),nl,
   print('INFOLOG ENTRY: compute_cycles - compute cyclic module dependencies'),nl,
   print('INFOLOG ENTRY: compute_call_cycles(From,Call) - compute cyclic call dependencies'),nl,
