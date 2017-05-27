@@ -663,6 +663,35 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
    add_args(InnerCall,Add,Call).
 
 % ==========================================
+% a utility to compute the scc's
+:- use_module(library(ugraphs),[vertices_edges_to_ugraph/3,reduce/2,vertices/2, edges/2]).
+
+% translate a binary predicate into a ugraph
+predicate_to_ugraph(Pred,UGraph) :-
+   functor(TransCall,Pred,2), 
+   arg(1,TransCall,X), arg(2,TransCall,Y),
+   findall(X-Y,TransCall,Edges),
+   vertices_edges_to_ugraph([], Edges, UGraph).
+
+sccs(Pred,SccGraph) :-
+   predicate_to_ugraph(Pred,UGraph),
+   reduce(UGraph,SccGraph).
+
+sccs :- sccs(depends_on,Scc), print(Scc),nl,
+    File = 'infolog.dot',
+    format('Generating SCC graph for into file ~w~n',[File]),
+    il_gen_dot_graph(File,user,dot_scc_node(Scc),dot_scc_trans(Scc),none,none).
+
+dot_scc_node(SCC,ID,none,Desc,box,none,green) :-
+    vertices(SCC,Vs), member(ID,Vs),
+    length(ID,Len), ID = [First|_],
+    Desc = scc(First,Len).
+dot_scc_trans(SCC,S1,Label,S2,Color,Style,PenWidth) :- edges(SCC,Es), member(S1-S2,Es),
+    PenWidth=1, Label = '',
+    (length(S2,1) -> Color = black, Style = dashed
+      ; Color = blue, Style=solid).
+
+% ==========================================
 % a utility to compute the transitive closure using a semi-naive algorithm:
 
 :- dynamic new/2.
@@ -1642,5 +1671,6 @@ infolog_help :-
   print('INFOLOG ENTRY: complexity - clause complexity analysis'),nl,
   print('INFOLOG ENTRY: lint - find problems'),nl,
   print('INFOLOG ENTRY: print_meta_calls(Module)'),nl,
+  print('INFOLOG ENTRY: sccs'),nl,
   nl,nl.
 :- infolog_help.
