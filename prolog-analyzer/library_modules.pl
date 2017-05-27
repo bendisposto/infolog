@@ -494,6 +494,15 @@ library_module(lists, [
 	keyclumped/2,
 	keyclumps/2
    ]).
+library_module(logarr, [
+	new_array/1,
+	is_array/1,
+	aref/3,
+	arefa/3,
+	arefl/3,
+	aset/4,
+	alist/2
+   ]).
 library_module(ordsets, [
 	is_ordset/1,		%  Set ->
 	list_to_ord_set/2,	%  List -> Set
