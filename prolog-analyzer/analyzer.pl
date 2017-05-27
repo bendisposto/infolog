@@ -677,7 +677,9 @@ sccs(Pred,SccGraph) :-
    predicate_to_ugraph(Pred,UGraph),
    reduce(UGraph,SccGraph).
 
-sccs :- sccs(depends_on,Scc), print(Scc),nl,
+depends_on_non_library(X,Y) :- depends_on(X,Y), \+ is_library_module(Y).
+
+sccs :- sccs(depends_on_non_library,Scc), print(Scc),nl,
     File = 'infolog.dot',
     format('Generating SCC graph for into file ~w~n',[File]),
     il_gen_dot_graph(File,user,dot_scc_node(Scc),dot_scc_trans(Scc),none,none).
