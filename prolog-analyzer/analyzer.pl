@@ -618,15 +618,17 @@ dot_state_trans(Module1,Label,Module2,Color,Style,PenWidth) :-
 dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ is_library_module(Module2),
     (depends_on(Module1,Module2),M1=Module1,M2=Module2 % the link itself
      ; % or another relevant link not included in the transitive closure from starting module
+       % Note: the transitive closure only computes reachable nodes from the start node; not intermediate links
       Module1 \= Module2,
       depends_on(Module2,Module3),  \+ is_library_module(Module3),
       M1=Module2, M2=Module3, once(depends_on_transitive(_,Module3))
     ).
 
-dot_gen_dep(Module) :-
+dot_gen_dep(Module) :- dot_gen_dep(Module,9999999).
+dot_gen_dep(Module,MaxIter) :-
     defined_module(Module,_),
     retractall(depends_on_transitive(_,_)),
-    transitive_closure(depends_on(Module,_),depends_on,depends_on_transitive),
+    transitive_closure(depends_on(Module,_),depends_on,depends_on_transitive,MaxIter),
     File = 'infolog.dot',
     format('Generating depends_on graph for ~w into file ~w~n',[Module,File]),
     il_gen_dot_graph(File,user,dot_state_node,dot_state_trans,none,none).
@@ -665,20 +667,29 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
 
 :- dynamic new/2.
 % compute transitive clousre of binary predicate Pred and store result in binary predicate TransPred
-transitive_closure(Pred,TransPred) :-
-    functor(InitCall,Pred,2), transitive_closure(InitCall,Pred,TransPred).
+transitive_closure(Pred,TransPred) :- transitive_closure(Pred,TransPred,99999999).
+transitive_closure(Pred,TransPred,MaxIter) :-
+    functor(InitCall,Pred,2), transitive_closure(InitCall,Pred,TransPred,MaxIter).
 
-transitive_closure(InitCall,_Pred,TransPred) :- retractall(new(_,_)),
+transitive_closure(InitCall,_Pred,TransPred,_MaxIter) :- retractall(new(_,_)),
     % copy facts matching InitCall:
     arg(1,InitCall,X), arg(2,InitCall,Y),
     call(InitCall), %print(init(InitCall)),nl,
+    %print(i),
     assert(new(X,Y)),
     assert2(TransPred,X,Y),fail.
-transitive_closure(_,Pred,TransPred) :- % start iteration
-    print('.'), flush_output(user_output),
-    transitive_closure_iterate(Pred,TransPred).
+transitive_closure(_,Pred,TransPred,MaxIter) :- % start iteration
+    nl,print('.'), flush_output(user_output),
+    (MaxIter<1 -> nl
+     ; transitive_closure_iterate(Pred,TransPred,MaxIter)
+    ),
+    count_trans_result(TransPred).
 
-transitive_closure_iterate(Pred,TransPred) :-
+count_trans_result(TransPred) :- binop(DerivedFact,TransPred,_,_),
+     findall(DerivedFact,DerivedFact,L),
+     length(L,Nr),
+     format('Solutions in transitive closure of ~w : ~w~n',[TransPred,Nr]).
+transitive_closure_iterate(Pred,TransPred,_MaxIter) :-
      retract(new(X,Y)),
      call(Pred,Y,Z), % try and extend this new edge with all possible pairs from original relation
      binop(DerivedFact,TransPred,X,Z),
@@ -686,11 +697,14 @@ transitive_closure_iterate(Pred,TransPred) :-
      %print(derived(DerivedFact)),nl,
      assert(new(X,Z)), assert(DerivedFact),
      fail.
-transitive_closure_iterate(Pred,TransPred) :-
+transitive_closure_iterate(Pred,TransPred,MaxIter) :-
      (new(_,_) % we have added a new fact not yet processed
        ->  print('.'), flush_output(user_output),
-           transitive_closure_iterate(Pred,TransPred)
-        ;  print('Finished'),nl).
+           (MaxIter>0 -> M1 is MaxIter-1,
+                         transitive_closure_iterate(Pred,TransPred,M1)
+                      ;  print('maximum number of iterations reached'),nl)
+        ;  print('Finished'),nl
+     ).
 assert2(Pred,X,Y) :- binop(Fact,Pred,X,Y), assert_if_new(Fact).
 % above we compute  Init <| closure1(pred)  [In B terms]
 % TO DO: write a version which only computes the reachable set [can be more efficient] : closure1(pred)[Init]
@@ -717,7 +731,8 @@ calling_in_same_module_from(M:P,M:P2,StartingPreds) :- calling_in_same_module(M:
 compute_intra_module_dependence(Module,Calls,SList) :-
     retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
-    transitive_closure(calling_in_same_module_from(Module:_,_,Calls),calling_in_same_module,calling_transitive),
+    transitive_closure(calling_in_same_module_from(Module:_,_,Calls),
+                       calling_in_same_module,calling_transitive),
     stop_analysis_timer(T1),
     findall(P2,calling_transitive(_,_:P2),List),
     sort(List,SList).
