@@ -1206,6 +1206,7 @@ meta_built_in_pred(call(_,_,_),built_in,[meta_arg(1,2)]).
 meta_built_in_pred(call(_,_,_,_),built_in,[meta_arg(1,3)]).
 meta_built_in_pred(call(_,_,_,_,_),built_in,[meta_arg(1,4)]).
 meta_built_in_pred(once(_),built_in,[meta_arg(1,0)]).
+meta_built_in_pred(do(_,_),built_in,[meta_arg(2,0)]).
 % TO DO: support setof/3, bagof/3 arguments ^
 % We could add ;/2, \+/1, ...
 
