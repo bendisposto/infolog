@@ -185,6 +185,8 @@ calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :-
     tcltk_call(Pred,TkM2,File,Line),
     resolve_module_location_nondet(TkM2,Pred/Arity,M2).
 % TO DO: also add calls from Java ProB1/ProB2
+% currently we hard-code prob2_interface as an externally visible module:
+module_is_exported_to_external_language(prob2_interface).
 
 % predicates which are/can be used by SICStus automatically; they are not dead code:
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
@@ -498,6 +500,7 @@ dca(cross) :- calling_with_ext(M1,_,M,P,_,_), M1 \= M, % only look at cross_modu
        retract(dead_predicate(M,P)),fail.
 dca(all) :- calling_with_ext(_,_,M,P,_,_), % TO DO: check caller is not the predicate itself in case we remove recursive_call/0 generation
        retract(dead_predicate(M,P)),fail.
+dca(cross) :- module_is_exported_to_external_language(M), retractall(dead_predicate(M,_)),fail.
 dca(_).
 print_dca(Type) :- nl,print('dead predicates: '),print(Type),nl,
        dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
@@ -609,11 +612,12 @@ dot_state_trans(Module1,Label,Module2,Color,Style,PenWidth) :-
   (calling(Module1:_,Module2:P)
    -> Style=solid,
       findall(P2,calling(Module1:_,Module2:P2),AllP),
-      length(AllP,NrP),
+      length(AllP,NrCalls),
+      sort(AllP,SortedAllP), length(SortedAllP,NrPreds),
       (depends_on_transitive(Module2,_) % we loop back to a starting module
-        -> Label = 'CIRCULAR'(NrP,P), Color=red
-        ; Label = uses(NrP,P),    Color=black),
-      PenWidth is 1 + NrP // 10
+        -> Label = 'CIRCULAR'(NrCalls,NrPreds,P), Color=red
+        ; Label = uses(NrCalls,NrPreds,P),    Color=black),
+      PenWidth is 1 + NrCalls // 10
     ; Style=dashed, Label = vacuous, Color=gray).
 dot_depends(M1,M2) :- depends_on_transitive(Module1,Module2), \+ is_library_module(Module2),
     (depends_on(Module1,Module2),M1=Module1,M2=Module2 % the link itself
@@ -687,7 +691,8 @@ sccs :- sccs(depends_on_non_library,Scc), print(Scc),nl,
 dot_scc_node(SCC,ID,none,Desc,box,none,green) :-
     vertices(SCC,Vs), member(ID,Vs),
     length(ID,Len), ID = [First|_],
-    Desc = scc(First,Len).
+    (Len=1 -> Desc = First
+     ; Desc = scc(First,Len,1)).
 dot_scc_trans(SCC,S1,Label,S2,Color,Style,PenWidth) :- edges(SCC,Es), member(S1-S2,Es),
     PenWidth=1, Label = '',
     (length(S2,1) -> Color = black, Style = dashed
