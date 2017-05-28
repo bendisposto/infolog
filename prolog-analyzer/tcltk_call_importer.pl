@@ -34,6 +34,7 @@ split_list(List,Sep,Res) :- get_next_word(List,Sep,Word,Tail),!,
 
 clever_codes_to_atom([C|T],Atom) :- ignore(C),!,clever_codes_to_atom(T,Atom).
 clever_codes_to_atom(Codes,Atom) :- atom_codes(Atom,Codes).
+ignore(9). % tab
 ignore(32). % whitespace
 ignore(34). %'
 ignore(39). % "

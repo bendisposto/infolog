@@ -298,9 +298,9 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8546: current_expression
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8553: b_get_machine_operation_parameter_names
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8617: tcltk_add_user_executed_operation
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8629: query
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8629: query does not fail 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8630: interruptable_call
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8641: query
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8641: query does not fail 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8642: 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8643: 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:8645: 
@@ -337,7 +337,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9498: reset_errors
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9517: "interruptable_tcltk_eval
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9523: get_all_errors
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9532: "b_simplifier:
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9532: "b_simplifier: tcltk_simplify_b_predicate_error
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9535: get_all_errors
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9554: get_error_positions
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:9561: reset_errors
@@ -459,7 +459,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11548: unfixed_deferred_set
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11643: get_preference
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11685: preferences:get_preference
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11692: and
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11692: and insert them to the listbox
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11729: {tcltk_get_options
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11738: get_specification_description
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11765: bmachine:bmachine_is_precompiled
@@ -491,11 +491,11 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:11984: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12016: tcltk_can_backtrack
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12023: tcltk_can_forward
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12036: and
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12036: and insert them to the listbox
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12048: {tcltk_get_state
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12064: and
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12064: and insert them
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12070: {tcltk_get_state_errors
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12084: and
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12084: and insert them to the listbox
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12090: {tcltk_get_history
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12119: csp_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:12131: tcltk_get_line_col
@@ -540,7 +540,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13694: get_all_errors
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13697: get_all_errors
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13700: reset_errors
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13991: "user:
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13991: "user: get_user_signal_ref
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:13993: tools:host_platform
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14057: "tcltk_check_csp_assertion
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14456: side
@@ -548,7 +548,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14471: real_error_occurred
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14507: tools:host_platform
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14562: "get_csp_assertions_as_string
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14794: call
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14794: call and the implementation for reading the result from prolog
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14909: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:14911: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15021: set_preference
@@ -562,15 +562,15 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15127: "
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15128: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15136: animation_mode
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15207: "ltl:
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15216: "ctl:
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15207: "ltl: parse_and_pp_ltl_formula
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15216: "ctl: parse_and_pp_ctl_formula
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15288: 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15325: ltl_model_check
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15351: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15392: 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15398: animation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15401: animation_mode
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15421: [subst
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15421: [subst 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15457: assert_cli_error_occurred
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15548: preferences:add_element_to_history
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:15565: preferences:get_history_elements_list
@@ -645,7 +645,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16840: "tcltk_print_shortest_trace_to_current_state_for_dot
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16842: "tcltk_print_history_to_current_state_for_dot
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16876: "state_space_reduction:tcltk_write_signature_merge_to_dotfile
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16893: "reduce_graph_state_space:
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16893: "reduce_graph_state_space:	print_subgraph_of_goal_nodes
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16895: "reduce_graph_state_space:print_subgraph_associated_with_invariant_violations
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16909: "debug_mode
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:16910: "run_time_type_check_mode
@@ -691,11 +691,11 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17516: "use_module
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17534: "use_module
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17535: "tcltk_unsat_core_properties
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17545: query
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17545: query e
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17547: 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17571: "reduce_graph_state_space:desired_user_transition
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17596: "reduce_graph_state_space:transition_arg_dont_cares
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17614: which
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17614: which arguments we dont care about
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17620: "reduce_graph_state_space:get_transition_arguments_from_source
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17645: "reduce_graph_state_space:assert_transition_dont_cares
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:17656: "reduce_graph_state_space:desired_user_transition
@@ -735,7 +735,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18352: prologTaskAbort
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18358: prologTaskFinish
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18359: "tools:walltime
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18370: Task
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18370: Task 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:18468: bvisual2:set_translation_mode
 /Users/leuschel/git_root/prob_prolog/tcl/tree_inspector.tcl:12: tools:host_platform
 /Users/leuschel/git_root/prob_prolog/tcl/tree_inspector.tcl:23: "use_module
@@ -764,7 +764,7 @@
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:1640: preferences:set_preference
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:1642: preferences:set_preference
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:1721: get_recent_documents
-/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:1736: preferences:clear_recent_documents
+/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:1736: preferences:clear_recent_documents 
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:2110: "preferences:get_preference
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:2112: "eclipse_interface:ops_with_virtual_timeout
 /Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl:2113: "eclipse_interface:ops_with_real_timeout

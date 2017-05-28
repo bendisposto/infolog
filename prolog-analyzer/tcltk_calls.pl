@@ -299,9 +299,9 @@ tcltk_call(b_machine_has_constants_or_properties,undefined_module,'/Users/leusch
 tcltk_call(current_expression,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8546).
 tcltk_call(b_get_machine_operation_parameter_names,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8553).
 tcltk_call(tcltk_add_user_executed_operation,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8617).
-tcltk_call(query,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8629).
+tcltk_call('query does not fail ',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8629).
 tcltk_call(interruptable_call,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8630).
-tcltk_call(query,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8641).
+tcltk_call('query does not fail ',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8641).
 tcltk_call(interruptable_call,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8699).
 tcltk_call(tcltk_analyse_option,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8736).
 tcltk_call(register_conjunct_register_error_span,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',8738).
@@ -335,7 +335,7 @@ tcltk_call(get_all_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog
 tcltk_call(reset_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9498).
 tcltk_call(interruptable_tcltk_eval,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9517).
 tcltk_call(get_all_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9523).
-tcltk_call(b_simplifier,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9532).
+tcltk_call(tcltk_simplify_b_predicate_error,b_simplifier,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9532).
 tcltk_call(get_all_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9535).
 tcltk_call(get_error_positions,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9554).
 tcltk_call(reset_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',9561).
@@ -457,7 +457,7 @@ tcltk_call(b_or_z_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tc
 tcltk_call(unfixed_deferred_set,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11548).
 tcltk_call(get_preference,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11643).
 tcltk_call(get_preference,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11685).
-tcltk_call(and,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11692).
+tcltk_call('and insert them to the listbox',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11692).
 tcltk_call(tcltk_get_options,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11729).
 tcltk_call(get_specification_description,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11738).
 tcltk_call(bmachine_is_precompiled,bmachine,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11765).
@@ -489,11 +489,11 @@ tcltk_call(current_state_corresponds_to_initialised_b_machine,undefined_module,'
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',11984).
 tcltk_call(tcltk_can_backtrack,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12016).
 tcltk_call(tcltk_can_forward,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12023).
-tcltk_call(and,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12036).
+tcltk_call('and insert them to the listbox',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12036).
 tcltk_call(tcltk_get_state,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12048).
-tcltk_call(and,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12064).
+tcltk_call('and insert them',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12064).
 tcltk_call(tcltk_get_state_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12070).
-tcltk_call(and,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12084).
+tcltk_call('and insert them to the listbox',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12084).
 tcltk_call(tcltk_get_history,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12090).
 tcltk_call(csp_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12119).
 tcltk_call(tcltk_get_line_col,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',12131).
@@ -537,7 +537,7 @@ tcltk_call(eval_elapsed_time,undefined_module,'/Users/leuschel/git_root/prob_pro
 tcltk_call(get_all_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13694).
 tcltk_call(get_all_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13697).
 tcltk_call(reset_errors,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13700).
-tcltk_call(user,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13991).
+tcltk_call(get_user_signal_ref,user,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13991).
 tcltk_call(host_platform,tools,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',13993).
 tcltk_call(tcltk_check_csp_assertion,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14057).
 tcltk_call(side,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14456).
@@ -545,7 +545,7 @@ tcltk_call(tcltk_check_csp_assertion,undefined_module,'/Users/leuschel/git_root/
 tcltk_call(real_error_occurred,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14471).
 tcltk_call(host_platform,tools,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14507).
 tcltk_call(get_csp_assertions_as_string,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14562).
-tcltk_call(call,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14794).
+tcltk_call('call and the implementation for reading the result from prolog',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14794).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14909).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',14911).
 tcltk_call(set_preference,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15021).
@@ -558,13 +558,13 @@ tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15115).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15128).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15136).
-tcltk_call(ltl,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15207).
-tcltk_call(ctl,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15216).
+tcltk_call(parse_and_pp_ltl_formula,ltl,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15207).
+tcltk_call(parse_and_pp_ctl_formula,ctl,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15216).
 tcltk_call(ltl_model_check,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15325).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15351).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15398).
 tcltk_call(animation_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15401).
-tcltk_call('[subst',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15421).
+tcltk_call('[subst ',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15421).
 tcltk_call(assert_cli_error_occurred,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15457).
 tcltk_call(add_element_to_history,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15548).
 tcltk_call(get_history_elements_list,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',15565).
@@ -639,7 +639,7 @@ tcltk_call(tcltk_print_history_to_current_state_with_neighbors_for_dot,undefined
 tcltk_call(tcltk_print_shortest_trace_to_current_state_for_dot,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16840).
 tcltk_call(tcltk_print_history_to_current_state_for_dot,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16842).
 tcltk_call(tcltk_write_signature_merge_to_dotfile,state_space_reduction,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16876).
-tcltk_call(reduce_graph_state_space,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16893).
+tcltk_call(print_subgraph_of_goal_nodes,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16893).
 tcltk_call(print_subgraph_associated_with_invariant_violations,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16895).
 tcltk_call(debug_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16909).
 tcltk_call(run_time_type_check_mode,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',16910).
@@ -685,10 +685,10 @@ tcltk_call(counter_example_can_be_replayed,ic3,'/Users/leuschel/git_root/prob_pr
 tcltk_call(use_module,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17516).
 tcltk_call(use_module,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17534).
 tcltk_call(tcltk_unsat_core_properties,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17535).
-tcltk_call(query,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17545).
+tcltk_call('query e',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17545).
 tcltk_call(desired_user_transition,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17571).
 tcltk_call(transition_arg_dont_cares,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17596).
-tcltk_call(which,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17614).
+tcltk_call('which arguments we dont care about',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17614).
 tcltk_call(get_transition_arguments_from_source,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17620).
 tcltk_call(assert_transition_dont_cares,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17645).
 tcltk_call(desired_user_transition,reduce_graph_state_space,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',17656).
@@ -727,7 +727,7 @@ tcltk_call(prologTaskStep,undefined_module,'/Users/leuschel/git_root/prob_prolog
 tcltk_call(prologTaskAbort,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18352).
 tcltk_call(prologTaskFinish,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18358).
 tcltk_call(walltime,tools,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18359).
-tcltk_call('Task',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18370).
+tcltk_call('Task ',undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18370).
 tcltk_call(set_translation_mode,bvisual2,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',18468).
 tcltk_call(host_platform,tools,'/Users/leuschel/git_root/prob_prolog/tcl/tree_inspector.tcl',12).
 tcltk_call(use_module,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/tree_inspector.tcl',23).
@@ -756,7 +756,7 @@ tcltk_call(set_preference_group,preferences,'/Users/leuschel/git_root/prob_prolo
 tcltk_call(set_preference,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',1640).
 tcltk_call(set_preference,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',1642).
 tcltk_call(get_recent_documents,undefined_module,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',1721).
-tcltk_call(clear_recent_documents,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',1736).
+tcltk_call('clear_recent_documents ',preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',1736).
 tcltk_call(get_preference,preferences,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',2110).
 tcltk_call(ops_with_virtual_timeout,eclipse_interface,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',2112).
 tcltk_call(ops_with_real_timeout,eclipse_interface,'/Users/leuschel/git_root/prob_prolog/tcl/main_prob_tcltk_gui.tcl',2113).
