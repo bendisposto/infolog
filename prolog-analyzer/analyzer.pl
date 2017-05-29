@@ -455,7 +455,8 @@ missing_imports(FromModule,ToModule,AllCalls) :-
      member(ToModule,ModulesToImport),
      findall(P,member(ToModule:P,Missing),Ps), sort(Ps,AllCalls).
 
-missing_import(FromModule,ToModule,Call) :- uncovered_call(FromModule,_,M,Call,_,_),
+missing_import(FromModule,ToModule,Call) :-
+    uncovered_call(FromModule,_,M,Call,_,_),
     \+ is_imported(FromModule,ToModule,Call), % if it is imported: generate error elsewhere
     resolve_module_location(M,Call,ToModule).
 
@@ -653,7 +654,7 @@ non_unifying_call(Module,Call,FromModule,SL,EL) :-
    get_position(Layout,SL,EL),
    numbervars(Call,0,_).
    %format('No match for ~w in ~w:~w-~w~n',[Call,FromModule,SL,EL]).
-non_unifying_call(_,_,_,_,_).
+%non_unifying_call(_,_,_,_,_).
 
 % utility to obtain calls in the body of a clause
 body_call(V,Call) :- var(V),!, Call=V.
@@ -1121,13 +1122,18 @@ analyze_body(Call,Layout, CallingPredicate, DCG, _Info) :-
     assert_call(CallingPredicate, Module:recursive_call, Layout, DCG) ;
     assert_call(CallingPredicate, module_yet_unknown:Call, Layout, DCG)).
 
-% give priority to finding meta_predicates of those predicates that are imported:
+% first look for local predicates in same module:
+find_meta_pred(META,From,MetaList,From:_) :-
+    meta_pred(META,From,MetaList),
+    !.
+% now give priority to finding meta_predicates of those predicates that are imported:
 find_meta_pred(META,MODULE,MetaList,From:_) :-
     meta_pred(META,MODULE,MetaList),
     functor(META,F,N),
     is_imported(From,MODULE,F/N),
     !,
     true.
+% now look everywhere:
 find_meta_pred(META,MODULE,MetaList,_) :- 
     meta_pred(META,MODULE,MetaList).
 
