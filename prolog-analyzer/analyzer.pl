@@ -325,6 +325,7 @@ infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,File,L1,L2,Hash) :-
      information_to_atom(string(Category),CatStr),
      information_to_atom(ErrorInfo,ErrStr).
 
+info :- info(_).
 info(Category) :- infolog_info(Category,Info,Location),
      print_information(Info), print(' '),
      print_location(Location),nl,
@@ -390,12 +391,12 @@ infolog_info(calls(FromModule,ToModule),informat('Call ~w:~w -> ~w:~w',[FromModu
    calling(FromModule,C1,ToModule,C2,L1,L2).
 
 
-
 % is there a cycle in the module dependency graph:
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
 % TO DO: provide more efficient way of computing this; maybe saturation BUP approach
+cycle_ids(Module,Len,ModulePath) :- length(ModulePath,Len), cycle(Module,ModulePath).
 
 % is there a calling cycle which leaves a module and enters it again ?
 cross_module_cycle(Module,Call,[Module:Call|Path]) :-
@@ -1670,6 +1671,7 @@ infolog_help :-
   print('INFOLOG ENTRY: dot_gen_dep(Module), dot_gen_dep(Module,0)'),nl,
   print('INFOLOG ENTRY: rem(Module) - Equivalence classes of predicates in module'),nl,
   print('INFOLOG ENTRY: compute_cycles - compute cyclic module dependencies'),nl,
+  print('INFOLOG ENTRY: cycle_ids(Module,Len,Path) - iterative deepening search for module cycles'),nl,
   print('INFOLOG ENTRY: compute_call_cycles(From,Call) - compute cyclic call dependencies'),nl,
   print('INFOLOG ENTRY: pred_links(Module,Predicate) - compute cyclic call dependencies'),nl,
   print('INFOLOG ENTRY: pu(Module) - print required use_module directives'),nl,
