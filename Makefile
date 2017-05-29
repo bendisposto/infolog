@@ -73,6 +73,8 @@ prolog-analyzer/java_calls.pl: Makefile
 	@echo ":- dynamic java_call/2." > prolog-analyzer/java_calls.pl
 	find $(PROB2_PATH) -type f \( -iname \*.java -o -iname \*.groovy \) -exec perl -ne'print "java_call($$1,\"'{}'\").\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
 
+clean_tcltk:
+	rm prolog-analyzer/tcltk_calls.ack
 prolog-analyzer/tcltk_calls.ack: Makefile
 	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl 
 	 ack -o    '(?<=prolog)\s+("?(\{|\()?)([[a-zA-Z0-9_:\s]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
