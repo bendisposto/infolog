@@ -174,7 +174,6 @@ meta_user_pred(sm_node_pred(_7615,_7617,_7619,_7621,_7623,_7625,_7627),state_spa
 meta_user_pred(probcli_clpfd_overflow_mnf_call1(_7615),eval_strings,'.'(meta_arg(1,0),[])).
 meta_user_pred(probcli_clpfd_overflow_call1(_7615),eval_strings,'.'(meta_arg(1,0),[])).
 meta_user_pred(maplist(_7615,_7617,_7619,_7621,_7623),predicate_handling,'.'(meta_arg(1,4),[])).
-meta_user_pred(catch_enumeration_warning(_7615,_7617),static_analysis,'.'(meta_arg(1,0),[])).
 meta_user_pred(catch_and_ignore_well_definedness_error(_7615,_7617),static_analysis,'.'(meta_arg(1,0),[])).
 meta_user_pred(maxsolver(_7615,_7617,_7619),maxsolver,'.'(meta_arg(1,1),[])).
 meta_user_pred(maxsolver(_7615,_7617,_7619,_7621),maxsolver,'.'(meta_arg(2,1),[])).
@@ -226,3 +225,5 @@ meta_user_pred(ifm_option_set(_7615,_7617),user,'.'(meta_arg(2,0),[])).
 meta_user_pred(ifm_option_set_loaded(_7615,_7617,_7619),user,'.'(meta_arg(3,0),[])).
 meta_user_pred(timeout_call(_7615,_7617),user,'.'(meta_arg(1,0),[])).
 meta_user_pred(call_probcli_option(_7615),user,'.'(meta_arg(1,0),[])).
+meta_user_pred(catch_enumeration_warning(_7615,_7617),enabling_analysis,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
+meta_user_pred(catch_enumeration_warning(_7615,_7617),static_analysis,'.'(meta_arg(1,0),'.'(meta_arg(2,0),[]))).
