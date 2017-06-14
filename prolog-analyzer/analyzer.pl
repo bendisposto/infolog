@@ -187,6 +187,8 @@ calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :-
 % TO DO: also add calls from Java ProB1/ProB2
 % currently we hard-code prob2_interface as an externally visible module:
 module_is_exported_to_external_language(prob2_interface).
+module_is_exported_to_external_language(eclipse_interface). % for ProB1 for Rodin
+
 
 % predicates which are/can be used by SICStus automatically; they are not dead code:
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
@@ -933,7 +935,7 @@ bind_args2([V|Vs],VC,VCN) :-
     bind_args(Vs,VCNT,VCN).
 
 layout_sub_term(Layout,Position,Result) :- layout_sub_term(Layout,Position,Result,unknown).
-layout_sub_term([],N,[],Loc) :- !, format('~n*** Could not obtain layout information (~w) at ~w.~n',[N,Loc]).
+layout_sub_term([],N,[],Loc) :- !, format('~n*** Could not obtain layout information (position ~w) at ~w.~n',[N,Loc]).
 layout_sub_term([H|T],N,Res,Loc) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res,Loc)).
 layout_sub_term(Term,N,Res,Loc) :-
@@ -1093,8 +1095,7 @@ analyze_body(OrigMETA, OrigLayout, CallingPredicate, DCG, Info) :-
    (DCG=no_dcg
     -> META = OrigMETA, Layout = OrigLayout
      ; add_args(OrigMETA,2,META),
-       (OrigLayout = [L1|_] -> append(OrigLayout,[L1,L1],Layout)
-        ; Layout = [OrigLayout,OrigLayout,OrigLayout]) % does not seem to work
+       add_layout(OrigLayout,2,Layout)
    ),
    find_meta_pred(META,MODULE,List,CallingPredicate),
    % TO DO: check that MODULE is also imported ! (use depends_on(,MODULE))
@@ -1228,8 +1229,9 @@ analyze_sub_arg(META, _, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- N
   layout_sub_term(Layout,Nr1,LayoutA,analyze_sub_arg(CallingPredicate,Info)),
   arg(Nr,META,SubArg), %print(add_args(SubArg,Nr,SubArgADD)),nl,trace,
   add_args(SubArg,ADD,SubArgADD),
+  add_layout(LayoutA,ADD,LayoutA2),
   %format(' Analyze Sub ~w -> ~w  [ ~w ] (from ~w)~n',[Nr,ADD,SubArgADD,CallingPredicate]),
-  safe_analyze_body(SubArgADD,LayoutA, CallingPredicate, no_dcg, Info).
+  safe_analyze_body(SubArgADD,LayoutA2, CallingPredicate, no_dcg, Info).
 
 add_args(Call,0,Res) :- !, Res=Call.
 add_args(Var,_N,Res) :- var(Var),!, Res=_.% causes problems with layout info: is_meta_call_n(Res,N,Var).
@@ -1239,7 +1241,12 @@ add_args(Call,N,Res) :- %print(add(Call,N)),nl,
   length(Xtra,N), append(FA,Xtra,NFA),
    Res =.. NFA.
 
-
+add_layout(Layout,0,R) :- !, R=Layout.
+add_layout([L1|T],Nr,[L1|Res]) :- !, append(T,L1N,Res),
+   repeat_el(Nr,L1,L1N).
+add_layout(OrigLayout,_,Layout) :- Layout = [OrigLayout,OrigLayout,OrigLayout]. % for N=2, does not seem to work
+repeat_el(0,_,Res) :- !, Res=[].
+repeat_el(N,L1,[L1|T]) :- N1 is N-1, repeat_el(N1,L1,T).
 
 
 problem(X) :- problem(X,_).
