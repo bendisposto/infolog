@@ -75,9 +75,8 @@ prolog-analyzer/java_calls.pl: Makefile
 
 clean_tcltk:
 	rm prolog-analyzer/tcltk_calls.ack
-prolog-analyzer/tcltk_calls.ack: Makefile
-	 #grep -o 'prolog\s\"\?\([a-zA-Z_]*\)' $(PROBPATH)/tcl/*.tcl 
-	 ack -o    '(?<=prolog)\s+("?(\{|\()?)([[a-zA-Z0-9_:\s]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
+prolog-analyzer/tcltk_calls.ack:
+	 ack -o '(?<=prolog)\s+("?(\{|\()?)([[a-zA-Z0-9_:\s]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl > prolog-analyzer/tcltk_calls.ack
 	 ack -o '(?<=prologmnf)\s+("?(\{|\()?)([[a-zA-Z0-9_:\s]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
 	 ack -o '(?<=prologmnfi)\s+("?(\{|\()?)([[a-zA-Z0-9_:\s]*)' $(ABSOLUTE_PROB_PATH)/tcl/*.tcl >> prolog-analyzer/tcltk_calls.ack
 
