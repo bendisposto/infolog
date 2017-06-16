@@ -51,7 +51,7 @@ indy.edn:
 
 clean:
 	rm -f prolog-analyzer/meter_user_pred_cache.pl
-	cat ':- dynamic meta_user_pred/3.' > prolog-analyzer/meter_user_pred_cache.pl
+	echo ':- dynamic meta_user_pred/3.' > prolog-analyzer/meter_user_pred_cache.pl
 	rm -f infolog_problems*.csv
 	rm -f resources/public/infolog.edn
 	rm -f resources/public/indy.edn
