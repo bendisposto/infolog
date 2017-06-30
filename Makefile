@@ -37,7 +37,7 @@ infolog_problems.csv:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache
 	@echo "Generating CSV FIle"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
 
-infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl
+infolog.edn:  prolog-analyzer/*.pl prolog-analyzer/meta_user_pred_cache.pl prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl prolog-analyzer/meta_preds.pl
 	@echo "Generating Data for website"
 	export PROB_HOME=$(ABSOLUTE_PROB_PATH) ; rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze(['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl'],'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
 
