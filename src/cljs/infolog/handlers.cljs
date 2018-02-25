@@ -75,7 +75,7 @@
    :start sl
    :end el})
 
-(defn nesting->map [[m p a d cib sl el]]
+(defn nesting->map [[m p a d cib sl el vc u eu]]
   {:module m
    :predicate p
    :arity a
@@ -84,7 +84,16 @@
    :mpa (str m ":" p "/" a)
    :pa  (str p "/" a)
    :start sl
-   :end el})
+   :end el
+   :variables vc
+   :unifications u
+   :explicit-unifications eu})
+
+(defn predstats->map [[m ds ps es]]
+  {:module m
+   :dynamics-declared ds
+   :public-preds ps
+   :exported-preds es})
 
 (defn transform-calls [calls]
   (map call->map calls))
@@ -122,6 +131,7 @@
                     :module-size (module-size (:is_exported result))
                     :call-complexity (call-complexity raw-call)
                     :nesting (map nesting->map (:clause_complexity result))
+                    :predstats (map predstats->map (:module_predicate_stats result))
                     :raw-calls raw-call)]
      db')))
 

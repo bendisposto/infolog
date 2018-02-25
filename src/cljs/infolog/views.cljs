@@ -7,6 +7,7 @@
             [infolog.components.indentation-analysis :refer [complexity-viz]]
             [infolog.components.viz-nesting :refer [nesting-viz]]
             [infolog.components.viz-interface-size :refer [interface-size-viz]]
+            [infolog.components.viz-dynamics :refer [dynamics-viz]]
             [infolog.routes :refer [page navigation text]]
             [cljsjs.c3]
             [cljsjs.d3]))
@@ -90,13 +91,15 @@
 (defn indentation-view []
   [complexity-viz])
 
-(defn nesting-row [{:keys [module predicate arity depth calls-in-body]}]
+(defn nesting-row [{:keys [module predicate arity depth calls-in-body start end]}]
   [:tr
    [:td module]
    [:td predicate]
    [:td arity]
    [:td depth]
-   [:td calls-in-body]])
+   [:td calls-in-body]
+   [:td (+ 1 (- end start))]
+   ])
 
 (defn nesting-view []
   (let [nesting (re-frame/subscribe [:nesting])]
@@ -107,21 +110,70 @@
        [:th "Predicate"]
        [:th "Arity"]
        [:th "Nesting-Depth"]
-       [:th "Calls in Body"]]]
+       [:th "Calls in Body"]
+       [:th "Lines of code"]]]
      (into [:tbody]
            (mapv nesting-row (reverse (sort-by :depth
                                                (sort-by :calls-in-body (remove (fn [row]
                                                                                  (and (< (:depth row) 5)
                                                                                       (< (:calls-in-body row) 25))) @nesting))))))]))
 
+(defn unif-row [{:keys [module predicate arity variables unifications explicit-unifications]}]
+  [:tr
+   [:td module]
+   [:td predicate]
+   [:td arity]
+   [:td variables]
+   [:td unifications]
+   [:td explicit-unifications]
+   ])
+
+(defn unif-view []
+  (let [nesting (re-frame/subscribe [:nesting])]
+    [:table.table
+     [:thead
+      [:tr
+       [:th "Module"]
+       [:th "Predicate"]
+       [:th "Arity"]
+       [:th "Variables in Body"]
+       [:th "Unifications"]
+       [:th "Explicit Unifications"]]]
+     (into [:tbody]
+           (mapv unif-row (reverse (sort-by :unifications
+                                               (sort-by :variables (remove (fn [row]
+                                                                                 (and (< (:variables row) 10)
+                                                                                      (< (:unifications row) 25))) @nesting))))))]))
+
+(defn predstats-row [{:keys [module dynamics-declared public-preds exported-preds]}]
+  [:tr
+    [:td module]
+    [:td dynamics-declared]
+    [:td public-preds]
+    [:td exported-preds]])
+
+(defn predstats-view []
+  (let [predstats (re-frame/subscribe [:predstats])]
+    [:table.table
+     [:thead
+      [:tr
+       [:th "Module"]
+       [:th "Dynamic predicates"]
+       [:th "Public predicates"]
+       [:th "Exported predicates"]]]
+     (into [:tbody]
+           (mapv predstats-row (reverse (sort-by :dynamics-declared @predstats))))]))
 
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
 (defmethod page :Indentation [] [indentation-view])
 (defmethod page :AST-Nesting [] [nesting-view])
+(defmethod page :Unifications [] [unif-view])
+(defmethod page :PredStats [] [predstats-view])
 (defmethod page :Viz-Nesting [] [nesting-viz])
 (defmethod page :Viz-InterfaceSize [] [interface-size-viz])
+(defmethod page :Viz-Dynamics [] [dynamics-viz])
 (defmethod page :default [] [:h1 "Unknown page"])
 
 (defn render-navigation [active navigation]

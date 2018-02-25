@@ -64,7 +64,7 @@ ui:
 
 run_server:
 	@echo "Starting Python Simpleserver"
-	pushd resources/public; python -m SimpleHTTPServer; popd
+	pushd resources/public; python2 -m SimpleHTTPServer; popd
 
 server: ui infolog.edn indy.edn run_server
 

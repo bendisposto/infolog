@@ -29,5 +29,6 @@
        [:th "Maximum Indentation Level"]
        [:th "Module/Filename"]
        [:th "Histogram"]]]
-     (into [:tbody]
-           (map-indexed (complex-row @modules) (reverse  (sort-by :max @complexity))))]))
+      (into [:tbody]
+           (map-indexed (complex-row @modules) (reverse  (sort-by :max @complexity))))
+           ]))
