@@ -85,6 +85,11 @@
    (reaction (:predstats @db))))
 
 (re-frame/register-sub
+ :calls
+ (fn [db]
+   (reaction (:calls @db))))
+
+(re-frame/register-sub
  :dependencies
  (fn [db]
    (reaction (:dependencies @db))))

@@ -25,7 +25,7 @@
 (def navigation
   [:Problems
    :Dependencies
-   ["Complexity" :Indentation :AST-Nesting :Unifications :PredStats]
+   ["Complexity" :Indentation :AST-Nesting :Unifications :PredStats :Calls]
    ["Visualizations" :Viz-Nesting :Viz-InterfaceSize :Viz-Dynamics]])
 
 (defn pages []

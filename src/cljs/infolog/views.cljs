@@ -164,6 +164,24 @@
      (into [:tbody]
            (mapv predstats-row (reverse (sort-by :dynamics-declared @predstats))))]))
 
+(defn calls-row [{:keys [module predicate incalls outcalls]}]
+  [:tr
+    [:td module]
+    [:td predicate]
+    [:td incalls]
+    [:td outcalls]])
+
+(defn calls-view []
+  (let [calls (re-frame/subscribe [:calls])]
+    [:table.table
+      [:thead
+        [:tr
+          [:th "Module"]
+          [:th "Predicate"]
+          [:th "Incoming edges"]
+          [:th "Outgoing edges"]]]
+      (into [:tbody] (mapv calls-row (reverse (sort-by :incalls @calls))))]))
+
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
@@ -171,6 +189,7 @@
 (defmethod page :AST-Nesting [] [nesting-view])
 (defmethod page :Unifications [] [unif-view])
 (defmethod page :PredStats [] [predstats-view])
+(defmethod page :Calls [] [calls-view])
 (defmethod page :Viz-Nesting [] [nesting-viz])
 (defmethod page :Viz-InterfaceSize [] [interface-size-viz])
 (defmethod page :Viz-Dynamics [] [dynamics-viz])

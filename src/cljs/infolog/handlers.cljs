@@ -95,6 +95,12 @@
    :public-preds ps
    :exported-preds es})
 
+(defn calls->map [[m p ic oc]]
+  {:module m
+   :predicate p
+   :incalls ic
+   :outcalls oc})
+
 (defn transform-calls [calls]
   (map call->map calls))
 
@@ -132,6 +138,7 @@
                     :call-complexity (call-complexity raw-call)
                     :nesting (map nesting->map (:clause_complexity result))
                     :predstats (map predstats->map (:module_predicate_stats result))
+                    :calls (map calls->map (:pred_incalls_outcalls result))
                     :raw-calls raw-call)]
      db')))
 

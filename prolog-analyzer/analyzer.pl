@@ -57,7 +57,7 @@ clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLi
 
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/10, predicate/2, is_exported/2, is_dynamic/2, module_predicate_stats/4],
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/10, predicate/2, is_exported/2, is_dynamic/2, module_predicate_stats/4, pred_incalls_outcalls/4],
    export_to_file(Format,File,List).
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),
@@ -250,6 +250,20 @@ has_no_clauses(ToModule,Call) :- depends_on(ToModule,OtherModule),
 % ==========================================
 
 % a few analysis utilities
+
+module_predicate_stats(M,Dynamics,Public,Exported) :-
+    setof(X, X^is_dynamic(M,X), DynamicsSet),
+    setof(X, X^is_public(M,X), PublicSet),
+    setof(X, X^is_exported(M,X), ExportedSet),
+    length(DynamicsSet, Dynamics),
+    length(PublicSet, Public),
+    length(ExportedSet, Exported).
+
+pred_incalls_outcalls(Module,Pred,InCount,OutCount) :-
+    setof(M:P, M^P^SL^EL^calling(M,P,Module,Pred,SL,EL), InSet),
+    setof(M:P, M^P^SL^EL^calling(Module,Pred,M,P,SL,EL), OutSet),
+    length(InSet, InCount),
+    length(OutSet, OutCount).
 
 % compute paths / transitive closure with at most one cycle and at least one step
 :- meta_predicate transitive(0,-).
