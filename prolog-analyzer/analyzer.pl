@@ -8,6 +8,7 @@ portray_message(informational, _).
 :- use_module(library_modules).
 
 :- use_module(library(lists)).
+:- use_module(library(sets)).
 :- use_module(library(terms)).
 :- use_module(library(system)).
 :- use_module(library(file_systems)).
@@ -40,7 +41,8 @@ portray_message(informational, _).
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
 :- dynamic
-       clause_complexity/9.  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine, Variables, Unifications, ExplicitUnifications)
+       clause_complexity/9,  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine, Variables, Unifications, ExplicitUnifications)
+       clause_halstead/8.    % clause_halstead(Module,Name/Arity, StartLine, EndLine, OperatorOcc, OperandOcc, DistinctOperators, DistinctOperands)
 
 % optionally the following can also be stored:
 :- dynamic
@@ -57,7 +59,7 @@ clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLi
 
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/10, predicate/2, is_exported/2, is_dynamic/2, module_predicate_stats/4, pred_incalls_outcalls/4],
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/10, clause_halstead/8, predicate/2, is_exported/2, is_dynamic/2, module_predicate_stats/4, pred_incalls_outcalls/4],
    export_to_file(Format,File,List).
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),
@@ -1487,41 +1489,78 @@ analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
    term_variables(Body, Vars),
    length(Vars, VarCount),
-   (body_complexity(Body,cacc(0,0,0,0,0),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications))
-     -> %format('Clause Complexity: ~w  (~w:~w)~n',[NestingLevel,Module,Predicate]),
-        assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine,VarCount,Unifications,ExplicitUnifications))
-     ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
+   (body_complexity(Body,cacc(0,0,0,0,0,0,0,[],[]),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications,OperatorOcc,OperandOcc,AtomSet,OperatorSet))
+     -> length(AtomSet, AtomCount),
+      length(OperatorSet, OperatorCount),
+      term_variables(Body,Vars),
+      length(Vars, VarCount),
+      OperandCount is AtomCount+VarCount,
+%      format('Halstead complexity ~w, ~w, ~w, ~w~n',[OperatorOcc,OperandOcc,OperatorCount,OperandCount]),
+      assert(clause_halstead(Module,Predicate,StartLine,EndLine,OperatorOcc,OperandOcc,OperatorCount,OperandCount)),
+      assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine,VarCount,Unifications,ExplicitUnifications))
+   ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
 
 body_complexity(V) --> {var(V)},!.
+body_complexity(M:V) --> {var(V)},!.
 body_complexity((A,B)) --> !,  enter_scope(0),
    body_complexity(A), body_complexity(B), exit_scope(0).
 body_complexity((A;B)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), exit_scope(1).
-body_complexity(if(A,B,C)) --> !,  enter_scope(1),
-   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
-body_complexity((A -> BC)) -->  {nonvar(BC), BC=(B ; C)}, !,  enter_scope(1),
-   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
+body_complexity(if(A,B,C)) --> !,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C),
+   exit_scope(1),
+   inc_operator_occ, ins_operator(if/3).
+body_complexity((A -> BC)) -->  {nonvar(BC), BC=(B ; C)}, !,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C),
+   exit_scope(1),
+   inc_operator_occ, ins_operator('->'/2).
 % Should we treat (Case1 -> B ; Case2 -> C ; .... ) specially as a case-construct ?
-body_complexity((A->B)) --> !,  ({A==otherwise} -> body_complexity(B) % do not count otherwise -> as nesting
+body_complexity((A->B)) --> !, inc_operator_occ, ins_operator('->'/2),
+   % do not count otherwise -> as nesting
+   ({A==otherwise} -> body_complexity(B), ins_operator(otherwise/0)
    ; enter_scope(1),
-     body_complexity(A), body_complexity(B), exit_scope(1)).
-body_complexity(\+ A) --> !,  enter_scope(1),
-                          body_complexity(A), exit_scope(1).
-body_complexity((A=B)) --> !, add_eunif.
-body_complexity(Meta) --> {unary_meta_built_in(Meta,A)},!, enter_scope(1),
-   body_complexity(A), exit_scope(1).
-body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!, enter_scope(1),
+     body_complexity(A), body_complexity(B),
+     exit_scope(1)).
+body_complexity(\+ A) --> !,
+   enter_scope(1),
    body_complexity(A),
-   body_complexity(B), exit_scope(1).
-body_complexity(C) --> add_call(C).
+   exit_scope(1),
+   inc_operator_occ, ins_operator('\\+'/1).
+body_complexity((A=B)) --> !,
+   add_eunif,
+   term_halstead(A), term_halstead(B),
+   inc_operator_occ, ins_operator('='/2).
+body_complexity(Meta) --> {unary_meta_built_in(Meta,A)},!,
+   enter_scope(1),
+   body_complexity(A),
+   inc_operator_occ, {functor(Meta,Pred,Arity)}, ins_operator(meta:Pred/Arity),
+   exit_scope(1).
+body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B),
+   inc_operator_occ, {functor(Meta,Pred,Arity)}, ins_operator(meta:Pred/Arity),
+   exit_scope(1).
+body_complexity(Module:Call) --> !,
+   add_call(Module:Call),
+   {Call =.. [Pred|Args], length(Args,Arity)},
+   inc_operator_occ,
+   ins_operator(Module:Pred/Arity),
+   scanlist(term_halstead,Args).
+body_complexity(Call) --> !,
+   add_call(Call),
+   {Call =.. [Pred|Args], length(Args,Arity)},
+   inc_operator_occ,
+   ins_operator(this:Pred/Arity),
+   scanlist(term_halstead,Args).                       
 
-module_predicate_stats(M,Dynamics,Public,Exported) :-
-    setof(X, X^is_dynamic(M,X), DynamicsSet),
-    setof(X, X^is_public(M,X), PublicSet),
-    setof(X, X^is_exported(M,X), ExportedSet),
-    length(DynamicsSet, Dynamics),
-    length(PublicSet, Public),
-    length(ExportedSet, Exported).
+term_halstead(V) --> {var(V)}, !, inc_operand_occ.
+term_halstead(F) --> !,
+    {F =.. [Functor|Args], length(Args,Arity)}, 
+    inc_operand_occ,
+    ins_atom(Functor/Arity),
+    scanlist(term_halstead,Args).
 
 binary_meta_built_in(when(W,A),W,A).
 binary_meta_built_in(call_cleanup(A,B),A,B).
@@ -1534,19 +1573,25 @@ unary_meta_built_in(setof(_,A,_),A).
 unary_meta_built_in(once(A),A).
 %unary_meta_built_in(call(A),A).
 
-enter_scope(Inc,cacc(Level,Max,Calls,Unif,EUnif),cacc(L1,M1,Calls,Unif,EUnif)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
-exit_scope(Inc,cacc(Level,Max,Calls,Unif,EUnif),cacc(L1,Max,Calls,Unif,EUnif)) :- L1 is Level-Inc.
+enter_scope(Inc,cacc(Level,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L1,M1,Calls,Unif,EUnif,Otors,Onds,AS,OS)) :-
+    L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
+exit_scope(Inc,cacc(Level,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L1,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS)) :-
+    L1 is Level-Inc.
 add_call(otherwise) --> !,[].
 add_call(fail) --> !,[].
 add_call(true) --> !,[].
-add_call(Term,cacc(L,M,Calls,Unif,EUnif),cacc(L,M,C1,Unif1,EUnif)) :-
+add_call(Term,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,C1,Unif1,EUnif,Otors,Onds,AS,OS)) :-
     C1 is Calls+1,
     term_variables(Term,Vs),
     length(Vs,VC),
     Unif1 is Unif+VC.
-add_eunif(cacc(L,M,Calls,Unif,EUnif),cacc(L,M,Calls,Unif1,EUnif1)) :-
+add_eunif(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif1,EUnif1,Otors,Onds,AS,OS)) :-
     Unif1 is Unif+1,
     EUnif1 is EUnif+1.
+inc_operator_occ(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors1,Onds,AS,OS)) :- Otors1 is Otors+1.
+ins_operator(Op,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS1)) :- sets:add_element(Op,OS,OS1).
+inc_operand_occ(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds1,AS,OS)) :- Onds1 is Onds+1.
+ins_atom(Atom,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS1,OS)) :- sets:add_element(Atom,AS,AS1).
 
 % --------------------------------
 % detect some obvious anti-patterns, problems in a clause:

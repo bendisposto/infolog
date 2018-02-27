@@ -85,6 +85,11 @@
    (reaction (:predstats @db))))
 
 (re-frame/register-sub
+ :halstead
+ (fn [db]
+   (reaction (:halstead @db))))
+
+(re-frame/register-sub
  :calls
  (fn [db]
    (reaction (:calls @db))))

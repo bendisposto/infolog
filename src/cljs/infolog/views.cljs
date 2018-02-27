@@ -9,6 +9,7 @@
             [infolog.components.viz-interface-size :refer [interface-size-viz]]
             [infolog.components.viz-dynamics :refer [dynamics-viz]]
             [infolog.routes :refer [page navigation text]]
+            [cljs.pprint :as pprint]
             [cljsjs.c3]
             [cljsjs.d3]))
 
@@ -182,6 +183,55 @@
           [:th "Outgoing edges"]]]
       (into [:tbody] (mapv calls-row (reverse (sort-by :incalls @calls))))]))
 
+(defn halstead-row [{:keys [module predicate operator-occ operand-occ distinct-operators distinct-operands]}]
+  (let [N (+ operator-occ operand-occ)
+        n (+ distinct-operators distinct-operands)
+        V (* N (/ (Math/log n) (Math/log 2)))
+        L (* (/ 2 distinct-operators) (/ distinct-operands operand-occ))
+        D (/ 1 L)
+        I (* L V)
+        E (/ V L)
+        T (/ E 18)
+        format (fn [f] (pprint/cl-format nil "~,2f" f))]
+  [:tr
+    [:td module]
+    [:td predicate]
+    [:td operator-occ]
+    [:td operand-occ]
+    [:td distinct-operators]
+    [:td distinct-operands]
+    [:td N]
+    [:td n]
+    [:td (format V)]
+    [:td (format L)]
+    [:td (format D)]
+    [:td (format I)]
+    [:td (format E)]
+    [:td (format T) s]
+    ]))
+
+(defn halstead-view []
+  (let [halstead (re-frame/subscribe [:halstead])
+        effort (fn [row] (/ (* (:distinct-operators row) (:operand-occ row) (+ (:operand-occ row) (:operator-occ row)) (/ (Math/log (+ (:distinct-operators row) (:distinct-operands row))) (Math/log 2))) (* 2 (:distinct-operands row))))]
+    [:table.table
+      [:thead
+        [:tr
+          [:th "Module"]
+          [:th "Predicate"]
+          [:th "Operator tokens"]
+          [:th "Operand tokens"]
+          [:th "Distinct operators"]
+          [:th "Distinct operands"]
+          [:th "Length"]
+          [:th "Vocabulary"]
+          [:th "Volume"]
+          [:th "Level estimator"]
+          [:th "Difficulty"]
+          [:th "Intelligent Content"]
+          [:th "Programming Effort"]
+          [:th "Programming Time"]]]
+      (into [:tbody] (mapv halstead-row (reverse (sort-by effort (remove (fn [row] (or (< (effort row) 10000) (< (:distinct-operands row) 5) (< (:distinct-operators row) 5))) @halstead)))))]))
+
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
@@ -190,6 +240,7 @@
 (defmethod page :Unifications [] [unif-view])
 (defmethod page :PredStats [] [predstats-view])
 (defmethod page :Calls [] [calls-view])
+(defmethod page :Halstead [] [halstead-view])
 (defmethod page :Viz-Nesting [] [nesting-viz])
 (defmethod page :Viz-InterfaceSize [] [interface-size-viz])
 (defmethod page :Viz-Dynamics [] [dynamics-viz])

@@ -101,6 +101,16 @@
    :incalls ic
    :outcalls oc})
 
+(defn halstead->map [[m p sl el otors onds dotors donds]]
+  {:module m
+   :predicate p
+   :start sl
+   :end el
+   :operator-occ otors
+   :operand-occ onds
+   :distinct-operators dotors
+   :distinct-operands donds})
+
 (defn transform-calls [calls]
   (map call->map calls))
 
@@ -139,6 +149,7 @@
                     :nesting (map nesting->map (:clause_complexity result))
                     :predstats (map predstats->map (:module_predicate_stats result))
                     :calls (map calls->map (:pred_incalls_outcalls result))
+                    :halstead (map halstead->map (:clause_halstead result))
                     :raw-calls raw-call)]
      db')))
 
