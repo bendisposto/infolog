@@ -102,14 +102,32 @@
    :outcalls oc})
 
 (defn halstead->map [[m p sl el otors onds dotors donds]]
+  (let [N (+ otors onds)
+        n (+ dotors donds)
+        V (* N (/ (Math/log n) (Math/log 2)))
+        L (* (/ 2 dotors) (/ (+ donds 1) (+ onds 1)))
+        D (/ 1 L)
+        I (* L V)
+        E (/ V L)
+        T (/ E 18)]
   {:module m
    :predicate p
    :start sl
    :end el
+   :mpa (str m ":" p)
    :operator-occ otors
    :operand-occ onds
    :distinct-operators dotors
-   :distinct-operands donds})
+   :distinct-operands donds
+   :length N
+   :vocabulary n
+   :volume V
+   :level L
+   :difficulty D
+   :intelligent-content I
+   :effort E
+   :time T
+   }))
 
 (defn transform-calls [calls]
   (map call->map calls))

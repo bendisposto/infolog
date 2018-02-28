@@ -6,8 +6,10 @@
             [infolog.components.module-dependencies :refer [dependency-graph]]
             [infolog.components.indentation-analysis :refer [complexity-viz]]
             [infolog.components.viz-nesting :refer [nesting-viz]]
+            [infolog.components.viz-halstead :refer [halstead-viz]]
             [infolog.components.viz-interface-size :refer [interface-size-viz]]
             [infolog.components.viz-dynamics :refer [dynamics-viz]]
+            [infolog.components.viz-incalls :refer [incalls-viz]]
             [infolog.routes :refer [page navigation text]]
             [cljs.pprint :as pprint]
             [cljsjs.c3]
@@ -183,16 +185,8 @@
           [:th "Outgoing edges"]]]
       (into [:tbody] (mapv calls-row (reverse (sort-by :incalls @calls))))]))
 
-(defn halstead-row [{:keys [module predicate operator-occ operand-occ distinct-operators distinct-operands]}]
-  (let [N (+ operator-occ operand-occ)
-        n (+ distinct-operators distinct-operands)
-        V (* N (/ (Math/log n) (Math/log 2)))
-        L (* (/ 2 distinct-operators) (/ distinct-operands operand-occ))
-        D (/ 1 L)
-        I (* L V)
-        E (/ V L)
-        T (/ E 18)
-        format (fn [f] (pprint/cl-format nil "~,2f" f))]
+(defn halstead-row [{:keys [module predicate operator-occ operand-occ distinct-operators distinct-operands volume length vocabulary level difficulty intelligent-content time effort]}]
+  (let [format (fn [f] (pprint/cl-format nil "~,2f" f))]
   [:tr
     [:td module]
     [:td predicate]
@@ -200,14 +194,14 @@
     [:td operand-occ]
     [:td distinct-operators]
     [:td distinct-operands]
-    [:td N]
-    [:td n]
-    [:td (format V)]
-    [:td (format L)]
-    [:td (format D)]
-    [:td (format I)]
-    [:td (format E)]
-    [:td (format T) s]
+    [:td length]
+    [:td vocabulary]
+    [:td (format volume)]
+    [:td (format level)]
+    [:td (format difficulty)]
+    [:td (format intelligent-content)]
+    [:td (format effort)]
+    [:td (str (format time) " s")]
     ]))
 
 (defn halstead-view []
@@ -244,6 +238,8 @@
 (defmethod page :Viz-Nesting [] [nesting-viz])
 (defmethod page :Viz-InterfaceSize [] [interface-size-viz])
 (defmethod page :Viz-Dynamics [] [dynamics-viz])
+(defmethod page :Viz-Halstead [] [halstead-viz])
+(defmethod page :Viz-Incalls [] [incalls-viz])
 (defmethod page :default [] [:h1 "Unknown page"])
 
 (defn render-navigation [active navigation]

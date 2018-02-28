@@ -1,0 +1,188 @@
+(ns infolog.components.viz-incalls
+  (:require-macros [reagent.ratom :refer [reaction]])
+  (:require [re-frame.core :as re-frame]
+            [reagent.core :as r]
+            [cljsjs.d3]
+            [cljs.pprint :as pprint]
+            [taoensso.encore :as enc  :refer (logf log logp)]))
+
+(def diameter 960)
+(def margin 10)
+(def inner-diameter (- diameter margin margin))
+
+(def x-scale (.. js/d3 -scale (linear) (range #js [0 inner-diameter])))
+(def y-scale (.. js/d3 -scale (linear) (range #js [0 inner-diameter])))
+
+(def color-scale (.. js/d3 -scale
+                     (linear)
+                     (domain #js [-1 5])
+                     (range (clj->js ["hsl(185,60%,99%)" "hsl(187,40%,70%)"]))
+                     (interpolate (aget js/d3 "interpolateHcl"))))
+
+(def pack (.. js/d3 -layout
+              (pack)
+              (padding 2)
+              (size #js [inner-diameter inner-diameter])
+              (value (fn [d] (aget d "size")))))
+
+(def focus (r/atom "root"))
+(def focus-module (r/atom nil))
+
+(def hover-text (r/atom ""))
+
+(defn translate
+  ([a] (translate a a))
+  ([a b]
+   (str "translate(" a "," b ")")))
+
+
+(declare mk-inner-node)
+
+(defn create-structure [top content]
+  (let [leafs (filter #(empty? (:path %)) content)
+        inner-nodes (remove #(empty? (:path %)) content)
+        ign (group-by (fn [n] (first (:path n))) inner-nodes)]
+    {:name top :inner-node true :root (= top "root") :children (into leafs (map mk-inner-node ign))}))
+
+
+(defn mk-inner-node [[top nodes]]
+  (let [nodes (map (fn [e] (assoc e :path (rest (:path e)))) nodes)]
+    (create-structure top nodes)))
+
+(defn make-module-db [modules]
+  (into {} (map (fn [{:keys [name] :as e}] [name e]) modules)))
+
+(defn join-data [mods data]
+  (map (fn [item]
+         (let [size (:incalls item)
+               module-name (:module item)
+               module-path (conj (vec (:path (mods module-name))) module-name)]
+           {:module module-name
+            :path module-path
+            :name (:predicate item)
+            :incalls (:incalls item)
+            :outcalls (:outcalls item)
+            :size size :children []}))
+       data))
+
+(defn mk-data [modules data]
+  (let [mods (make-module-db @modules)
+        joined (join-data mods @data)
+        nodes (create-structure "root" joined)]
+    (reaction nodes)))
+
+(defn zoom [node]
+  (let [r (aget node "r")
+        x (aget node "x")
+        y (aget node "y")
+        k (/ inner-diameter r 2)]
+    (.domain x-scale #js [(- x r) (+ x r)])
+    (.domain y-scale #js [(- y r) (+ y r)])
+    (.. js/d3 -event (stopPropagation))
+    (.. js/d3
+        (selectAll "circle")
+        (transition)
+        (duration 500)
+        (attr "r" (fn [d] (when d (let [r (aget d "r")] (when (not (js/isNaN r)) (* r k))))))
+        (attr "transform" (fn [d] (when d (let [x (aget d "x") y (aget d "y")] (translate (x-scale x) (y-scale y)))))))))
+
+(defn update-fn [d]
+  (logp :update-viz)
+  (let [dse js/d3
+        g (.select dse ".viz-g")
+        t (.select dse ".viz-t")
+        nodes (.nodes pack (clj->js d))
+        points (.. g
+                   (selectAll "circle")
+                   (data nodes))]
+    (.. points
+        (enter)
+        (append "circle")
+        (attr "id" (fn [d] (aget d "name")))
+        (attr "class" (fn [d] (str "nesting-node" (when (aget d "inner-node") " nesting-inner-node"))))
+        (attr "r" (fn [d] (aget d "r")))
+        (attr "fill" (fn [d]
+                       (let [w (aget d "weight")
+                             children? (aget d "children")
+                             depth (aget d "depth")]
+                         (cond (pos? w) "darkred"
+                               children? (color-scale depth)
+                               :otherwise "WhiteSmoke"))))
+        (attr "fill-opacity" (fn [d] (aget d "weight")))
+        (attr "transform" (fn [d] (translate (aget d "x") (aget d "y"))))
+
+        (on "click" (fn [d]
+                      (let [fm @focus-module
+                            inode (aget d "inner-node")
+                            dz (if inode d (aget d "parent"))
+                            name (aget d "name")
+                            name (if (= "root" name) "" name)
+                            module (aget d "module")]
+                        (if inode
+                          (reset! focus "")
+                          (reset! focus (str module " " name)))
+                        (reset! focus-module dz)
+                        (when-not (= dz fm) (zoom dz)))))
+
+        (on "mouseover" (fn [d]
+                          (let [name (aget d "name")
+                                name (if (= "root" name) "" name)
+                                module (aget d "module")
+                                incalls (aget d "incalls")
+                                outcalls (aget d "outcalls")
+                                x (aget d "x")
+                                y (aget d "y")
+                                format (fn [f] (pprint/cl-format nil "~,2f" f))]
+                            (reset! hover-text
+                                    [(if module
+                                      [:div
+                                       [:div [:b (str module ":" name)]]
+                                       [:div (str "Incoming: " incalls)]
+                                       [:div (str "Outgoing: " outcalls)]]
+                                      [:div [:div [:b name]] [:div "Children: " (count (aget d "children"))]]) x y]))))
+        (on "mouseout" (fn [_] (reset! hover-text ["" 0 0]))))))
+
+(defn mount-fn [rc data]
+  (logp :mounting-viz)
+  (let [el (.getDOMNode rc)
+        svg (.. js/d3
+                (select el)
+                (append "svg")
+                (attr "width" diameter)
+                (attr "height" diameter))]
+    (.. svg
+        (append "g")
+        (attr "class" "viz-g")
+        (attr "transform" (translate margin)))
+
+    (.. svg
+        (append "g")
+        (attr "class" "viz-t"))
+
+    (update-fn data)))
+
+(defn viz []
+  (let [modules (re-frame/subscribe [:raw-modules])
+        data (mk-data modules (re-frame/subscribe [:calls]))]
+    (r/create-class
+     {:component-did-mount (fn [rc] (mount-fn rc @data))
+      :component-did-update (fn [_] (update-fn @data))
+      :reagent-render (fn [_]
+                        [:div
+                         [:div.nesting-viz {:data-focus @focus :data-count (count @data)}]])})))
+
+(defn hover []
+  (let [[text x y] @hover-text]
+    [:div#hover {:style {:position "absolute"
+                         :background  "rgba(238, 237, 217,0.75)"
+                         :left (str x "px")
+                         :top (str y "px")}} text]))
+
+(defn copyandpaste []
+  [:div "Selected: " @focus])
+
+(defn incalls-viz []
+  [:div
+   [hover]
+   [viz]
+   [copyandpaste]])

@@ -19,6 +19,8 @@
   (or ({:Viz-Nesting "AST-Nesting"
         :Viz-InterfaceSize "Interface Size"
         :Viz-Dynamics "Dynamic predicates"
+        :Viz-Halstead "Programming time"
+        :Viz-Incalls "Incoming calls"
         :PredStats "Predicates per module"} kw)
       (str (name kw))))
 
@@ -26,7 +28,7 @@
   [:Problems
    :Dependencies
    ["Complexity" :Indentation :AST-Nesting :Unifications :PredStats :Calls :Halstead]
-   ["Visualizations" :Viz-Nesting :Viz-InterfaceSize :Viz-Dynamics]])
+   ["Visualizations" :Viz-Nesting :Viz-InterfaceSize :Viz-Dynamics :Viz-Halstead :Viz-Incalls]])
 
 (defn pages []
   (doall (filter keyword? (flatten navigation))))

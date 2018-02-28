@@ -1489,11 +1489,10 @@ analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
    term_variables(Body, Vars),
    length(Vars, VarCount),
-   (body_complexity(Body,cacc(0,0,0,0,0,0,0,[],[]),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications,OperatorOcc,OperandOcc,AtomSet,OperatorSet))
+   Predicate = Name/Arity,
+   (body_complexity(Body,cacc(0,0,0,0,0,2,Arity,[],[this:Predicate,':-'/2]),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications,OperatorOcc,OperandOcc,AtomSet,OperatorSet))
      -> length(AtomSet, AtomCount),
       length(OperatorSet, OperatorCount),
-      term_variables(Body,Vars),
-      length(Vars, VarCount),
       OperandCount is AtomCount+VarCount,
 %      format('Halstead complexity ~w, ~w, ~w, ~w~n',[OperatorOcc,OperandOcc,OperatorCount,OperandCount]),
       assert(clause_halstead(Module,Predicate,StartLine,EndLine,OperatorOcc,OperandOcc,OperatorCount,OperandCount)),
