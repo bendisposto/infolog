@@ -1489,7 +1489,7 @@ analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
    term_variables(Body, Vars),
    length(Vars, VarCount),
-   Predicate = Name/Arity,
+   Predicate = _Name/Arity,
    (body_complexity(Body,cacc(0,0,0,0,0,2,Arity,[],[this:Predicate,':-'/2]),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications,OperatorOcc,OperandOcc,AtomSet,OperatorSet))
      -> length(AtomSet, AtomCount),
       length(OperatorSet, OperatorCount),
@@ -1500,7 +1500,7 @@ analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
 
 body_complexity(V) --> {var(V)},!.
-body_complexity(M:V) --> {var(V)},!.
+body_complexity(_:V) --> {var(V)},!.
 body_complexity((A,B)) --> !,  enter_scope(0),
    body_complexity(A), body_complexity(B), exit_scope(0).
 body_complexity((A;B)) --> !,  enter_scope(1),

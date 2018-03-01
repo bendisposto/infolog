@@ -143,10 +143,8 @@
        [:th "Unifications"]
        [:th "Explicit Unifications"]]]
      (into [:tbody]
-           (mapv unif-row (reverse (sort-by :unifications
-                                               (sort-by :variables (remove (fn [row]
-                                                                                 (and (< (:variables row) 10)
-                                                                                      (< (:unifications row) 25))) @nesting))))))]))
+           (mapv unif-row (take 100 (reverse (sort-by :unifications
+                                               (sort-by :variables @nesting))))))]))
 
 (defn predstats-row [{:keys [module dynamics-declared public-preds exported-preds]}]
   [:tr
@@ -165,7 +163,7 @@
        [:th "Public predicates"]
        [:th "Exported predicates"]]]
      (into [:tbody]
-           (mapv predstats-row (reverse (sort-by :dynamics-declared @predstats))))]))
+           (mapv predstats-row (take 100 (reverse (sort-by :dynamics-declared @predstats)))))]))
 
 (defn calls-row [{:keys [module predicate incalls outcalls]}]
   [:tr
@@ -183,7 +181,7 @@
           [:th "Predicate"]
           [:th "Incoming edges"]
           [:th "Outgoing edges"]]]
-      (into [:tbody] (mapv calls-row (reverse (sort-by :incalls @calls))))]))
+      (into [:tbody] (mapv calls-row (take 100 (reverse (sort-by :incalls @calls)))))]))
 
 (defn halstead-row [{:keys [module predicate operator-occ operand-occ distinct-operators distinct-operands volume length vocabulary level difficulty intelligent-content time effort]}]
   (let [format (fn [f] (pprint/cl-format nil "~,2f" f))]
@@ -205,8 +203,7 @@
     ]))
 
 (defn halstead-view []
-  (let [halstead (re-frame/subscribe [:halstead])
-        effort (fn [row] (/ (* (:distinct-operators row) (:operand-occ row) (+ (:operand-occ row) (:operator-occ row)) (/ (Math/log (+ (:distinct-operators row) (:distinct-operands row))) (Math/log 2))) (* 2 (:distinct-operands row))))]
+  (let [halstead (re-frame/subscribe [:halstead])]
     [:table.table
       [:thead
         [:tr
@@ -224,7 +221,7 @@
           [:th "Intelligent Content"]
           [:th "Programming Effort"]
           [:th "Programming Time"]]]
-      (into [:tbody] (mapv halstead-row (reverse (sort-by effort (remove (fn [row] (or (< (effort row) 10000) (< (:distinct-operands row) 5) (< (:distinct-operators row) 5))) @halstead)))))]))
+      (into [:tbody] (mapv halstead-row (take 100 (reverse (sort-by :effort @halstead)))))]))
 
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
