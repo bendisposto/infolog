@@ -258,8 +258,7 @@
       [:div
        [:nav.navbar.navbar-inverse.navbar-fixed-top
         [:div.container
-         (into  [:ul.nav.navbar-nav]
-                (render-navigation active navigation))]]
+        (into [:ul.nav.navbar-nav] (concat (render-navigation active navigation) [[:li [:a {:href "docs"} "Documentation"]]]))]]
        [:div.content
         [:h1 (if (keyword @active) (text @active) "Unknown Page")]
         [:div (str "Directory: " @location)]

@@ -16,6 +16,7 @@
 decompose_location(module_lines(M,L1,L2),Mod,unknown,L1,L2) :- !,Mod=M.
 decompose_location(module_pred_lines(M,P,L1,L2),Mod,P,L1,L2) :- !, Mod=M.
 decompose_location(module_loc(M),Mod,unknown,unknown,unknown) :- !, Mod=M.
+decompose_location(module_pred(M,P),Mod,P,unknown,unknown) :- !, Mod=M.
 decompose_location(_,unknown,unknown,unknown,unknown).
 
 % print location info

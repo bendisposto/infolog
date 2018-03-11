@@ -17,9 +17,9 @@ endif
 ifdef PROBPATH
     ABSOLUTE_PROB_PATH=$(realpath $(PROBPATH))
     PREPARE_ENV=export PROB_HOME=$(ABSOLUTE_PROB_PATH)
-    ABSOLUTE_PROJECT_PATH=$(ABSOLUTE_PROB_PATH)
+    ABSOLUTE_PROJECT_PATH=$(ABSOLUTE_PROB_PATH)/src
     PROJECTPATH=$(PROBPATH)
-    MAINFILE=$(ABSOLUTE_PROB_PATH)/prob_tcltk.pl
+    MAINFILE=prob_tcltk.pl
     PLDEPS=prolog-analyzer/*.pl prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl
     TARGETS=['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']
 endif
@@ -65,11 +65,11 @@ update:
 	@echo "analyzing $(PROJECTPATH) starting from $(MAINFILE)"
 	$(PREPARE_ENV); rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze($(TARGETS),'prolog-analyzer/meta_user_pred_cache.pl')."
 
-infolog_problems.csv:  prolog-analyzer/meta_user_pred_cache.pl $(PLDEPS)
+infolog_problems.csv:  prolog-analyzer/meta_user_pred_cache.pl $(PLDEPS) prolog-analyzer/documentation.pl
 	@echo "Generating CSV File"
-	$(PREPARE_ENV); rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze($(TARGETS),'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv')."
+	$(PREPARE_ENV); rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze($(TARGETS),'prolog-analyzer/meta_user_pred_cache.pl'), lint_to_csv_file('infolog_problems.csv'), halt."
 
-infolog.edn:  prolog-analyzer/meta_user_pred_cache.pl $(PLDEPS) prolog-analyzer/meta_preds.pl
+infolog.edn:  prolog-analyzer/meta_user_pred_cache.pl $(PLDEPS) prolog-analyzer/meta_preds.pl prolog-analyzer/documentation.pl
 	@echo "Generating Data for website"
 	$(PREPARE_ENV); rlwrap sicstus -l prolog-analyzer/analyzer.pl --goal "analyze($(TARGETS),'prolog-analyzer/meta_user_pred_cache.pl'),  export_to_clj_file('resources/public/infolog.edn'), halt."
 
@@ -83,6 +83,7 @@ indy.edn:
 
 clean:
 	rm -f prolog-analyzer/meta_user_pred_cache.pl
+	rm -f prolog-analyzer/documentation.pl
 	echo ':- dynamic meta_user_pred/3.' > prolog-analyzer/meta_user_pred_cache.pl
 	rm -f infolog_problems*.csv
 	rm -f resources/public/infolog.edn
@@ -98,7 +99,7 @@ run_server:
 	@echo "Starting Python Simpleserver"
 	pushd resources/public; python2 -m SimpleHTTPServer; popd
 
-server: ui infolog.edn indy.edn run_server
+server: ui infolog.edn indy.edn docs run_server
 
 prolog-analyzer/java_calls.pl: Makefile
 	@echo "Extracting Prolog calls from ProB 2.0 Java API"
@@ -122,3 +123,14 @@ cp_tcltk_calls: prolog-analyzer/tcltk_calls.pl
 
 prolog-analyzer/meta_preds.pl: prolog-analyzer/meta_pred_generator.pl
 	sicstus -l prolog-analyzer/meta_pred_generator.pl --goal "tell('prolog-analyzer/meta_preds.pl'),gen,told,halt."
+
+analyzers/doc.jar:
+	javac analyzers/doc/Main.java analyzers/doc/de/hhu/infolog/doc/*.java
+	cd analyzers/doc; jar cfm ../doc.jar Manifest.txt *.class de/hhu/infolog/doc/*.class
+
+prolog-analyzer/documentation.pl: analyzers/doc.jar
+	java -jar analyzers/doc.jar $(ABSOLUTE_PROJECT_PATH) --no-docs --export-prolog prolog-analyzer/documentation.pl
+
+docs: infolog_problems.csv analyzers/doc.jar
+	mkdir -p resources/public/docs
+	java -jar analyzers/doc.jar $(ABSOLUTE_PROJECT_PATH) --html --css analyzers/doc/purple.css --out resources/public/docs --problems-csv infolog_problems.csv
