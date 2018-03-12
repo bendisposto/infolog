@@ -20,7 +20,7 @@ ifdef PROBPATH
     ABSOLUTE_PROJECT_PATH=$(ABSOLUTE_PROB_PATH)/src
     PROJECTPATH=$(PROBPATH)
     MAINFILE=prob_tcltk.pl
-    PLDEPS=prolog-analyzer/*.pl prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl
+    PLDEPS=prolog-analyzer/tcltk_calls.pl prolog-analyzer/java_calls.pl
     TARGETS=['$(PROBPATH)/src/prob_tcltk.pl','$(PROBPATH)/src/prob_cli.pl']
 endif
 
@@ -134,3 +134,15 @@ prolog-analyzer/documentation.pl: analyzers/doc.jar
 docs: infolog_problems.csv analyzers/doc.jar
 	mkdir -p resources/public/docs
 	java -jar analyzers/doc.jar $(ABSOLUTE_PROJECT_PATH) --html --css analyzers/doc/purple.css --out resources/public/docs --problems-csv infolog_problems.csv
+
+latex-out/infolog.tex: infolog_problems.csv analyzers/doc.jar
+	mkdir -p latex-out
+	rm -r latex-out/*
+	java -jar analyzers/doc.jar $(ABSOLUTE_PROJECT_PATH) --latex --no-preamble --out latex-out --problems-csv infolog_problems.csv
+	@echo >latex-out/infolog.tex "\input{../analyzers/doc/preamble.tex}"
+	cd latex-out; find . -name \*.pl.tex -exec echo "\input{{}}" >>infolog.tex \;
+	@echo >>latex-out/infolog.tex "\end{document}"
+
+infologdoc.pdf: latex-out/infolog.tex
+	cd latex-out; pdflatex infolog.tex && pdflatex infolog.tex
+	cp latex-out/infolog.pdf infologdoc.pdf

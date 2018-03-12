@@ -1,6 +1,7 @@
 package de.hhu.infolog.doc;
 
 import java.util.Iterator;
+import java.util.Map;
 import java.io.FileWriter;
 import java.io.Writer;
 import java.io.IOException;
@@ -18,7 +19,7 @@ public class LatexGenerator implements Generator {
         this.joiner = new Joiner(parser);
         joiner.join();
     }
-
+    
     /** A factory for creating a LatexGenerator */
     public static class Factory implements GeneratorFactory {
         public Generator module(Parser parser) {
@@ -52,6 +53,9 @@ public class LatexGenerator implements Generator {
                 JoinedComment moduleComment = joiner.getModuleComment();
                 if(moduleComment != null) {
                     fw.write(maskString(moduleComment.getCommentText()));
+                }
+                for(IndexStore.ProblemEntry problem : IndexStore.get().getModuleProblems(parser.getModuleName())) {
+                    renderProblem(problem,fw);
                 }
                 // Exported predicates
                 fw.write("\\predgroup{Exported predicates}");
@@ -93,6 +97,11 @@ public class LatexGenerator implements Generator {
         w.write("\\let\\module=\\section\n");
         w.write("\\let\\predgroup=\\subsection\n");
         w.write("\\let\\predicate=\\subsubsection\n");
+        w.write("\\def\\tag#1#2{\\item[#1] #2}\n");
+        w.write("\\def\\paramtag#1#2{\\tag{param #1}{#2}}\n");
+        w.write("\\def\\justifytag#1#2{\\tag{justify #1}{#2}}\n");
+        w.write("\\def\\sideeffecttag#1#2{\\tag{sideeffect #1}{#2}}\n");
+        w.write("\\def\\problem#1#2#3{\\par\\textbf{#1}: \\textit{#2}: #3\\par}\n");
         w.write("\\begin{document}\n");
     }
 
@@ -108,14 +117,99 @@ public class LatexGenerator implements Generator {
         w.write("/");
         w.write(Integer.toString(p.getArity()));
         w.write("}\n");
+        if(p.hasComment() && !p.getComment().getParameters().isEmpty()) {
+            w.write("Parameters: ");
+            boolean first = true;
+            // list the named parameters
+            for(String param : p.getComment().getParameters()) {
+                if(!first) {
+                    w.write(", ");
+                }
+                first = false;
+                w.write(maskString(param));
+            }
+            // call the unspecified parameters "_"
+            for(int i = p.getComment().getParameters().size();
+                i < p.getArity(); i++) {
+                w.write(", \\textunderscore{}");
+            }
+            w.write("\\par{}");
+        }
         if(p.hasComment()) {
-            w.write(maskString(p.getComment().getCommentText()));
+            w.write(maskString(p.getComment().getDescription()));
+            boolean tableOpen = false;
+            // Write miscellaneous tags
+            for(Map.Entry<String,String> tags : p.getComment()) {
+                if(!tableOpen) {
+                    w.write("\\begin{description}");
+                    tableOpen = true;
+                }
+                w.write("\\tag{");
+                w.write(maskString(tags.getKey()));
+                w.write("}{");
+                w.write(maskString(tags.getValue()));
+                w.write("}\n");
+            }
+            // Write parameter descriptions
+            for(String param : p.getComment().getParameters()) {
+                if(!tableOpen) {
+                    w.write("\\begin{description}");
+                    tableOpen = true;
+                }
+                w.write("\\paramtag{");
+                w.write(maskString(param));
+                w.write("}{");
+                w.write(maskString(p.getComment().getParamDesc(param)));
+                w.write("}\n");
+            }
+            // Write meta-predicate justifications
+            for(Map.Entry<String,String> tags : p.getComment().getJustifications()) {
+                if(!tableOpen) {
+                    w.write("\\begin{description}");
+                    tableOpen = true;
+                }
+                w.write("\\justifytag{");
+                w.write(maskString(tags.getKey()));
+                w.write("}{");
+                w.write(maskString(tags.getValue()));
+                w.write("}\n");
+            }
+            // Write side effect descriptions
+            for(Map.Entry<String,String> tags : p.getComment().getSideEffects()) {
+                if(!tableOpen) {
+                    w.write("\\begin{description}");
+                    tableOpen = true;
+                }
+                w.write("\\sideeffecttag{");
+                w.write(maskString(tags.getKey()));
+                w.write("}{");
+                w.write(maskString(tags.getValue()));
+                w.write("}\n");
+            }
+            if(tableOpen) {
+                w.write("\\end{description}\n");
+            }
         } else {
             w.write("Unfortunately there is no documentation comment for this predicate :-(");
+        }
+        for(IndexStore.ProblemEntry problem : IndexStore.get().getPredicateProblems(parser.isModule() ? parser.getModuleName() : "user",
+                                                                                    String.format("%s/%d",p.getPredicateName(),p.getArity()))) {
+            renderProblem(problem, w);
         }
         w.write("\n");
     }
 
+    /** Render a problem section to the LaTeX file */
+    private void renderProblem(IndexStore.ProblemEntry pe, Writer w) throws IOException {
+        w.write("\\problem{");
+        w.write(maskString(pe.getSeverity()));
+        w.write("}{");
+        w.write(maskString(pe.getProblemType()));
+        w.write("}{");
+        w.write(maskString(pe.getMessage()));
+        w.write("}\n");
+    }
+    
     /** Mask characters for use in LaTeX: \, _, $, #, ^, <, > */
     private static String maskString(String str) {
         return str
