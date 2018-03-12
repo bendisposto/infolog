@@ -221,6 +221,7 @@ public class LatexGenerator implements Generator {
             .replace("$","\\$")
             .replace("#","\\#")
             .replace("^","\\^{}")
+            .replace("%","\\%")
             .replace("<","\\textless{}")
             .replace(">","\\textgreater{}");
     }
