@@ -80,6 +80,21 @@
    (reaction (:nesting @db))))
 
 (re-frame/register-sub
+ :predstats
+ (fn [db]
+   (reaction (:predstats @db))))
+
+(re-frame/register-sub
+ :halstead
+ (fn [db]
+   (reaction (:halstead @db))))
+
+(re-frame/register-sub
+ :calls
+ (fn [db]
+   (reaction (:calls @db))))
+
+(re-frame/register-sub
  :dependencies
  (fn [db]
    (reaction (:dependencies @db))))

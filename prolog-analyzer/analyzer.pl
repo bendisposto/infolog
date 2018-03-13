@@ -1,4 +1,7 @@
-
+% (c) 2013-2018 Lehrstuhl fuer Softwaretechnik und Programmiersprachen,
+% Heinrich Heine Universitaet Duesseldorf
+% This file expands clause terms, runs some analysis on them,
+% and writes the results to CSV or EDN files.
 
 portray_message(informational, _).
 
@@ -8,11 +11,11 @@ portray_message(informational, _).
 :- use_module(library_modules).
 
 :- use_module(library(lists)).
+:- use_module(library(sets)).
 :- use_module(library(terms)).
 :- use_module(library(system)).
 :- use_module(library(file_systems)).
 :- use_module(library(codesio)).
-
 
 % :- op(300, fy, ~~).
 
@@ -40,7 +43,8 @@ portray_message(informational, _).
     operator/4,      % operator(module:name/arity, priority, fixity, associativity)  ;; fixity : {prefix, infix, postfix}
     problem/2.       % problem(details,Loc)
 :- dynamic
-    clause_complexity/6.  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine)
+       clause_complexity/9,  % clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine, Variables, Unifications, ExplicitUnifications)
+       clause_halstead/8.    % clause_halstead(Module,Name/Arity, StartLine, EndLine, OperatorOcc, OperandOcc, DistinctOperators, DistinctOperands)
 
 % optionally the following can also be stored:
 :- dynamic
@@ -48,22 +52,75 @@ portray_message(informational, _).
    stored_clause/4,  % stored_clause(Module,Head,Body,Layout)
    stored_call/4.    % stored_call(Module,Call,FromModule,Layout)
 % The following line needs to be commented in so that these facts are generated
- next_stored_clause_nr(0). %% 
+next_stored_clause_nr(0).
+:- discontiguous
+       is_documented/1, % predicate M:P/A is documented by a comment
+       has_metapred_excuse/3, % predicate M:P/A has an excuse for using MetaPred
+       has_documented_sideeffect/3. % predicate M:P/A has a documented side effect
+:- dynamic
+       has_side_effect/2. % predicate M:P/A has a side effect
 
-%is_dynamic3(M,F,A) :- is_dynamic(M,F/A).
-
+%%
+% An 8-place variant of calling/7, because it's easier to export.
+% @param CM the calling module
+% @param CP the calling predicate's name
+% @param CA the calling predicate's arity
+% @param M the called module
+% @param P the called predicate's name
+% @param A the called predicate's arity
+% @param SL start line of the call
+% @param EL end line of the call
 calling(CM,CP,CA,M,P,A,SL,EL) :- calling(CM,CP/CA,M,P/A,SL,EL).
-clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLine) :- clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine).
 
+%%
+% A 10-place variant of clause_complexity/9, because it's easier to export.
+% @param Module the containing module
+% @param Name the predicate's name
+% @param Arity the predicate's arity
+% @param NestingLevel the determined nesting level
+% @param CallsInBody the number of calls in the clause's body
+% @param StartLine start line of the clause
+% @param EndLine end line of the clause
+% @param Variables number of Variables used in the clause
+% @param Unif number of unifications done in the clause body
+% @param EUnif number of explicit unifications done in the clause body (using =)
+clause_complexity(Module,Name,Arity, NestingLevel, CallsInBody, StartLine, EndLine, Variables, Unif, EUnif) :- clause_complexity(Module,Name/Arity, NestingLevel, CallsInBody, StartLine, EndLine, Variables, Unif, EUnif).
+
+%%
+% Exports a couple of analysis results to a B file of the given name, using
+% export_to_file/3.
+% @param File the file name
 export_to_b_file(File) :- export_to_file(b,File, [ depends_on/2, defined_module/2, is_library_module/1, calling/4]).
+
+%%
+% Exports a couple of analysis results to a Closure file of the given name,
+% using export_to_file/2.
+% @param File the file name
 export_to_clj_file(File) :- export_to_file(clj,File).
-export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/7, predicate/2, is_exported/2],
-   export_to_file(Format,File,List).
+
+%%
+% Exports a couple of analysis results to a file of the given name in the given format, using export_to_file/3.
+% @param Format the file format (b, clj)
+% @param File the file name
+export_to_file(Format,File) :-    List = [ depends_on/2, defined_module/2, calling/8, infolog_problem_flat/9, clause_complexity/10, clause_halstead/8, predicate/2, is_exported/2, is_dynamic/2, module_predicate_stats/4, pred_incalls_outcalls/4, has_undocumented_sideeffect/2],
+                                  export_to_file(Format,File,List).
+
+%%
+% Exports the given predicates to the given file in the given format.
+% @param Format the file format (b, clj)
+% @param File the file name
+% @param List a list of predicate/arity specifications
 export_to_file(Format,File,List) :- start_analysis_timer(TT),
    open(File,write,S),
     call_cleanup((start_file(Format,S,List),
 					maplist(export(Format,S), List),
 					end_file(Format,S)),close(S)), stop_analysis_timer(TT).
+
+%%
+% Exports all solutions for a given predicate to an open file of the given format.
+% @param Format the file format
+% @param S the open file
+% @param P/Arity the predicate that is to be exported
 export(Format,S,P/Arity) :-
      start_pred(Format,S,P),
      functor(Call,P,Arity), Call =.. [_|Args],
@@ -74,34 +131,97 @@ export(Format,S,P/Arity) :-
      fail.
 export(Format,S,P/_Arity) :- end_pred(Format,S,P).
 :- dynamic first_tuple/0.
+
+%%
+% Helper predicate that writes a predicate name to an open file.
+% @param S the open file
+% @param F/_ the predicate name and arity
 prfunc(S,F/_) :- format(S,' ~w',[F]).
+
+%%
+% Write the header to an open export file.
+% @param Format the file format (clj, b)
+% @param S the open file
+% @param List a list of predicate/arity specifications
 start_file(clj,S,_) :- format(S,'{~n',[]).
 start_file(b,S,L) :-
    format(S,'MACHINE Infolog~nCONSTANTS ',[]),mapseplist(prfunc(S),write_sep(b,S),L),
    format(S,'~nPROPERTIES~n',[]).
+
+%%
+% Write the footer to an open export file.
+% @param Format the file format (clj, b)
+% @param S the open file
 end_file(clj,S) :- format(S,'}~n',[]).
 end_file(b,S) :- format(S,' 1=1~nEND~n',[]).
+
+%%
+% Start writing a predicate to an open file.
+% @param Format the file format (clj, b)
+% @param S the open file
+% @param P the predicate name (without arity)
 start_pred(clj,S,P) :- format(S,':~w~n [',[P]).
 start_pred(b,S,P) :- format(S,' ~w = ~n {',[P]), assert(first_tuple).
+
+%%
+% Finish writing a predicate to an open file.
+% @param Format the file format (clj, b)
+% @param S the open file
+% @param P the predicate name (without arity)
 end_pred(clj,S,_P) :- format(S,'~n ]~n',[]).
 end_pred(b,S,_P) :- format(S,'~n } & ~n',[]), retractall(first_tuple).
+
+%%
+% Start writing a predicate solution tuple to an open file.
+% @param Format the file format (clj, b)
+% @param S the open file
 start_tuple(clj,S) :- format(S,'[',[]).
 start_tuple(b,S) :- (retract(first_tuple) -> format(S,'  (',[]) ; format(S,',  (',[])).
+
+%%
+% Finish writing a predicate solution tuple to an open file.
+% @param Format the file format (clj, b)
+% @param S the open file
 end_tuple(clj,S) :- format(S,']~n',[]).
 end_tuple(b,S) :- format(S,')~n',[]).
+
+%%
+% Write a value separator to an open file.
+% @param Format the file format (clj, b)
+% @param S the open file
 write_sep(clj,_).
 write_sep(b,S) :- format(S,', ',[]).
 
 :- meta_predicate mapseplist(1,0,-), mapseplist2(-,1,0).
-% mapseplist(Pred, SepPred,List)
+
+%%
+% A variant of maplist/2 that intersperses the Pred calls with SepPred calls
+% @param Pred the predicate to map on the list values
+% @param SepPred the predicate to run in between
+% @param List the list of parameters to Pred
 mapseplist(_,_,[]).
 mapseplist(P1,Sep,[H|T]) :- call(P1,H), mapseplist2(T,P1,Sep).
+
+%%
+% A variant of maplist/2 that runs SepPred before each Pred call
+% (this is the tail processor for mapseplist/3)
+% @param Pred the predicate to map on the list values
+% @param SepPred the predicate to run first
+% @param List the list of parameters to Pred
 mapseplist2([],_,_).
 mapseplist2([H|T],P1,Sep) :- call(Sep),call(P1,H), mapseplist2(T,P1,Sep).
 
+%%
+% Write an argument list to the open file.
+% @param Args the argument list
+% @param Format the file format (clj, b)
+% @param S the open file
 write_args(Args,Format,S) :- mapseplist(write_arg(S), write_sep(Format,S),Args).
 
-
+%%
+% Write a number or escaped argument to the open file.
+% @param S the open file
+% @param N the argument to write
 write_arg(S,N) :- number(N),!, format(S,'~w ',[N]).
 write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
@@ -109,8 +229,14 @@ write_arg(S,N) :- escape_argument(N,EN),!,format(S,'"~w" ',[EN]).
 
 % problems database
 
+/**
+ * Load and refresh the problem database at prolog-analyzer/problem_db.pl
+ */
 update_problem_db :- 
-   update_problem_db('prolog-analyzer/problem_db.pl').
+    update_problem_db('prolog-analyzer/problem_db.pl').
+/**
+ * Load and refresh the problem database at a given location.
+ * @param File the file name. */
 update_problem_db(File) :- 
    start_analysis_timer(T1),
    load_problem_db(File),
@@ -119,6 +245,9 @@ update_problem_db(File) :-
    open(File,write,S), call_cleanup(gen_db_entries(S),close(S)),
    stop_analysis_timer(T2).
 
+/**
+ * Load the problem database from a given location.
+ * @param File the file name. */
 load_problem_db(File) :- 
    on_exception(error(existence_error(_,_),_),ensure_loaded(File), format('Problem DB does not yet exist: ~w~n',[File])),
    (problem_db_creation(S,D) -> format('Loaded problem_db ~w (Sha:~w,  ~w)~n',[File,S,D]) ; format('File empty: ~w~n',[File])).
@@ -126,18 +255,29 @@ load_problem_db(File) :-
 :- dynamic problem_db_entry/8, problem_db_creation/2, problem_db_keep/6.
 % problem_db_entry(HashOfIssue,Category,Type,ErrorInfo,Location,Sha,Date,active/reviewed)
 
-% avoid creating InfoLog warnings about those:
+/**
+ * Avoid creating InfoLog warnings about the predicates listed in the infolog_predicate/3 facts.
+ * @param Module the module name
+ * @param F/N the predicate name and arity */
 infolog_predicate(Module,F/N) :- infolog_predicate(F,N,Module), print(excl(F,N,Module)),nl.
+
+/**
+ * Avoid creating InfoLog warnings about the predicates listed in these facts.
+ * @param Pred the predicate name
+ * @param Arity the predicate arity
+ * @param Module the module name */
 infolog_predicate(problem_db_entry,8,user).
 infolog_predicate(problem_db_creation,2,user).
 infolog_predicate(problem_db_keep,6,user).
-
 
 reviewed(Hash,Category,Type,ErrorInfo,Location) :-
     problem_db_entry(Hash,Category,Type,ErrorInfo,Location,_,_,reviewed).
      
 :- use_module(library(system)).
 
+/**
+ * Update problem database; display new and removed problems.
+ * @param S the open output file */
 gen_db_entries(S) :-  print('Updating problem database and displaying new problems'),nl,
     format(S,'% INFOLOG DATABASE OF PROBLEMS~n',[]),
     git_revision(CurSha),
@@ -179,18 +319,32 @@ gen_db_entries(_) :- print('----'),nl.
 % tcltkc_call/4: tcltk_call(Name,Module,TclTkFile,Line)
 
 
-% a variation of calling/6 which factors in also calls from external sources such as Tcl/Tk
+/**
+ * A variation of calling/6 which factors in also calls from external sources such as Tcl/Tk
+ * @param M1 the caller module, or tcltk(Filename)
+ * @param C1 the caller predicate/arity, or 'tcltk'
+ * @param M2 the callee module
+ * @param C2 the callee predicate/arity
+ * @param L1 start line of the call
+ * @param L2 end line of the call
+ */
 calling_with_ext(M1,C1,M2,C2,L1,L2) :- calling(M1,C1,M2,C2,L1,L2).
 calling_with_ext(tcltkfile(File),tcltk,M2,Pred/Arity,Line,Line) :-
     tcltk_call(Pred,TkM2,File,Line),
     resolve_module_location_nondet(TkM2,Pred/Arity,M2).
-% TO DO: also add calls from Java ProB1/ProB2
-% currently we hard-code prob2_interface as an externally visible module:
+
+%%
+% Modules that are exported to external languages.
+% TO DO: also add calls from Java ProB1/ProB2 to calling_with_ext;
+% currently we hard-code prob2_interface as an externally visible module
+% @param Module the module name
 module_is_exported_to_external_language(prob2_interface).
 module_is_exported_to_external_language(eclipse_interface). % for ProB1 for Rodin
 
-
-% predicates which are/can be used by SICStus automatically; they are not dead code:
+%%
+% Predicates which are/can be used by SICStus automatically; they are not dead code
+% @param Module the module name
+% @param Pred/Arity the predicate name and arity
 is_used_by_sicstus(M,verify_attributes/3) :- depends_on(M,atts).
 is_used_by_sicstus(_,foreign_resource/2).
 is_used_by_sicstus(_,portray_message/2). % user can turn off messages this way
@@ -200,20 +354,35 @@ is_used_by_sicstus(_,runtime_entry/1). % for building binaries
 
 % a few indexing facts (variations of the above for better indexing lookups)
 
-:- dynamic predicate_in/3 % predicate_in(Pred,Arity,Module) ; inverse of predicate/2 to quickly lookup module for given predicate name
-           .
+:- dynamic predicate_in/3. % predicate_in(Pred,Arity,Module) ; inverse of predicate/2 to quickly lookup module for given predicate name
+
+/**
+ * Look up the module for a given predicate/arity (calls predicate_in/3)
+ * @param P/Arity the predicate and arity to look up.
+ * @param Module the containing module */
 predicate_in(P/Arity,Module) :- !, predicate_in(P,Arity,Module).
 predicate_in(P,_) :- add_infolog_error(informat('Illegal predicate_in arg: ~w', [P])),fail.
 
+/**
+ * Look up the module for a given predicate and arity.
+ * @param Pred the predicate name
+ * @param Arity the predicate arity
+ * @param Module the containing module */
 predicate_in(A,B,C) :- nl,print('*** NOT COMPUTED  '),print(predicate_in(A,B,C)),nl,fail.
 
+/**
+ * Generate facts for predicate_in/3 using predicate/2. */
 compute_indexing_facts :- retractall(predicate_in(_,_,_)),
     predicate(M,P),
     (P=Pred/Arity -> assert(predicate_in(Pred,Arity,M)) ; add_infolog_error(informat('Illegal pred: ~w', [P]))),
     fail.
 compute_indexing_facts.
 
-% check if exported explicitly via use_module(P,[PRED]) or implicitly via use_module(P)
+%%
+% Check if a given predicate is imported explicitly via use_module(P,[PRED]) or implicitly via use_module(P)
+% @param M the importer module
+% @param Other the exporter module
+% @param Pred the imported predicate
 is_imported_from(M,Other,Pred) :-
    if(is_imported(M,Other,Pred),true,
       (is_exported(Other,Pred), depends_on(M,Other))).
@@ -221,21 +390,57 @@ is_imported_from(M,Other,Pred) :-
 % ==========================================
 % DERIVED RULES to examine the CORE InfoLog database
 
+/**
+ * Check if a given predicate is exported by a module or a library
+ * @param Module the exporting module
+ * @param Pred the exported predicate */
 is_exported_by_user_or_library(Module,Pred) :- is_exported(Module,Pred) ; is_exported_by_library(Module,Pred).
 
+/**
+ * True if the first module:predicate calls the second module:predicate somewhere.
+ * @param M1:C1 the caller
+ * @param M2:C2 the callee */
 calling(M1:C1,M2:C2) :- calling(M1,C1,M2,C2,_,_).
+
+/**
+ * True if the first module:predicate calls the second module:predicate somewhere. Succeeds only once.
+ * @param M1 the caller module
+ * @param C1 the caller predicate
+ * @param M2 the callee module
+ * @param C2 the callee predicate */
 calling(M1,C1,M2,C2) :- calling(M1,C1,M2,C2,L1,_), \+ (calling(M1,C1,M2,C2,L2,_),L2<L1). % try succeed just once
+
+/**
+ * True for any calls from M:P1 to M:P2 inside a module.
+ * @param M:P1 the caller
+ * @param M:P2 the callee */
 calling_in_same_module(M:P,M:P2) :- calling(M,P,M,P2,_,_).
+
+/**
+ * True for any calls from M1:P1 to M2:P2 across module boundaries.
+ * @param M1:P1 the caller
+ * @param M2:P2 the callee */
 calling_in_other_module(M:P,M2:P2) :- calling(M,P,M2,P2,_,_), M2 \= M.
 
-% check if there is a dependency without a call that requires it:
+%%
+% Check if there is a dependency without a call that requires it.
+% @param M1 the depending module
+% @param M2 the dependency module
 vacuous_module_dependency(M1,M2) :- depends_on(M1,M2),
    \+ calling(M1:_,M2:_).
 
-% check various way a module:call can be defined:
+%%
+% Check various ways a module:call can be defined
+% @param ToModule the callee module
+% @param Call the callee predicate
 is_defined(ToModule,Call) :- klaus(ToModule,Call,_,_).
 is_defined(ToModule,Call) :- has_no_clauses(ToModule,Call).
 
+%%
+% Check if a module:call might be defined even though we cannot find any clauses
+% (dynamic/foreign predicates, library modules, etc.)
+% @param ToModule the callee module
+% @param Call the callee predicate
 has_no_clauses(ToModule,Call) :- is_dynamic(ToModule,Call).
 has_no_clauses(ToModule,Call) :- is_chr_constraint(ToModule,Call).
 has_no_clauses(ToModule,Call) :- is_attribute(ToModule,Call).
@@ -251,8 +456,39 @@ has_no_clauses(ToModule,Call) :- depends_on(ToModule,OtherModule),
 
 % a few analysis utilities
 
-% compute paths / transitive closure with at most one cycle and at least one step
+/**
+ * Counts the dynamic, public and exported predicates per module.
+ * @param M the module
+ * @param Dynamics the number of dynamic predicates
+ * @param Public the number of public predicates
+ * @param Exported the number of exported predicates
+ * @justify setof required to find all predicates that fulfill is_dynamic/is_public/is_exported
+ * @author Marvin Cohrs */
+module_predicate_stats(M,Dynamics,Public,Exported) :-
+    setof(X, X^is_dynamic(M,X), DynamicsSet),
+    setof(X, X^is_public(M,X), PublicSet),
+    setof(X, X^is_exported(M,X), ExportedSet),
+    length(DynamicsSet, Dynamics),
+    length(PublicSet, Public),
+    length(ExportedSet, Exported).
+
+/**
+ * Counts the inbound and outbound calls per predicate.
+ * @param Module the containing module
+ * @param Pred the predicate and arity
+ * @param InCount the number of incoming calls
+ * @param OutCount the number of outgoing calls
+ * @justify setof required to find all incoming/outgoing calls
+ * @author Marvin Cohrs */
+pred_incalls_outcalls(Module,Pred,InCount,OutCount) :-
+    setof(M:P, M^P^SL^EL^calling(M,P,Module,Pred,SL,EL), InSet),
+    setof(M:P, M^P^SL^EL^calling(Module,Pred,M,P,SL,EL), OutSet),
+    length(InSet, InCount),
+    length(OutSet, OutCount).
+
 :- meta_predicate transitive(0,-).
+%%
+% Compute paths / transitive closure with at most one cycle and at least one step
 transitive(M:Call,[A1,A2|Path]) :- binop(Call,P,A1,AFinal), %Call =.. [P,A1,AFinal],
    call(M:P,A1,A2),
    trans(M:P,A2,AFinal,[A1],Path).
@@ -264,11 +500,23 @@ trans(P,A1,AFinal,History,[A2|Path]) :-
     call(P,A1,A2),
     trans(P,A2,AFinal,[A1|History],Path).
 
+%%
+% Compute dependency path between two modules using transitive/2.
+% @param Module1 the depending module
+% @param Module2 the transitive dependency
+% @param Path the dependency path from Module1 to Module2
 depends_path(Module1,Module2,Path) :- transitive(depends_on(Module1,Module2),Path).
 
+%%
+% Compute call path between two predicates using transitive/2.
+% @param Call1 the caller predicate/arity
+% @param Call2 the (transitive) callee predicate/arity
+% @param Path the call path from Call1 to Call2
 calls_path(Call1,Call2,Path) :- transitive(calling(Call1,Call2),Path).
 
-% instantiate module dependency path with call witnesses
+%%
+% Instantiate module dependency path with call witnesses, and print them to the console
+% @param Path the dependency path
 instantiate([_]).
 instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
     format('Module ~w -> ~w   [call: ~w -> ~w ]~n',[A,B,C1,C2]),
@@ -276,16 +524,39 @@ instantiate([A,B|T]) :- calling(A:C1,B:C2),!,
 instantiate([A,B|_T]) :- format('*** Vacuous Module Dependency: ~w -> ~w~n',[A,B]),fail. % probably because of a a call in a :- declaration ?!?
 % TO DO: probably also analyse :- directives
 
+/**
+ * Print X and add a line feed
+ * @param X the text to print */
 println(X) :- print(X),nl.
-complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL),
-                      (clause_complexity(M,P,NestingLevel,Calls,SL,EL), (NestingLevel>3 ; Calls>15)),
+
+%%
+% Find complex clauses and print them to the console
+% @justify findall required for finding all clause_complexity facts
+complexity :- findall(complexity(NestingLevel,Calls,M,P,SL,EL,Vs,Unif,EUnif),
+                      (clause_complexity(M,P,NestingLevel,Calls,SL,EL,Vs,Unif,EUnif), (NestingLevel>3 ; Calls>15)),
                       List),
   sort(List,SortedList), maplist(println,SortedList),
-  print(complexity('NestingLevel','Calls','Module','Pred','StartLine','EndLine')),nl.
+  print(complexity('NestingLevel','Calls','Module','Pred','StartLine','EndLine','Variables','Unifications','ExplicitUnifications')),nl.
 
+%%
+% Print infolog problems of type "error" to the console
 lint :- start_analysis_timer(T), print('Start checking'),nl,lint(error), stop_analysis_timer(T).
+
+%%
+% Print infolog problems of a given type to the console
+% @param Type the problem type (error, warning, etc.)
 lint(Type) :- lint(_,Type,_).
+
+%%
+% Print infolog problems of all types for a given module to the console
+% @param M the module to inspect
 lint_for_module(M) :- safe_defined_module(M), lint(_,_,M).
+
+%%
+% Print infolog problems of a given category and type to the console
+% @param Category name of the problem rule
+% @param Type error/warning/etc.
+% @param Module the module to inspect
 lint(Category,Type,Module) :-
      (nonvar(Module) -> dif(Location,unknown) ; true),
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
@@ -295,6 +566,11 @@ lint(Category,Type,Module) :-
      fail.
 lint(_,_,_) :- print('Done checking'),nl.
 
+%%
+% Print a given infolog problem to the console
+% @param ErrorInfo ?
+% @param Location the problem location
+% @param Hash ?
 display_problem(ErrorInfo,Location,Hash) :-
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
@@ -302,16 +578,35 @@ display_problem(ErrorInfo,Location,Hash) :-
      format(' [[~w]]~n',[Hash]).
 
 lint_for_pat(Pat) :- find_module(Pat,Module), lint_for_module(Module).
+
+%%
+% Find a module whose name contains the given pattern
+% @param Pat the pattern
+% @param Module the found module name
 find_module(Pat,Module) :- defined_module(Module,_), atom_matches(Pat,Module).
-% check if an atom's name is contained in another atom's name
+
+%%
+% Check if an atom's name is contained in another atom's name
+% @param Pattern the needle
+% @param Name the haystack
 atom_matches(P,M) :- P=M,!.
 atom_matches(Pattern,Name) :- atom_codes(Pattern,Codes),
    atom_codes(Name,NC), append(Codes,_,C),
    append(_,C,NC).
 
+%%
+% Export the found problems to a CSV file.
+% @param File the file name
 lint_to_csv_file(File) :- start_analysis_timer(T), format('Exporting to csv file: ~w~n',[File]),nl,
-    open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)), stop_analysis_timer(T).
+                          open(File,write,S), call_cleanup(lint_to_csv_stream(S),close(S)), stop_analysis_timer(T).
+
+%%
+% Export the found problems to the console in CSV format
 lint_to_csv :- lint_to_csv_stream(user_output).
+
+%%
+% Export the found problems to an open stream in CSV format
+% @param S the stream (open file or console)
 lint_to_csv_stream(S) :-
      format(S,'~w,~w,~w,~w,~w,~w,~w,~w,~w~n',['Category','Type','Message','Module','Pred','File','L1','L2','Hash']),
      infolog_problem_flat(CatStr,Type,ErrStr,Module,Pred,File,L1,L2,Hash),
@@ -337,6 +632,12 @@ info(_).
 % HERE WE DEFINE NEW PROBLEM RULES
 % problem(CATEGORY, ErrorInformationTerm,  SourceLocationTerm)
 
+/**
+ * Generates problem entries.
+ * @param Category the name of the rule
+ * @param Type error/warning
+ * @param ErrorInfo the problem description
+ * @param Location the problem location */
 infolog_problem(infolog_internal_error,error,P,Loc) :- infolog_internal_error(P,Loc).
 infolog_problem(analysis_problem,error,string(P),Loc) :- problem(P,Loc).
 infolog_problem(multiple_meta_predicates,error,informat('Multiple meta_predicate declarations for ~w:~w/~w (~w \\= ~w).',[Module,F,N,MetaArgList1,MetaArgList2]),module_loc(Module)) :-
@@ -374,16 +675,32 @@ infolog_problem(useless_import,warning,informat('Imported predicate not used: ~w
         uia,useless_import(From,M,P).
 infolog_problem(non_unifying_call,warning,informat('Call unifies with no clause: ~w:~w',[M,Call]),
                                         module_lines(FromModule,L1,L2)) :-
-        non_unifying_call(M,Call,FromModule,L1,L2).
+    non_unifying_call(M,Call,FromModule,L1,L2).
+infolog_problem(undocumented_sideeffect,warning,informat('Predicate ~w has undocumented side effect ~w',[P,SE]),module_pred(M,P)) :-
+    find_all_sideeffects,
+    has_undocumented_sideeffect(M:P,SE).
+infolog_problem(unexcused_metapred,warning,informat('Unjustified use of ~w in ~w',[MP,P]),module_pred(M,P)) :-
+    has_unexcused_metapred_call(M:P,MP).
 
 :- use_module(library(terms),[term_hash/2]).
+%%
+% A variant of infolog_problem/4, that also generates a hash over Category and ErrorInfo
+% @param Category the rule name
+% @param Type error/warning
+% @param ErrorInfo the problem description
+% @param Location the problem location
+% @param Hash the hash over Category and ErrorInfo
 infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash) :-
      infolog_problem(Category,Type,ErrorInfo,Location),
      term_hash(infolog_problem(Category,ErrorInfo),Hash).
 
-
-
 % HERE WE DEFINE INFOLOG INFOS
+
+/**
+ * Generates info entries.
+ * @param Category the rule name
+ * @param Desc the information description
+ * @param Location the related location (if any) */
 infolog_info(cycles,informat('Module Cycle ~w',[ModulePath]),unknown) :-
    defined_module(FromModule,_),
    (cycle(FromModule,ModulePath) -> true ; fail).
@@ -392,23 +709,44 @@ infolog_info(calls(FromModule,ToModule),informat('Call ~w:~w -> ~w:~w',[FromModu
    defined_module(FromModule,_),
    calling(FromModule,C1,ToModule,C2,L1,L2).
 
-
-% is there a cycle in the module dependency graph:
+%%
+% Is there a cycle in the module dependency graph?
+% @param Module the start module
+% @param ModulePath the dependency graph from Module to itself
 cycle(Module,ModulePath) :-
    depends_path(Module,Module,ModulePath),
    instantiate(ModulePath).
+
 % TO DO: provide more efficient way of computing this; maybe saturation BUP approach
 cycle_ids(Module,Len,ModulePath) :- length(ModulePath,Len), cycle(Module,ModulePath).
 
-% is there a calling cycle which leaves a module and enters it again ?
+%%
+% Is there a calling cycle which leaves a module and enters it again?
+% @param Module the start module
+% @param Call the start predicate
+% @param Path the cyclic call path
 cross_module_cycle(Module,Call,[Module:Call|Path]) :-
     calling(Module,Call,TargetModule,TargetCall,_L1,_L2),
     TargetModule \= Module,
     calls_path(TargetModule:TargetCall,Module:Call,Path),
     instantiate(Path).
 
+%%
+% Print all calls in a module to the console (uses print_calls/3)
+% @param FromModule the caller module to inspect.
 print_calls(FromModule) :- print_calls(FromModule,_).
+
+%%
+% Print all calls from a module to another one (uses print_calls/3)
+% @param FromModule the caller module
+% @param ToModule the callee module
 print_calls(FromModule,ToModule) :- print_calls(FromModule,_,ToModule).
+
+%%
+% Print all calls from a given module:predicate to given module
+% @param FromModule the caller module
+% @param C1 the caller predicate
+% @param ToModule the callee module
 print_calls(FromModule,C1,ToModule) :-
    safe_defined_module(FromModule),
    format('Calls from ~w to ~w~n===================~n',[FromModule,ToModule]),
@@ -417,15 +755,26 @@ print_calls(FromModule,C1,ToModule) :-
    fail.
 print_calls(_,_,_) :- format('===================~n',[]).
 
-% print the required :- use_module declarations for a module; could be copied and pasted into the source
+%%
+% Print the required :- use_module declarations for a module; could be copied and pasted into the source. Shorthand for print_uses/1.
+% @param Module the depending module
 pu(Module) :- print_uses(Module).
+
+%%
+% Print the required :- use_module declarations for a module; could be copied and pasted into the source.
+% @param FromModule the depending module
 print_uses(FromModule) :- format('~n MODULE IMPORTS for ~w~n',[FromModule]),
    print_uses(FromModule,_), fail.
 print_uses(FromModule) :- nl,
    format('~n MISSING IMPORTS for ~w~n',[FromModule]),
    (missing_imports(FromModule,ToModule,AllCalls),
     print_use_module(ToModule,AllCalls),fail
-     ; format('~n---~n',[])).
+   ; format('~n---~n',[])).
+
+%%
+% Print the required :- use_module declaration such that FromModule includes ToModule; complain if this is not necessary.
+% @param FromModule the depending module
+% @param ToModule the dependency module
 print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
    depends_on(FromModule,ToModule),
    (calling(FromModule,_,ToModule,_,_,_)
@@ -434,6 +783,10 @@ print_uses(FromModule,ToModule) :- safe_defined_module(FromModule),
         print_use_module(ToModule,SortedImports)
     ;   format(' *** unnecessary use_module(~w).~n',[ToModule])).
 
+%%
+% Print the required :- use_module declaration such that the given predicates from Module are imported; complain if not all of them are exported.
+% @param Module the module to be imported
+% @param List list of the required predicates
 print_use_module(Module,List) :-
     format(':- use_module(~w,~w).~n',[Module,List]),
     (is_library_module(Module) ->
@@ -447,8 +800,12 @@ print_use_module(Module,List) :-
         ; format('*** NEED TO BE EXPORTED in ~w: ~w~n',[Module,NotExported]))
      ).
 
-
-% compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
+%%
+% Compute all missing imports for one module and target module in one go; can be used to backtrack over all missing imports
+% @param FromModule the caller module
+% @param ToModule the callee module
+% @param AllCalls list of missing imports
+% @justify findall required to find all missing_import/3 solutions
 missing_imports(FromModule,ToModule,AllCalls) :-
      safe_defined_module(FromModule),
      findall(M:P,missing_import(FromModule,M,P),Missing),
@@ -457,19 +814,32 @@ missing_imports(FromModule,ToModule,AllCalls) :-
      member(ToModule,ModulesToImport),
      findall(P,member(ToModule:P,Missing),Ps), sort(Ps,AllCalls).
 
+%%
+% Find a missing import from one module to another
+% @param FromModule the caller module
+% @param ToModule the callee module
+% @param Call the callee predicate
 missing_import(FromModule,ToModule,Call) :-
     uncovered_call(FromModule,_,M,Call,_,_),
     \+ is_imported(FromModule,ToModule,Call), % if it is imported: generate error elsewhere
     resolve_module_location(M,Call,ToModule).
 
-% try and locate source modules for calls with undefined modules:
+%%
+% Try and locate source modules for calls with undefined modules.
+% @param Module known module name or 'undefined_module'
+% @param Pred predicate name
+% @param Res resolved module name
 resolve_module_location(undefined_module,PRED,Res) :- !,
   (is_exported_by_user_or_library(Module,PRED) -> Res=Module % there could be multiple solutions !
     ; predicate_in(PRED,Module) -> Res=Module % private predicate, there could be multiple solutions
     ; Res=undefined_module).
 resolve_module_location(M,_,M).
 
-% a version which by backtracking generates all possible solutions
+%%
+% A version of resolve_module_location which by backtracking generates all possible solutions
+% @param Module known module name or 'undefined_module'
+% @param Pred predicate name
+% @param Res resolved module name
 resolve_module_location_nondet(undefined_module,PRED,Res) :- !,
   if(is_exported_by_user_or_library(Module,PRED),Res=Module, % Note: if we find an export; we do not look among private predicates
      if(predicate_in(PRED,Module),Res=Module, % private predicate, there could be multiple solutions
@@ -477,6 +847,9 @@ resolve_module_location_nondet(undefined_module,PRED,Res) :- !,
     ).
 resolve_module_location_nondet(M,_,M).
 
+%%
+% Assert that the given module is defined; otherwise complain, but don't fail.
+% @param A the module name
 safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
 
 % --------------------------------------------
@@ -487,12 +860,21 @@ safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module
 
 % Dead Code Analysis (Global)
 :- dynamic dead_predicate/2.
-% a simple dead code analysis; will not detect groups of dead code predicates which call each other
-% Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only
+
+%%
+% A wrapper for the dead code analysis in mode 'all', i.e. look at all not exported predicates whether they are used.
 dca :- print('Looking for internal predicates which are not used'),nl,dca(all),print_dca(all).
+
+%%
+% A wrapper for the dead code analysis in mode 'cross', i.e. look at all exported predicates whether they are used by another module.
 dcax :- print('Looking for exported predicates which are not used'),nl, dca(cross),print_dca(cross).
-% all: look at all not exported predicates whether they are used
-% cross: look at all exported predicats whether they are used by another module
+
+%%
+% A simple dead code analysis; will not detect groups of dead code predicates which call each other.
+% Warning: some predicates are called from Tcl/Tk, some from probcli only, some from ProB Tcl/Tk only.
+% all: look at all not exported predicates whether they are used.
+% cross: look at all exported predicats whether they are used by another module.
+% @param Type 'all' or 'cross'
 dca(Type) :- retractall(dead_predicate(_,_)),
        predicate(M,P),
        (Type=cross -> is_exported(M,P) ; \+ is_exported(M,P)),
@@ -506,11 +888,18 @@ dca(all) :- calling_with_ext(_,_,M,P,_,_), % TO DO: check caller is not the pred
        retract(dead_predicate(M,P)),fail.
 dca(cross) :- module_is_exported_to_external_language(M), retractall(dead_predicate(M,_)),fail.
 dca(_).
+
+%%
+% Print the results of a dead code analysis. This requires that dca/1 has already
+% been run.
+% @param Type 'all' or 'cross' (see dca/1)
 print_dca(Type) :- nl,print('dead predicates: '),print(Type),nl,
        dead_predicate(M,P), format(' ~w : ~w ~n',[M,P]),fail.
 print_dca(_) :- nl.
 
 :- dynamic useless_import/3.
+
+%%
 % Useless Import Analysis (Global)
 uia :- retractall(useless_import(_,_,_)),
    is_imported(FromModule,M,P),
@@ -519,11 +908,16 @@ uia :- retractall(useless_import(_,_,_)),
 uia :- 
    calling(FromModule,_,M,P,_,_), retract(useless_import(FromModule,M,P)),fail.
 uia.
+
+%%
+% Run the useless import analysis and print its results to the console.
 print_uia :- print('useless imports: '),nl,
        uia,
        useless_import(From,M,P), format(' In ~w import of ~w : ~w is useless~n',[From,M,P]),fail.
 print_uia.
 
+%%
+% Find re-exports and print them to the console
 print_reexports :- 
    is_imported(FromModule,M,P),
    is_exported(FromModule,P),
@@ -532,8 +926,10 @@ print_reexports.
 
 % ------------------
 
-% try and find calls where the predicate is not annotated with a meta_predicate
-% this indicates that the InfoLog meta-predicate call analysis could be imprecise
+/**
+ * Try and find calls where the predicate is not annotated with a meta_predicate
+ * this indicates that the InfoLog meta-predicate call analysis could be imprecise
+ */
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
    meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
    (meta_pred_functor(Pred,FromModule,MetaList)
@@ -568,7 +964,14 @@ print_meta_calls(FromModule) :-
    fail.
 print_meta_calls(_) :- format('===================~n',[]).
 
-% try and find uncovered call
+%%
+% Try and find uncovered call, i.e. a call that is not defined or imported
+% @param FromModule the caller module
+% @param FromQ the caller predicate
+% @param ToModule the callee module
+% @param Call the callee predicate
+% @param L1 start line of the call
+% @param L2 end line of the call
 uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ,ToModule,Call,L1,L2),
     (always_defined(Call) -> fail
      ; ToModule=built_in -> fail % we assume SICStus only assigns built_in if it exists
@@ -578,7 +981,11 @@ uncovered_call(FromModule,FromQ,ToModule,Call,L1,L2) :- calling(FromModule,FromQ
      ;  true % it is not defined
      ).
 
-
+%%
+% Check if a given predicate is imported.
+% @param Module the exporting module
+% @param Call the predicate to check
+% @param FromModule the importing module
 check_imported(built_in,_Call,_) :- !. % assume built-in exists; TO DO: check ?
 check_imported(M,_,M) :- !. % we see all predicates in our own module
 check_imported(Module,Call,FromModule) :- is_imported(Module,Call,FromModule), % selectively imported
@@ -592,8 +999,9 @@ check_imported(Module,Call,FromModule) :- depends_on(FromModule,Module), % impor
      ; is_exported(Module,Call)
     ).
 
-
-% always defined
+%%
+% Predicates that are always defined.
+% @param Pred/Arity the predicate
 always_defined(recursive_call/0).
 always_defined(put_atts/2).
 always_defined(get_atts/2).
@@ -674,19 +1082,35 @@ body_call(Body,Call) :- meta_pred(Body,_Module,List), member(meta_arg(Nr,Add),Li
 % a utility to compute the scc's
 :- use_module(library(ugraphs),[vertices_edges_to_ugraph/3,reduce/2,vertices/2, edges/2]).
 
-% translate a binary predicate into a ugraph
+%%
+% Translate a binary predicate into a ugraph, with an edge X-Y for each solution of Pred(X,Y).
+% @param Pred a binary predicate
+% @param UGraph the resulting graph
+% @justify findall required to find all solutions for Pred
 predicate_to_ugraph(Pred,UGraph) :-
    functor(TransCall,Pred,2), 
    arg(1,TransCall,X), arg(2,TransCall,Y),
    findall(X-Y,TransCall,Edges),
    vertices_edges_to_ugraph([], Edges, UGraph).
 
+%%
+% Create a ugraph for a binary predicate using predicate_to_ugraph/2 and
+% reduce it to strongly connected components
+% @param Pred a binary predicate
+% @param SccGraph the resulting graph of strongly connected components
 sccs(Pred,SccGraph) :-
    predicate_to_ugraph(Pred,UGraph),
    reduce(UGraph,SccGraph).
 
+%%
+% A variant of depends_on/2 that does not cover dependencies on libraries.
+% @param X the depending module
+% @param Y the dependency module
 depends_on_non_library(X,Y) :- depends_on(X,Y), \+ is_library_module(Y).
 
+%%
+% Generate a graph of strongly connected components for module dependencies
+% and write it to the file 'infolog.dot'.
 sccs :- sccs(depends_on_non_library,Scc), print(Scc),nl,
     File = 'infolog.dot',
     format('Generating SCC graph for into file ~w~n',[File]),
@@ -706,11 +1130,26 @@ dot_scc_trans(SCC,S1,Label,S2,Color,Style,PenWidth) :- edges(SCC,Es), member(S1-
 % a utility to compute the transitive closure using a semi-naive algorithm:
 
 :- dynamic new/2.
-% compute transitive clousre of binary predicate Pred and store result in binary predicate TransPred
+%%
+% Compute transitive closure of binary predicate Pred and store result in dynamic binary predicate TransPred, using transitive_closure/4.
+% @param Pred the binary predicate to test (only predicate name)
+% @param TransPred the binary predicate to generate (only predicate name)
 transitive_closure(Pred,TransPred) :- transitive_closure(Pred,TransPred,99999999).
+
+%%
+% Compute transitive closure of binary predicate Pred and store result in dynamic binary predicate TransPred, using transitive_closure/4.
+% @param Pred the binary predicate to test (only predicate name)
+% @param TransPred the binary predicate to generate (only predicate name)
+% @param MaxIter the maximum number of iterations
 transitive_closure(Pred,TransPred,MaxIter) :-
     functor(InitCall,Pred,2), transitive_closure(InitCall,Pred,TransPred,MaxIter).
 
+%%
+% Compute transitive closure of binary predicate Pred and store result in dynamic binary predicate TransPred.
+% @param InitCall a call pattern Pred(_,_)
+% @param Pred the binary predicate to test (only predicate name)
+% @param TransPred the binary predicate to generate (only predicate name)
+% @param MaxIter the maximum number of iterations
 transitive_closure(InitCall,_Pred,TransPred,_MaxIter) :- retractall(new(_,_)),
     % copy facts matching InitCall:
     arg(1,InitCall,X), arg(2,InitCall,Y),
@@ -725,10 +1164,22 @@ transitive_closure(_,Pred,TransPred,MaxIter) :- % start iteration
     ),
     count_trans_result(TransPred).
 
+%%
+% Count the solutions for the transitive closure TransPred and write them to the
+% console.
+% @param TransPred the binary predicate that was generated
+% @justify findall required to find all solutions for TransPred(_,_)
 count_trans_result(TransPred) :- binop(DerivedFact,TransPred,_,_),
      findall(DerivedFact,DerivedFact,L),
      length(L,Nr),
      format('Solutions in transitive closure of ~w : ~w~n',[TransPred,Nr]).
+
+%%
+% Generate new facts for the transitive predicate by adding more call edges
+% to facts generated by the previous iterations.
+% @param Pred the binary predicate to test
+% @param TransPred the binary predicate to generate
+% @param MaxIter the maximum number of iterations
 transitive_closure_iterate(Pred,TransPred,_MaxIter) :-
      retract(new(X,Y)),
      call(Pred,Y,Z), % try and extend this new edge with all possible pairs from original relation
@@ -745,11 +1196,93 @@ transitive_closure_iterate(Pred,TransPred,MaxIter) :-
                       ;  print('maximum number of iterations reached'),nl)
         ;  print('Finished'),nl
      ).
+
+%%
+% Find all transitively inherited side effects.
+% @sideeffect retract Removes facts for has_sideeffect/2
+% @sideeffect assert Generates facts for has_sideeffect/2
+% @similarto transitive_closure/2
+% @author Marvin Cohrs
+find_all_sideeffects :-
+    retractall(has_sideeffect(_,_)),
+    retractall(new(_,_)),
+    has_documented_sideeffect(Pred,SE,_),
+    assert(has_sideeffect(Pred,SE)),
+    assert(new(Pred,SE)), fail.
+find_all_sideeffects :-
+    find_all_sideeffects_iterate(99999999).
+
+%%
+% Generate new facts for has_sideeffect/2 by adding more call edges
+% to facts generated by the previous iterations.
+% @param MaxIter the maximum number of iterations
+% @similarto transitive_closure_iterate/3
+% @author Marvin Cohrs
+find_all_sideeffects_iterate(_MaxIter) :-
+    retract(new(Pred,SE)),
+    calling(P, Pred),
+    \+ has_sideeffect(P, SE),
+    assert(has_sideeffect(P, SE)),
+    assert(new(P,SE)), fail.
+find_all_sideeffects_iterate(MaxIter) :-
+    (new(_,_) ->
+         (MaxIter>0 -> M1 is MaxIter-1,
+                       find_all_sideeffects_iterate(M1) ; true) ; true).
+
+%%
+% Has the given predicate got any undocumented side effect?
+% @param M:P module and predicate
+% @param SE the undocumented side effect
+% @author Marvin Cohrs
+has_undocumented_sideeffect(M:P, SE) :-
+    has_sideeffect(M:P, SE),
+    \+ has_documented_sideeffect(M:P, SE, _).
+
+%%
+% Finds and lists undocumented side effects.
+% @sideeffect retract Removes facts for calling_transitive/2 and has_sideeffect/2
+% @sideeffect assert Generates facts for calling_transitive/2 and has_sideeffect/2
+% @sideeffect print Lists undocumented side effects
+% @author Marvin Cohrs
+print_undocumented_sideeffects :-
+    find_all_sideeffects,
+    (has_undocumented_sideeffect(M:Pred,SE),
+     format('Undocumented side effect ~w in ~w~n',[SE,M:Pred]),fail ; true).
+
+%%
+% Is the given predicate a metapredicate that requires justification?
+% Currently findall/3, findall/4, setof/3, bagof/3
+% @param M:P/A the module, predicate name and arity
+% @param PN predicate name as used in the @justify tags
+% @author Marvin Cohrs
+demand_justification_for(built_in:findall/3, findall).
+demand_justification_for(built_in:findall/4, findall).
+demand_justification_for(built_in:bagof/3, bagof).
+demand_justification_for(built_in:setof/3, setof).
+
+%%
+% Does the given predicate call any metapredicate without a justification?
+% @param Pred the predicate to test
+% @param MetaPred the unexcused meta-predicate call
+% @author Marvin Cohrs
+has_unexcused_metapred_call(Pred, MetaPred) :-
+    demand_justification_for(MPA, MetaPred),
+    calling(Pred, MPA),
+    \+ has_metapred_excuse(Pred, MetaPred, _).
+    
+%%
+% Assert a binary predicate fact, if not already generated.
+% @param Pred the predicate name
+% @param X the predicate's first parameter
+% @param Y the predicate's second parameter
 assert2(Pred,X,Y) :- binop(Fact,Pred,X,Y), assert_if_new(Fact).
 % above we compute  Init <| closure1(pred)  [In B terms]
 % TO DO: write a version which only computes the reachable set [can be more efficient] : closure1(pred)[Init]
 
 :- dynamic depends_on_transitive/2.
+
+%%
+% Generates a transitive variant of depends_on/2 and prints dependency loops.
 compute_cycles :- retractall(depends_on_transitive(_,_)),
     start_analysis_timer(T1),
     transitive_closure(depends_on,depends_on_transitive),
@@ -757,17 +1290,34 @@ compute_cycles :- retractall(depends_on_transitive(_,_)),
     (depends_on_transitive(A,A), format('Cyclic dependency: ~w~n',[A]),fail ; true).
 
 :- dynamic calling_transitive/2.
+
+%%
+% Generates a transitive variant of calling/2 and prints call cycles starting
+% at the given predicate.
+% @param From the containing module
+% @param Call the start predicate
 compute_call_cycles(From,Call) :- retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
     transitive_closure(calling(From:Call,_),calling,calling_transitive),
     stop_analysis_timer(T1),
     (calling_transitive(A,B), format('Dependency: ~w -> ~w~n',[A,B]),fail ; true).
 
-% compute the predicates within a module that M:P depends on
+%%
+% Compute the predicates within a module that M:P depends on;
 % helps in refactoring (deciding what else would need to move or be imported if we move M:P to another module)
-
+% @param M:P the caller predicate
+% @param M:P2 the callee predicate
+% @param StartingPreds a list of caller predicates to try
 calling_in_same_module_from(M:P,M:P2,StartingPreds) :- calling_in_same_module(M:P,M:P2), member(P,StartingPreds).
 
+%%
+% Compute a sorted list of all predicates that are transitively called
+% by one of the given start predicates in the same module.
+% @param Module the module to inspect
+% @param Calls a list of start predicates
+% @param SList the (transitively) called predicates
+% @justify findall required for finding all generated calling_transitive/2 facts
+% @sideeffect retract retracting calling_transitive/2
 compute_intra_module_dependence(Module,Calls,SList) :-
     retractall(calling_transitive(_,_)),
     start_analysis_timer(T1),
@@ -777,7 +1327,12 @@ compute_intra_module_dependence(Module,Calls,SList) :-
     findall(P2,calling_transitive(_,_:P2),List),
     sort(List,SList).
 
-
+%%
+% Print a sorted list of all predicates that are transitively called
+% by a given predicate (list) to the console.
+% @param M the module to inspect
+% @param C a start predicate or a list of start predicates
+% @sideeffect print Writing the predicate list to the console.
 pred_links(M,C) :- predicate(M,C), !, pred_links(M,[C]).
 pred_links(M,List) :-
       compute_intra_module_dependence(M,List,SList), % If SList /= List we could add SList to List below ?
@@ -785,6 +1340,12 @@ pred_links(M,List) :-
       format('External calls:~n  ',[]),printall(M2:C2,(member(C,List),calling_in_other_module(M:C,M2:C2))),nl,
       format('Called by in ~w:~n  ',[M]),printall(C2,(member(C,List),calling_in_same_module(M:C2,M:C))),nl.
 
+%%
+% Print a list of all solutions for the given predicate.
+% @param Term result pattern
+% @param Call the tested predicate
+% @justify findall required for finding all solutions
+% @sideeffect print Writing the solution list to the console
 printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
 % ==========================================
@@ -796,6 +1357,14 @@ printall(Term,Call) :- findall(Term,Call,L), sort(L,SL), print(SL).
 
 :- dynamic rem_id/3, id_rem/2, next_rem_id/1.
 rem_id(M/P,ID) :- rem_id(M,P,ID).
+
+%%
+% Split module into call equivalence classes using REM's algorithm.
+% @param Module the module to inspect
+% @justify findall required for finding all predicates
+% @sideeffect print prints the resulting equivalence classes
+% @sideeffect retract removes previous rem_id/3, id_rem/2 and next_rem_id/1 facts
+% @sideeffect assert add facts for next_rem_id/1, rem_id/3, id_rem/2
 rem(Module) :-
    print(computing_equivalence_classes(Module)),nl,
    findall(P,predicate(Module,P),List),
@@ -814,12 +1383,23 @@ rem(Module) :-
    format('Call components of ~w~n',[Module]),
    print_classes(SL,0,Module).
 
+%%
+% Print call equivalence classes to the console.
+% @param List remaining predicates
+% @param Prev previous predicate
+% @param Module containing module
+% @sideeffect print prints the equivalence classes
 print_classes([],_,_).
 print_classes([Head/Pred|T],Head,Module) :- !,
     print_pred(Pred,Module), print_classes(T,Head,Module).
 print_classes([Head/Pred|T],_,Module) :- print('--------'),nl,
     print_pred(Pred,Module), print_classes(T,Head,Module).
 
+%%
+% Print predicate details to the console.
+% @param P/N predicate name and arity
+% @param M containing module
+% @sideeffect print prints the predicate details
 print_pred(P/N,M) :- %print(p(P,N,M)),nl,
     (is_exported(M,P/N) -> EXP='*exported' ; EXP=''),
     (is_imported(Other,M,P/N) -> IMP=imported_eg_in(Other) ; IMP=''),
@@ -837,8 +1417,22 @@ gen_gem_id(P/N) :- retract(next_rem_id(C)), C1 is C+1, assert(next_rem_id(C1)),
   %print(gen(C,P:N)),nl,
   assert(rem_id(P,N,C)), assert(id_rem(C,P/N)).
 
+%%
+% Run a left fold on a given list with a given /3 predicate (Elem,OldVal,NextVal),
+% using il_foldl2/4.
+% @param Pred the ternary predicate
+% @param List the list to fold
+% @param Start an initial value
+% @param Result the result
 il_foldl(Pred,List,Start,Result) :-
     il_foldl2(List,Pred,Start,Result).
+
+%%
+% Run a left fold on a given list with a given /3 predicate (Elem,OldVal,NextVal)
+% @param List the list to fold
+% @param Pred the ternary predicate
+% @param OldValue the input value
+% @param NewValue the result
 il_foldl2([],_Pred,Value,Value).
 il_foldl2([Elem|Rest],Pred,OldValue,NewValue) :-
     call(Pred,Elem,OldValue,Value),
@@ -848,6 +1442,10 @@ il_foldl2([Elem|Rest],Pred,OldValue,NewValue) :-
 
 %% Entry-point: analyze_clj("/path/to/prob/src/prob_tcltk.pl", "name of clojure output")
 
+/**
+ * This was probably meant for generating infolog.edn, but doesn't seem to
+ * be used any more.
+ * @deprecated in favour of analyze/2 + export_to_clj_file/1 */
 analyze_clj(InputFile,OutputFile) :-
     analyze(InputFile),
     print(exporting(OutputFile)),nl,
@@ -855,14 +1453,27 @@ analyze_clj(InputFile,OutputFile) :-
     export_to_clj_file(OutputFile),
     stop_analysis_timer(T3).
 
-%% Entry-point: analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")
+%%
+% This is the usual entry-point.
+% @example analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")
+% @param InputFiles a list of files to analyze
+% @param CacheFile path to the meta-predicate cache
 analyze(InputFiles,CacheFile) :-
     format('~nINFOLOG: Loading meta_predicate cache file ~w~n',[CacheFile]),
     ensure_loaded(CacheFile),
+    catch(ensure_loaded('documentation.pl'),_,catch(ensure_loaded('prolog-analyzer/documentation.pl'),_,print('Documentation coverage data could not be loaded.'))),
     analyse_files(InputFiles),
     (meta_user_pred_cache_needs_updating -> write_meta_user_pred_cache(CacheFile) ; format('INFOLOG: meta_predicate cache up-to-date.~n',[])).
+
+%%
+% A simpler variant of analyze/2. Uses a default path for the cache.
+% @param InputFiles a list of files to analyze
 analyze(InputFiles) :- analyze(InputFiles,'meta_user_pred_cache.pl').
 
+%%
+% Analyzes a list of files.
+% @caution it's analyse_files, not analyze_files. #typodanger
+% @param InputFiles a list of files to analyze
 analyse_files(InputFiles) :-
     start_analysis_timer(T0),
     print('INFOLOG: precompiling library_modules'),nl,
@@ -880,7 +1491,9 @@ analyse_files(InputFiles) :-
     stop_analysis_timer(T2),
     nl.
 
-% works with single file or multiple files:
+%%
+% Load one ore more source modules.
+% @param Files a module name or a list of module names
 use_source_modules([]) :- !.
 use_source_modules([H|T]) :- !, format('~nINFOLOG: loading module: ~w~n',[H]),
                                 use_module(H),
@@ -888,12 +1501,24 @@ use_source_modules([H|T]) :- !, format('~nINFOLOG: loading module: ~w~n',[H]),
                                 use_source_modules(T).
 use_source_modules(M) :- use_module(M).
 
-
+%%
+% Initialize a analysis timer
+% @param Timer the resulting timer
 start_analysis_timer(timer(R,T,W)) :- statistics(runtime,[R,_]),
    statistics(total_runtime,[T,_]),
    statistics(walltime,[W,_]).
+
+%%
+% Show the time passed since the initialization of the timer.
+% @param Timer the started timer
+% @sideeffect print prints the time difference
 stop_analysis_timer(T) :- stop_analysis_timer(T,[runtime/RT,total_runtime/RTT,walltime/WT]),
-   format('% INFOLOG: Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
+                          format('% INFOLOG: Analysis Runtime: ~w ms (total: ~w ms, walltime: ~w ms)~n',[RT,RTT,WT]).
+
+%%
+% Compute the time difference since the initialization of the time.
+% @param Timer the started timer
+% @param Results the resulting time differences
 stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!,
    statistics(runtime,[RE,_]),
    statistics(total_runtime,[TE,_]),
@@ -901,24 +1526,38 @@ stop_analysis_timer(timer(R,T,W),[runtime/RT,total_runtime/RTT,walltime/WT]) :-!
    RT is RE-R, RTT is TE-T, WT is WE-W.
 
 
-
-
 % ==========================================
 
 %  TERM EXPANDER PART
 
 :- meta_predicate assert_if_new(0).
+%%
+% Assert a fact if it is not known yet.
 assert_if_new(P) :- (P -> true ; assert(P)).
 
 :- meta_predicate assert_if_new(0).
 assert_if_not_covered(P) :- copy_term(P,CP), numbervars(CP,0,_End),
    (CP -> true ; assert(P)).
 
+%%
+% Make a list flat. Uses flatten1/3.
+% @param List input list with nested lists
+% @param FlatList flat result list
 aflatten(List,FlatList) :- flatten1(List,[],FlatList).
+
+%%
+% Make a list flat, with an accumulator.
+% @param List input list with nested lists
+% @param Accum accumulator
+% @param FlatList flat result list
 flatten1([],L,L) :- !.
 flatten1([H|T],Tail,List) :- !, flatten1(H,FlatList,List), flatten1(T,Tail,FlatList).
 flatten1(NonList,Tail,[NonList|Tail]).
 
+%%
+% Predicates that may be used in DCGs without receiving 2 more arguments.
+% @param Pred predicate name
+% @param Arity predicate arity
 dcg_specialcase('=',2).
 dcg_specialcase('!',0).
 dcg_specialcase(':',2).
@@ -934,7 +1573,19 @@ bind_args2([V|Vs],VC,VCN) :-
     VCNT is VC + 1,
     bind_args(Vs,VCNT,VCN).
 
+%%
+% Get the nth term of a layout; complains if is not reachable. Uses layout_sub_term/4
+% @param Layout layout list
+% @param Position index of the wanted term
+% @param Result the result term
 layout_sub_term(Layout,Position,Result) :- layout_sub_term(Layout,Position,Result,unknown).
+
+%%
+% Get the nth term of a layout; complains if is not reachable.
+% @param Layout layout list
+% @param Position index of the wanted term
+% @param Result the result term
+% @param Loc location of the caller
 layout_sub_term([],N,[],Loc) :- !, format('~n*** Could not obtain layout information (position ~w) at ~w.~n',[N,Loc]).
 layout_sub_term([H|T],N,Res,Loc) :- !,
     (N=<1 -> Res=H ; N1 is N-1, layout_sub_term(T,N1,Res,Loc)).
@@ -942,8 +1593,11 @@ layout_sub_term(Term,N,Res,Loc) :-
     format('~n*** Virtual position: ~w~n',[layout_sub_term(Term,N,Res,Loc)]), % can happen when add_args adds new positions which did not exist
     Res=Term.
 
-
-% for a term-expander context compute a position term; if not possible: constructs unknown
+%%
+% For a term-expander context compute a position term; if not possible: constructs unknown
+% @param CallingPredicate the calling predicate
+% @param Layout the layout term
+% @param PositionTerm the resulting position term
 get_position_term(CallingPredicate,Layout,PositionTerm) :-
    decompose_call(CallingPredicate,Module,CallingPred),
    get_position(Layout, StartLine, EndLine),!,
@@ -963,6 +1617,11 @@ get_position1(Layout, StartLine, EndLine) :-
     aflatten(Layout,[StartLine|FlatLayout]),
     (FlatLayout = [] -> EndLine = StartLine ; last(FlatLayout,EndLine)).
 
+%%
+% Matches against different arities of call(...); returns arity and predicate
+% @param Call call(...) term
+% @param Arity arity of the called predicate
+% @param Pred name of the called predicate
 is_meta_call_n(call(C),0,C).
 is_meta_call_n(call(C,_),1,C).
 is_meta_call_n(call(C,_,_),2,C).
@@ -1001,11 +1660,23 @@ assert_call2(DCG,CallingPredicate, Predicate, Layout) :-
        ; true),
     assert_if_new(calling(CM,CP, Module,Name/Arity, StartLine, EndLine)).
 
+%%
+% Increase the arity by 2 if the clause is a DCG.
+% @param DCG 'dcg' or 'no_dcg'
+% @param SourceArity assumed arity as found in the code
+% @param Arity the corrected arity
 adapt_arity(no_dcg,Arity,R) :- !, R=Arity.
 adapt_arity(dcg,SourceArity,Arity) :- !,Arity is SourceArity+2.
 %adapt_arity(meta(N),SourceArity,Arity) :- !,Arity is SourceArity+N.
 adapt_arity(DCG,Arity,R) :- add_infolog_error(informat('unknown DCG type: ~w',[DCG])), R=Arity.
 
+%%
+% Analyze a clause body using analyze_body/5; on failure print an error message and recover
+% @param Body the clause body to process
+% @param Layout layout term
+% @param CallingPredicate ?
+% @param DCG 'dcg' or 'no_dcg'
+% @param Info what is this?
 safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
    (analyze_body(X,Layout, CallingPredicate, DCG, Info) -> true
      ; get_position_term(CallingPredicate,Layout,PositionTerm),
@@ -1013,7 +1684,14 @@ safe_analyze_body(X,Layout, CallingPredicate, DCG, Info) :-
        %,trace, analyze_body(X,Layout, CallingPredicate, DCG, Info)
     ).
 
-% analyze_body(BODYTERM, LayoutInfo, CallingPredicate, DCGInfo)
+%%
+% Analyze a clause body; assert all found calls (TODO what else does this do?)
+% @param Body the clause body to process
+% @param Layout layout term
+% @param CallingPredicate ?
+% @param DCG 'dcg' or 'no_dcg'
+% @param Info what is this?
+
 analyze_body(':'(_,_,_,FIX_THIS_CLAUSE),Layout, CallingPredicate, dcg, _Info).
 
 analyze_body(VAR,Layout, CallingPredicate, DCG, Info) :-
@@ -1467,42 +2145,116 @@ analyze_clause(Fact, Layout, Module, _File) :- %portray_clause( Fact ),
     assert_head(Predicate, Layout),
     store_clause(no_dcg,Module,Fact,true,Layout).
 
-% --------------------------------
-% analyze_clause_complexity
+%%
+% Compute complexity measurements on a given clause: nesting level, calls,
+% variable count, unifications, explicit unifications, Halstead vocabulary,
+% and Halstead length.
+% @param Module containing module
+% @param Predicate Predicate name and arity
+% @param Head the clause head
+% @param Body the clause body
+% @param Layout the layout term
+% @sideeffect assert adds facts for clause_halstead/8 and clause_complexity/9
 analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
    get_position(Layout,StartLine,EndLine),
-   (body_complexity(Body,cacc(0,0,0),cacc(_,NestingLevel,Calls))
-     -> %format('Clause Complexity: ~w  (~w:~w)~n',[NestingLevel,Module,Predicate]),
-        assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine))
-     ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
+   term_variables(Body, Vars),
+   length(Vars, VarCount),
+   Predicate = _Name/Arity,
+   (body_complexity(Body,cacc(0,0,0,0,0,2,Arity,[],[this:Predicate,':-'/2]),cacc(_,NestingLevel,Calls,Unifications,ExplicitUnifications,OperatorOcc,OperandOcc,AtomSet,OperatorSet))
+     -> length(AtomSet, AtomCount),
+      length(OperatorSet, OperatorCount),
+      OperandCount is AtomCount+VarCount,
+%      format('Halstead complexity ~w, ~w, ~w, ~w~n',[OperatorOcc,OperandOcc,OperatorCount,OperandCount]),
+      assert(clause_halstead(Module,Predicate,StartLine,EndLine,OperatorOcc,OperandOcc,OperatorCount,OperandCount)),
+      assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine,VarCount,Unifications,ExplicitUnifications))
+   ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
 
+%%
+% DCG for accumulationg the complexity of a clause body (see analyze_clause_complexity/5)
+% @param Body the clause body
+% @param In complexity before
+% @param Out complexity afterwards
 body_complexity(V) --> {var(V)},!.
+body_complexity(_:V) --> {var(V)},!.
 body_complexity((A,B)) --> !,  enter_scope(0),
    body_complexity(A), body_complexity(B), exit_scope(0).
 body_complexity((A;B)) --> !,  enter_scope(1),
    body_complexity(A), body_complexity(B), exit_scope(1).
-body_complexity(if(A,B,C)) --> !,  enter_scope(1),
-   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
-body_complexity((A -> BC)) -->  {nonvar(BC), BC=(B ; C)}, !,  enter_scope(1),
-   body_complexity(A), body_complexity(B), body_complexity(C), exit_scope(1).
+body_complexity(if(A,B,C)) --> !,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C),
+   exit_scope(1),
+   inc_operator_occ, ins_operator(if/3).
+body_complexity((A -> BC)) -->  {nonvar(BC), BC=(B ; C)}, !,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B), body_complexity(C),
+   exit_scope(1),
+   inc_operator_occ, ins_operator('->'/2).
 % Should we treat (Case1 -> B ; Case2 -> C ; .... ) specially as a case-construct ?
-body_complexity((A->B)) --> !,  ({A==otherwise} -> body_complexity(B) % do not count otherwise -> as nesting
+body_complexity((A->B)) --> !, inc_operator_occ, ins_operator('->'/2),
+   % do not count otherwise -> as nesting
+   ({A==otherwise} -> body_complexity(B), ins_operator(otherwise/0)
    ; enter_scope(1),
-     body_complexity(A), body_complexity(B), exit_scope(1)).
-body_complexity(\+ A) --> !,  enter_scope(1),
-   body_complexity(A), exit_scope(1).
-body_complexity(Meta) --> {unary_meta_built_in(Meta,A)},!, enter_scope(1),
-   body_complexity(A), exit_scope(1).
-body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!, enter_scope(1),
+     body_complexity(A), body_complexity(B),
+     exit_scope(1)).
+body_complexity(\+ A) --> !,
+   enter_scope(1),
    body_complexity(A),
-   body_complexity(B), exit_scope(1).
-body_complexity(C) --> add_call(C).
+   exit_scope(1),
+   inc_operator_occ, ins_operator('\\+'/1).
+body_complexity((A=B)) --> !,
+   add_eunif,
+   term_halstead(A), term_halstead(B),
+   inc_operator_occ, ins_operator('='/2).
+body_complexity(Meta) --> {unary_meta_built_in(Meta,A)},!,
+   enter_scope(1),
+   body_complexity(A),
+   inc_operator_occ, {functor(Meta,Pred,Arity)}, ins_operator(meta:Pred/Arity),
+   exit_scope(1).
+body_complexity(Meta) --> {binary_meta_built_in(Meta,A,B)},!,
+   enter_scope(1),
+   body_complexity(A), body_complexity(B),
+   inc_operator_occ, {functor(Meta,Pred,Arity)}, ins_operator(meta:Pred/Arity),
+   exit_scope(1).
+body_complexity(Module:Call) --> !,
+   add_call(Module:Call),
+   {Call =.. [Pred|Args], length(Args,Arity)},
+   inc_operator_occ,
+   ins_operator(Module:Pred/Arity),
+   scanlist(term_halstead,Args).
+body_complexity(Call) --> !,
+   add_call(Call),
+   {Call =.. [Pred|Args], length(Args,Arity)},
+   inc_operator_occ,
+   ins_operator(this:Pred/Arity),
+   scanlist(term_halstead,Args).                       
 
+%%
+% DCG for processing the complexity of a term.
+% @param Term the term to analyze
+% @param In complexity before
+% @param Out complexity afterwards
+term_halstead(V) --> {var(V)}, !, inc_operand_occ.
+term_halstead(F) --> !,
+    {F =.. [Functor|Args], length(Args,Arity)}, 
+    inc_operand_occ,
+    ins_atom(Functor/Arity),
+    scanlist(term_halstead,Args).
 
+%%
+% Match a binary meta predicate and return its call terms
+% @param Term the meta-predicate term
+% @param Call1 the first contained call
+% @param Call2 the second contained call
 binary_meta_built_in(when(W,A),W,A).
 binary_meta_built_in(call_cleanup(A,B),A,B).
 binary_meta_built_in(on_exception(_,A,B),A,B).
 binary_meta_built_in(catch(A,_,B),A,B).
+
+%%
+% Match a unary meta predicate and return its call term
+% @param Term the first contained call
+% @param Call1 the contained call
 unary_meta_built_in(findall(_,A,_),A).
 unary_meta_built_in(findall(_,A,_,_),A).
 unary_meta_built_in(bagof(_,A,_),A).
@@ -1510,14 +2262,76 @@ unary_meta_built_in(setof(_,A,_),A).
 unary_meta_built_in(once(A),A).
 %unary_meta_built_in(call(A),A).
 
-enter_scope(Inc,cacc(Level,Max,Calls),cacc(L1,M1,Calls)) :- L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
-exit_scope(Inc,cacc(Level,Max,Calls),cacc(L1,Max,Calls)) :- L1 is Level-Inc.
+%%
+% Increment the nesting level
+% @param Inc how much to add
+% @param In complexity before
+% @param Out complexity afterwards
+enter_scope(Inc,cacc(Level,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L1,M1,Calls,Unif,EUnif,Otors,Onds,AS,OS)) :-
+    L1 is Level+Inc, (L1>Max -> M1=L1 ; M1=Max).
+
+%%
+% Decrement the nesting level
+% @param Dec how much to subtract
+% @param In complexity before
+% @param Out complexity afterwards
+exit_scope(Dec,cacc(Level,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L1,Max,Calls,Unif,EUnif,Otors,Onds,AS,OS)) :-
+    L1 is Level-Dec.
+
+%%
+% Increment the call, variable and unification counters
+% @param Term the call term
+% @param In complexity before
+% @param Out complexity afterwards
 add_call(otherwise) --> !,[].
 add_call(fail) --> !,[].
 add_call(true) --> !,[].
-add_call(_,cacc(L,M,Calls),cacc(L,M,C1)) :- C1 is Calls+1.
+add_call(Term,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,C1,Unif1,EUnif,Otors,Onds,AS,OS)) :-
+    C1 is Calls+1,
+    term_variables(Term,Vs),
+    length(Vs,VC),
+    Unif1 is Unif+VC.
 
-% --------------------------------
+%%
+% Increment the unification and explicit unification counters
+% @param In complexity before
+% @param Out complexity afterwards
+% @author Marvin Cohrs
+add_eunif(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif1,EUnif1,Otors,Onds,AS,OS)) :-
+    Unif1 is Unif+1,
+    EUnif1 is EUnif+1.
+
+%%
+% Increment the operator occurence counter.
+% @param In complexity before
+% @param Out complexity afterwards
+% @author Marvin Cohrs
+inc_operator_occ(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors1,Onds,AS,OS)) :- Otors1 is Otors+1.
+
+%%
+% Insert a new operator into the operator set
+% @param Op the operator
+% @param In complexity before
+% @param Out complexity afterwards
+% @author Marvin Cohrs
+ins_operator(Op,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS1)) :- sets:add_element(Op,OS,OS1).
+
+%%
+% Increment the operand occurence counter.
+% @param In complexity before
+% @param Out complexity afterwards
+% @author Marvin Cohrs
+inc_operand_occ(cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds1,AS,OS)) :- Onds1 is Onds+1.
+
+%%
+% Insert a new atom into the atom set
+% @param Atom the atom
+% @param In complexity before
+% @param Out complexity afterwards
+% @author Marvin Cohrs
+ins_atom(Atom,cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS,OS),cacc(L,M,Calls,Unif,EUnif,Otors,Onds,AS1,OS)) :- sets:add_element(Atom,AS,AS1).
+
+%%
 % detect some obvious anti-patterns, problems in a clause:
 lint_body(Module,Name,Arity,_Head,Body,BodyLayout) :-
     (dangerous_cut(Body,BodyLayout,StartLine, EndLine)
@@ -1554,7 +2368,12 @@ analyze_foreign(foreign(Name, PredSpec), Layout, Module, _File, (:- dynamic(Name
 analyze_foreign(foreign(Name, _Lang, PredSpec), Layout, Module, _File, TermOut) :-
     analyze_foreign(foreign(Name, PredSpec), Layout, Module, _File, TermOut).
 
-% assert the head of a newly found clause or fact:
+%%
+% Add the head of a newly found clause or fact to our predicate/2 and klaus/4
+% database.
+% @param Predicate the predicate name
+% @param Layout layout term
+% @sideeffect assert adds facts to predicate/2 and klaus/4
 assert_head(Predicate, Layout) :-
     decompose_call(Predicate,M,P),
     assert_if_new(predicate(M,P)),
@@ -1595,15 +2414,33 @@ built_in_call(print(_)).
 built_in_call(write(_)).
 built_in_call(format(_,_)).
 built_in_call(format(_,_,_)).
-% -------------------
 
-decompose_call(M:P,MR,PR) :- !,decompose_call2(P,M,MR,PR). % peel off all : module constructors
+%%
+% Peel off all : module constructors, using decompose_call2/4
+% @param M:P predicate name with at least one module: prefix
+% @param MR the extracted module name
+% @param PR the extracted predicate name
+% @sideeffect print prints an error message on failure
+decompose_call(M:P,MR,PR) :- !,decompose_call2(P,M,MR,PR). 
 decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
 
+%%
+% Peel off all : module constructors
+% @param P predicate name, possible with more module: prefixes
+% @param OuterModule the last stripped module: prefix
+% @param MR the extracted module name
+% @param PR the extracted predicate name
 decompose_call2(P,OuterModule,MR,PR) :- var(P),!, (MR,PR)=(OuterModule:P).
 decompose_call2(M:P,_OuterModule,MR,PR) :- !, decompose_call2(P,M,MR,PR).
 decompose_call2(P,OuterModule,OuterModule,P).
 
+%%
+% Guess the module of a given predicate
+% @param Name the predicate name
+% @param Arity the predicate arity
+% @param CallingModule the calling module
+% @param Module the guessed module
+% @param Loc location term
 get_module(Name, Arity, CallingModule, built_in,_Loc) :-
    functor(Call, Name, Arity),
    predicate_property(CallingModule:Call,built_in),!.
@@ -1622,7 +2459,8 @@ get_module(Name, Arity, CallingModule, Module, Loc) :-
    mk_problem(could_not_infer_module(Name, Arity, CallingModule),Loc),
    Module = undefined_module.
 
-
+%%
+% Correct the module names in calling/6 and stored_call/4. No 'module_yet_unknown' shall remain.
 update :-
     retract(calling(CallingModule,CallingPred, module_yet_unknown,Name/Arity, Start, End)),
     get_module(Name, Arity, CallingModule, Module, module_pred_lines(CallingModule,CallingPred,Start,End)),
@@ -1649,6 +2487,14 @@ safe_analyze_clause(Term,Layout,Module,File) :-
     if(analyze_clause(Term,Layout,Module,File),true,
        format('~n*** Analyzing Clause for ~w Failed: ~w~n~n',[Module,Term])).
 
+%%
+% Interpreter magic. Sicstus calls this predicate when encountering a clause.
+% @param Term encountered term
+% @param Layout layout information
+% @param Tokens token list
+% @param TermOut the result term
+% @param LayoutOut the result layout
+% @param Tokens the result token list
 user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
     %print(d(Term, Tokens)),nl,
     %(Term = (atomic_eq_check(_,_,_) :- B) -> trace ; true),
@@ -1678,6 +2524,9 @@ user:term_expansion(Term, Layout, Tokens, TermOut, Layout, [codeq | Tokens]) :-
 :- dynamic provide_debug_for_module/1.
 %provide_debug_for_module(junit_tests).
 
+/**
+ * Display a nice welcome message, listing many beautiful predicates to try.
+ * @sideeffect print prints a welcome message */ 
 infolog_help :-
   nl,
   print('INFOLOG ENTRY: analyze("/path/to/prob/src/prob_tcltk.pl", "name of meta_user_pred_cache")'),nl,
@@ -1694,6 +2543,7 @@ infolog_help :-
   print('INFOLOG ENTRY: complexity - clause complexity analysis'),nl,
   print('INFOLOG ENTRY: lint - find problems'),nl,
   print('INFOLOG ENTRY: print_meta_calls(Module)'),nl,
+  print('INFOLOG ENTRY: print_undocumented_sideeffects'), nl,
   print('INFOLOG ENTRY: sccs'),nl,
   nl,nl.
 :- infolog_help.

@@ -1,0 +1,46 @@
+body {
+    background-color: white;
+    font-family: sans-serif;
+    padding: 0.5em;
+}
+h1.module, h2.predgroup {
+    color: #440077;
+}
+a.predicate {
+    display: block;
+    background-color: #f0e0ff;
+    border: 1px solid #440077;
+    padding: 8px;
+    margin-bottom: 4px;
+}
+h3.predname {
+    background-color: #7020b0;
+    color: white;
+    display: block;
+    margin: -8px -8px 8px -8px;
+    padding: 2px;
+    font-family: monospace;
+}
+ul.modulelist, ul.predlist {
+    list-style-type: none;
+    margin: 0px;
+    padding: 0px;
+}
+table.tagtable {
+    cell-spacing: 0px;
+}
+table.tagtable td.tagname {
+    font-size: small;
+    font-weight: bold;
+    padding-right: 2em;
+}
+.problem {
+    display: block;
+}
+.problem .problemseverity {
+    color: red;
+    font-weight: bold;
+}
+.problem .problemtype {
+    font-style: italic;
+}

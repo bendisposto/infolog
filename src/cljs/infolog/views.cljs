@@ -6,8 +6,12 @@
             [infolog.components.module-dependencies :refer [dependency-graph]]
             [infolog.components.indentation-analysis :refer [complexity-viz]]
             [infolog.components.viz-nesting :refer [nesting-viz]]
+            [infolog.components.viz-halstead :refer [halstead-viz]]
             [infolog.components.viz-interface-size :refer [interface-size-viz]]
+            [infolog.components.viz-dynamics :refer [dynamics-viz]]
+            [infolog.components.viz-incalls :refer [incalls-viz]]
             [infolog.routes :refer [page navigation text]]
+            [cljs.pprint :as pprint]
             [cljsjs.c3]
             [cljsjs.d3]))
 
@@ -90,13 +94,15 @@
 (defn indentation-view []
   [complexity-viz])
 
-(defn nesting-row [{:keys [module predicate arity depth calls-in-body]}]
+(defn nesting-row [{:keys [module predicate arity depth calls-in-body start end]}]
   [:tr
    [:td module]
    [:td predicate]
    [:td arity]
    [:td depth]
-   [:td calls-in-body]])
+   [:td calls-in-body]
+   [:td (+ 1 (- end start))]
+   ])
 
 (defn nesting-view []
   (let [nesting (re-frame/subscribe [:nesting])]
@@ -107,21 +113,130 @@
        [:th "Predicate"]
        [:th "Arity"]
        [:th "Nesting-Depth"]
-       [:th "Calls in Body"]]]
+       [:th "Calls in Body"]
+       [:th "Lines of code"]]]
      (into [:tbody]
            (mapv nesting-row (reverse (sort-by :depth
                                                (sort-by :calls-in-body (remove (fn [row]
                                                                                  (and (< (:depth row) 5)
                                                                                       (< (:calls-in-body row) 25))) @nesting))))))]))
 
+(defn unif-row [{:keys [module predicate arity variables unifications explicit-unifications]}]
+  [:tr
+   [:td module]
+   [:td predicate]
+   [:td arity]
+   [:td variables]
+   [:td unifications]
+   [:td explicit-unifications]
+   ])
+
+(defn unif-view []
+  (let [nesting (re-frame/subscribe [:nesting])]
+    [:table.table
+     [:thead
+      [:tr
+       [:th "Module"]
+       [:th "Predicate"]
+       [:th "Arity"]
+       [:th "Variables in Body"]
+       [:th "Unifications"]
+       [:th "Explicit Unifications"]]]
+     (into [:tbody]
+           (mapv unif-row (take 100 (reverse (sort-by :unifications
+                                               (sort-by :variables @nesting))))))]))
+
+(defn predstats-row [{:keys [module dynamics-declared public-preds exported-preds]}]
+  [:tr
+    [:td module]
+    [:td dynamics-declared]
+    [:td public-preds]
+    [:td exported-preds]])
+
+(defn predstats-view []
+  (let [predstats (re-frame/subscribe [:predstats])]
+    [:table.table
+     [:thead
+      [:tr
+       [:th "Module"]
+       [:th "Dynamic predicates"]
+       [:th "Public predicates"]
+       [:th "Exported predicates"]]]
+     (into [:tbody]
+           (mapv predstats-row (take 100 (reverse (sort-by :dynamics-declared @predstats)))))]))
+
+(defn calls-row [{:keys [module predicate incalls outcalls]}]
+  [:tr
+    [:td module]
+    [:td predicate]
+    [:td incalls]
+    [:td outcalls]])
+
+(defn calls-view []
+  (let [calls (re-frame/subscribe [:calls])]
+    [:table.table
+      [:thead
+        [:tr
+          [:th "Module"]
+          [:th "Predicate"]
+          [:th "Incoming edges"]
+          [:th "Outgoing edges"]]]
+      (into [:tbody] (mapv calls-row (take 100 (reverse (sort-by :incalls @calls)))))]))
+
+(defn halstead-row [{:keys [module predicate operator-occ operand-occ distinct-operators distinct-operands volume length vocabulary level difficulty intelligent-content time effort]}]
+  (let [format (fn [f] (pprint/cl-format nil "~,2f" f))]
+  [:tr
+    [:td module]
+    [:td predicate]
+    [:td operator-occ]
+    [:td operand-occ]
+    [:td distinct-operators]
+    [:td distinct-operands]
+    [:td length]
+    [:td vocabulary]
+    [:td (format volume)]
+    [:td (format level)]
+    [:td (format difficulty)]
+    [:td (format intelligent-content)]
+    [:td (format effort)]
+    [:td (str (format time) " s")]
+    ]))
+
+(defn halstead-view []
+  (let [halstead (re-frame/subscribe [:halstead])]
+    [:table.table
+      [:thead
+        [:tr
+          [:th "Module"]
+          [:th "Predicate"]
+          [:th "Operator tokens"]
+          [:th "Operand tokens"]
+          [:th "Distinct operators"]
+          [:th "Distinct operands"]
+          [:th "Length"]
+          [:th "Vocabulary"]
+          [:th "Volume"]
+          [:th "Level estimator"]
+          [:th "Difficulty"]
+          [:th "Intelligent Content"]
+          [:th "Programming Effort"]
+          [:th "Programming Time"]]]
+      (into [:tbody] (mapv halstead-row (take 100 (reverse (sort-by :effort @halstead)))))]))
 
 ;; Remember to add page to infolog.routes
 (defmethod page :Problems [] [problems-view])
 (defmethod page :Dependencies [] [dependencies-view])
 (defmethod page :Indentation [] [indentation-view])
 (defmethod page :AST-Nesting [] [nesting-view])
+(defmethod page :Unifications [] [unif-view])
+(defmethod page :PredStats [] [predstats-view])
+(defmethod page :Calls [] [calls-view])
+(defmethod page :Halstead [] [halstead-view])
 (defmethod page :Viz-Nesting [] [nesting-viz])
 (defmethod page :Viz-InterfaceSize [] [interface-size-viz])
+(defmethod page :Viz-Dynamics [] [dynamics-viz])
+(defmethod page :Viz-Halstead [] [halstead-viz])
+(defmethod page :Viz-Incalls [] [incalls-viz])
 (defmethod page :default [] [:h1 "Unknown page"])
 
 (defn render-navigation [active navigation]
@@ -143,8 +258,7 @@
       [:div
        [:nav.navbar.navbar-inverse.navbar-fixed-top
         [:div.container
-         (into  [:ul.nav.navbar-nav]
-                (render-navigation active navigation))]]
+        (into [:ul.nav.navbar-nav] (concat (render-navigation active navigation) [[:li [:a {:href "docs"} "Documentation"]]]))]]
        [:div.content
         [:h1 (if (keyword @active) (text @active) "Unknown Page")]
         [:div (str "Directory: " @location)]
