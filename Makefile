@@ -102,7 +102,7 @@ run_server:
 server: ui infolog.edn indy.edn docs run_server
 
 prolog-analyzer/java_calls.pl: Makefile
-	@echo "Extracting Prolog calls from ProB 2.0 Java API"
+	@echo "Extracting Prolog calls from ProB 2.0 Java API using PROB2_PATH (which must be set)"
 	@echo ":- dynamic java_call/2." > prolog-analyzer/java_calls.pl
 	find $(PROB2_PATH) -type f \( -iname \*.java -o -iname \*.groovy \) -exec perl -ne'print "java_call($$1,\"'{}'\").\n" if /.*?PROLOG_COMMAND_NAME\s*=\s*\"(.*)\"/' {} \; >> prolog-analyzer/java_calls.pl
 
