@@ -22,6 +22,7 @@ decompose_location(_,unknown,unknown,unknown,unknown).
 % print location info
 print_location(module_lines(Module,From,To)) :- !, format(' in ~w [~w - ~w] ',[Module,From,To]).
 print_location(module_pred_lines(Module,Predicate,From,To)) :- !, format(' in ~w [~w - ~w defining ~w] ',[Module,From,To,Predicate]).
+print_location(module_pred(Module,Predicate)) :- !, format(' in ~w [definition of ~w] ',[Module,Predicate]).
 print_location(module_loc(Module)) :- !, format(' in module ~w ',[Module]).
 print_location(unknown) :- !.
 print_location(E) :- add_infolog_error(informat('Illegal location: ~w',E)).
