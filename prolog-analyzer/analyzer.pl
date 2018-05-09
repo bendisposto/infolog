@@ -58,7 +58,7 @@ next_stored_clause_nr(0).
        has_metapred_excuse/3, % predicate M:P/A has an excuse for using MetaPred
        has_documented_sideeffect/3. % predicate M:P/A has a documented side effect
 :- dynamic
-       has_side_effect/2. % predicate M:P/A has a side effect
+       has_sideeffect/2. % predicate M:P/A has a side effect
 
 %%
 % An 8-place variant of calling/7, because it's easier to export.
