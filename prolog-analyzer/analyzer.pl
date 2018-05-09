@@ -1206,11 +1206,34 @@ transitive_closure_iterate(Pred,TransPred,MaxIter) :-
 find_all_sideeffects :-
     retractall(has_sideeffect(_,_)),
     retractall(new(_,_)),
+    % builtin's are marked as has_documented_sideeffect by java code 
     has_documented_sideeffect(Pred,SE,_),
+    \+ no_need_to_document(Pred,SE),
     assert(has_sideeffect(Pred,SE)),
+    %print(initial_has_sideeffect(Pred,SE)),nl,
     assert(new(Pred,SE)), fail.
 find_all_sideeffects :-
     find_all_sideeffects_iterate(99999999).
+
+
+%no_need_to_document(built_in:print/1, print).
+no_need_to_document(_,print).
+no_need_to_document(_,open).
+no_need_to_document(_,close).
+no_need_to_document(_,assert).
+no_need_to_document(_,retract).
+
+%has_documented_sideeffect(built_in:nl/0, print, 'Prints a line feed to the console').
+%has_documented_sideeffect(built_in:format/2, print, 'Prints formatted text to the console').
+%has_documented_sideeffect(built_in:format/3, print, 'Prints formatted text to a stream').
+%has_documented_sideeffect(built_in:open/3, open, 'Opens a file').
+%has_documented_sideeffect(built_in:close/1, close, 'Closes a file').
+%has_documented_sideeffect(built_in:assert/1, assert, 'Adds a fact to the database').
+%has_documented_sideeffect(built_in:asserta/1, assert, 'Adds a fact to the database').
+%has_documented_sideeffect(built_in:assertz/1, assert, 'Adds a fact to the database').
+%has_documented_sideeffect(built_in:retract/1, retract, 'Removes a fact from the database').
+%has_documented_sideeffect(built_in:retractall/1, retract, 'Removes matching facts from the database').
+
 
 %%
 % Generate new facts for has_sideeffect/2 by adding more call edges
