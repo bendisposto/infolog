@@ -1255,8 +1255,8 @@ print_undocumented_sideeffects :-
 % @param M:P/A the module, predicate name and arity
 % @param PN predicate name as used in the @justify tags
 % @author Marvin Cohrs
-demand_justification_for(built_in:findall/3, findall).
-demand_justification_for(built_in:findall/4, findall).
+%demand_justification_for(built_in:findall/3, findall).
+%demand_justification_for(built_in:findall/4, findall).
 demand_justification_for(built_in:bagof/3, bagof).
 demand_justification_for(built_in:setof/3, setof).
 
