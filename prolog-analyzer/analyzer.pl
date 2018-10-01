@@ -59,6 +59,11 @@ next_stored_clause_nr(0).
        has_documented_sideeffect/3. % predicate M:P/A has a documented side effect
 :- dynamic
        has_sideeffect/2. % predicate M:P/A has a side effect
+:- dynamic
+       infolog_option/1.
+
+infolog_option(strict).
+%infolog_option(detect_unrecognized_meta_predicate_calls).
 
 %%
 % An 8-place variant of calling/7, because it's easier to export.
@@ -301,14 +306,14 @@ gen_db_entries(S) :-  print('Updating problem database and displaying new proble
         format('Problem location has moved : ~w ',[Hash]), 
         print_location(OldLocation),print(' --> '), print_location(Location), nl
       ; Datime = datime(Yr,Mon,Day,Hr,Min,Sec), NewSha = CurSha, Status = active,
-        display_problem(ErrorInfo,Location,Hash)
+        display_problem(Type,ErrorInfo,Location,Hash)
      ),
      portray_clause(S, problem_db_entry(Hash, Category, Type, ErrorInfo,Location, NewSha,Datime,Status) ),
     fail.
 gen_db_entries(_) :- print('----'),nl, print('The following problems were removed:'),nl,
     problem_db_entry(Hash, Category, Type, ErrorInfo,Location, OldSha,OldDatime,_OldStatus),
     \+ problem_db_keep(Hash,Category,Type,ErrorInfo,Location,_),
-    display_problem(ErrorInfo,Location,Hash), format('  ~w (~w)~n',[OldDatime,OldSha]),
+    display_problem(Type,ErrorInfo,Location,Hash), format('  ~w (~w)~n',[OldDatime,OldSha]),
     fail.
 gen_db_entries(_) :- print('----'),nl.
 
@@ -562,7 +567,7 @@ lint(Category,Type,Module) :-
      infolog_problem_hash(Category,Type,ErrorInfo,Location,Hash),
      \+ reviewed(Hash,Category,Type,ErrorInfo,Location),
      (nonvar(Module) -> location_affects_module(Location,Module) ; true),
-     display_problem(ErrorInfo,Location,Hash),
+     display_problem(Type,ErrorInfo,Location,Hash),
      fail.
 lint(_,_,_) :- print('Done checking'),nl.
 
@@ -571,11 +576,13 @@ lint(_,_,_) :- print('Done checking'),nl.
 % @param ErrorInfo ?
 % @param Location the problem location
 % @param Hash ?
-display_problem(ErrorInfo,Location,Hash) :-
+display_problem(Type,ErrorInfo,Location,Hash) :-
+     (Type=error -> start_red ; true),
      format(' *** ',[]),
      print_information(ErrorInfo), print(' '),
      print_location(Location),
-     format(' [[~w]]~n',[Hash]).
+     format(' [[~w]]~n',[Hash]),
+     (Type=error -> reset_colors ; true).
 
 lint_for_pat(Pat) :- find_module(Pat,Module), lint_for_module(Module).
 
@@ -850,7 +857,7 @@ resolve_module_location_nondet(M,_,M).
 %%
 % Assert that the given module is defined; otherwise complain, but don't fail.
 % @param A the module name
-safe_defined_module(A) :- if(defined_module(A,_),true,format('*** Illegal module ~w~n',[A])).
+safe_defined_module(A) :- if(defined_module(A,_),true,format_red('*** Illegal module ~w~n',[A])).
 
 % --------------------------------------------
 
@@ -933,15 +940,22 @@ print_reexports.
 uncovered_meta_call(FromModule,Pred,L1,L2,Msg) :-
    meta_call(FromModule,Pred,XX,NrAddedArgs,Head,L1,L2),
    (meta_pred_functor(Pred,FromModule,MetaList)
+    % do we already have a meta-predicate annotation ?
      -> get_required_meta_position(Head,XX,ArgNr),
         nonmember(meta_arg(ArgNr,NrAddedArgs),MetaList),
         gen_meta_pred_term(Pred,ArgNr,NrAddedArgs,Term),
         Msg = meta_predicate_for_position(ArgNr,Term) %arg(ArgNr,NrAddedArgs)
         %,print(missing_arg(ArgNr,NrAddedArgs,MetaList,Pred,Head)),nl
-     ;  get_required_meta_position(Head,XX,ArgNr)
+     ;  get_required_meta_position(Head,XX,ArgNr)  
+        % check if the Head of the clause contains the argument XX being called
          -> gen_meta_pred_term(Pred,ArgNr,NrAddedArgs,Term),
             Msg = meta_predicate(Term) %no_annotation(ArgNr,NrAddedArgs)
-     ;  Msg = meta_predicate).
+     ;  % this case is not necessarily a missing meta-predicate; the called term XX does not appear
+        % directly in head of the clause; it is thus possible constructed
+        % by the code or received as output from a previous call
+        infolog_option(detect_unrecognized_meta_predicate_calls),
+        Msg = unrecognized_meta_predicate
+    ).
 
 gen_meta_pred_term(F/A, ArgNr,NrAddedArgs,Term) :-
    functor(Term,F,A),
@@ -1663,8 +1677,9 @@ assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,I
     %format('**add meta_call: Head = ~w, ~n ~w~n',[ClauseHead,meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)]),
     assert_if_not_covered(meta_call(CM,CP,VariableCall,ExtraArgs2,ClauseHead, StartLine, EndLine)).
 assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info) :-
-    format('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]),
-    get_position(Layout, StartLine, EndLine), format('*** LINES: ~w-~w~n',[StartLine,EndLine]).
+    format_red('*** ERROR: ~w~n',[assert_unresolved_meta_call(VariableCall,ExtraArgs,Layout,CallingPredicate,DCG,Info)]),
+    get_position(Layout, StartLine, EndLine),
+    format_red('*** LINES: ~w-~w~n',[StartLine,EndLine]).
 
      % calling(cmodule,cname/carity, module,name/arity, startline, endline)
 assert_call(CallingPredicate, Predicate, Layout, DCG) :-
@@ -1893,6 +1908,7 @@ ignore_meta_user_pred(module_info(_,_),module_information).
 %! procedure user:(;)/4 does not exist
 %! goal:  user:;(q,r,a,_23255)
 
+meta_built_in_pred(Var,built_in,[meta_arg(1,0)]) :- var(Var),!. % like call(Var)
 meta_built_in_pred(when(_,_),built_in,[meta_arg(1,0),meta_arg(2,0)]).
 meta_built_in_pred(on_exception(_,_,_),built_in,[meta_arg(2,0),meta_arg(3,0)]).
 meta_built_in_pred(catch(_,_,_),built_in,[meta_arg(1,0),meta_arg(3,0)]).
@@ -1922,7 +1938,7 @@ meta_built_in_pred(do(_,_),built_in,[meta_arg(2,0)]).
 
 analyze_sub_arg(DModule:META,MODULE, Layout, CallingPredicate, Info, meta_arg(Nr,ADD) ) :- !,
   (DModule=MODULE -> true /* user provided additional module prefix; peel it off */
-    ; format('*** Module prefix mismatch: ~w:~w (expected ~w)~n',[DModule,META,MODULE])),
+    ; format_red('*** Module prefix mismatch: ~w:~w (expected ~w)~n',[DModule,META,MODULE])),
    % we need to peel off layout to get to META:
    layout_sub_term(Layout,3,LayoutM,analyze_sub_arg_meta(CallingPredicate,Info)),
    analyze_sub_arg(META, MODULE, LayoutM, CallingPredicate, Info, meta_arg(Nr,ADD) ).
@@ -2190,7 +2206,7 @@ analyze_clause_complexity(Module,Predicate,_Head,Body,Layout) :-
 %      format('Halstead complexity ~w, ~w, ~w, ~w~n',[OperatorOcc,OperandOcc,OperatorCount,OperandCount]),
       assert(clause_halstead(Module,Predicate,StartLine,EndLine,OperatorOcc,OperandOcc,OperatorCount,OperandCount)),
       assert(clause_complexity(Module,Predicate,NestingLevel,Calls,StartLine,EndLine,VarCount,Unifications,ExplicitUnifications))
-   ;  format('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
+   ;  format_red('*** Computing clause complexity failed: ~w (~w-~w)~n',[Module,StartLine,EndLine])).
 
 %%
 % DCG for accumulationg the complexity of a clause body (see analyze_clause_complexity/5)
@@ -2445,7 +2461,7 @@ built_in_call(format(_,_,_)).
 % @param PR the extracted predicate name
 % @sideeffect print prints an error message on failure
 decompose_call(M:P,MR,PR) :- !,decompose_call2(P,M,MR,PR). 
-decompose_call(P,module_yet_unknown,P) :- format('*** Unknown Module for ~w~n',[P]).
+decompose_call(P,module_yet_unknown,P) :- format_red('*** Unknown Module for ~w~n',[P]).
 
 %%
 % Peel off all : module constructors
@@ -2508,7 +2524,16 @@ update.
 
 safe_analyze_clause(Term,Layout,Module,File) :-
     if(analyze_clause(Term,Layout,Module,File),true,
-       format('~n*** Analyzing Clause for ~w Failed: ~w~n~n',[Module,Term])).
+       format_red('~n*** Analyzing Clause for ~w Failed: ~w~n~n',[Module,Term])).
+
+
+start_red :- write(user_output,'\e[31m').
+start_blue :- write(user_output,'\e[34m').
+start_bold :- write(user_output,'\e[1m').
+reset_colors :- write(user_output,'\e[0m').
+print_red(Term) :-
+   format('\e[31m~w\e[0m',[Term]).
+format_red(Str,Args) :- start_red, start_bold, format(Str,Args), reset_colors.
 
 %%
 % Interpreter magic. Sicstus calls this predicate when encountering a clause.
