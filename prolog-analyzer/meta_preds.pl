@@ -91,6 +91,10 @@ meta_library_pred(map_bag_list(_,_,_), bags, [meta_arg(3,2)]).
 meta_library_pred(somebag(_,_), bags, [meta_arg(1,2)]).
 meta_library_pred(somechkbag(_,_), bags, [meta_arg(1,2)]).
 
+% module timeout
+
+meta_library_pred(time_out(_,_,_), timeout, [meta_arg(1,0)]).
+
 % module trees
 
 meta_library_pred(map_tree(_,_,_), trees, [meta_arg(1,2)]).
